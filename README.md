@@ -9,7 +9,7 @@ conda env create -f environment.yml
 conda activate model_collaboration
 ```
 
-Run your first model collaboration experiment (if you don't have 3 GPUs, go to `test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have):
+Run your first model collaboration experiment (if you don't have 3 GPUs, go to `test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you might have):
 
 ```
 python main.py -c test_config.json
