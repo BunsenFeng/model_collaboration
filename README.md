@@ -18,3 +18,5 @@ python main.py -c test_config.json
 You will see the outputs and evaluation results in the `logs/` folder.
 
 See `method/user_readme.md` for more details about different collaboration methods implemented.
+
+Zhaoxuan (our evaluation tsar), additionally see `data/eval_readme.md`.
