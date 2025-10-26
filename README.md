@@ -4,7 +4,7 @@ The future is now.
 
 ### Quick Start
 
-Use the dev branch! Do `git checkout dev`.
+Use the dev branch! Do `git checkout dev` please.
 
 ```
 conda env create -f environment.yml
