@@ -2,7 +2,7 @@
 
 The future is now.
 
-### Quick Start
+### Github Setup
 
 1. Clone the repo with `https://github.com/BunsenFeng/model_collaboration.git`.
 2. Checkout to the dev branch: `git checkout dev`
@@ -22,12 +22,21 @@ If you are in the middle of the development, and you need the latest changes fro
 4. Check back to your local branch: `git checkout [your-local-branch-name]`
 5. Merge the changes from dev branch to your own branch: `git merge dev`
 6. Keep working on your own branch. done.
+
+### After that, quick start
+
 ```
 conda env create -f environment.yml
 conda activate model_collaboration
+cd ..
+git clone https://github.com/arcee-ai/mergekit.git
+cd mergekit
+pip install -e .
+cd ..
+cd model_collaboration
 ```
 
-Run your first model collaboration experiment (if you don't have 3 GPUs, go to `test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have):
+Run your first model collaboration experiment (if you don't have 3 GPUs, go to `test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):
 
 ```
 python main.py -c test_config.json
