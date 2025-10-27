@@ -21,7 +21,7 @@ If you are in the middle of the development, and you need the latest changes fro
 3. Pull the latest changes from the dev branch: `git pull`
 4. Check back to your local branch: `git checkout [your-local-branch-name]`
 5. Merge the changes from dev branch to your own branch: `git merge dev`
-6. Keep working on your own branch.
+6. Keep working on your own branch. done.
 ```
 conda env create -f environment.yml
 conda activate model_collaboration
