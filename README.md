@@ -8,7 +8,7 @@ The future is now.
 2. Checkout to the dev branch: `git checkout dev`
 3. Pull the latest changes from the dev branch to your local dev branch: `git pull`
 4. Create your own feature/hotfix branch on local: `git checkout -b [your-local-branch-name]`
-5. Make edtis on the scripts you care.
+5. Make edits on the scripts you care.
 6. Push any changes you made on your local branch to the GitHub server - after `git add` and `git commit` operations, do `git push`, you will see `git push --set-upstream origin [your-local-branch-name]` suggested by github, copy and paste this command and run.
 7. Open a new Pull Request from the GitHub webpage, **make sure it's merging from `[your-local-branch-name]` to the `dev` branch**. Add any reviewer and Shangbin that matters to the changes.
 8. Once approved, merge the changes to the `dev` branch.
