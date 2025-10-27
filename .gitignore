@@ -6,6 +6,7 @@ logs/*
 data/test.py
 test.py
 !test_config.json
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
