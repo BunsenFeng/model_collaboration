@@ -23,7 +23,7 @@ If you are in the middle of the development, and you need the latest changes fro
 5. Merge the changes from dev branch to your own branch: `git merge dev`
 6. Keep working on your own branch. done.
 
-### After that, quick start!
+### After that, quick start!!
 
 ```
 conda env create -f environment.yml
