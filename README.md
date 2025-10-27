@@ -15,6 +15,13 @@ The future is now.
 9. After merging, you will see an option on the webpage to delete your own branch. Delete it.
 10. Loop from #2.
 
+If you are in the middle of the development, and you need the latest changes from dev branch, follow the steps below:
+1. Keep track of the current changes you made on your local branch: `git add` and `git commit` your `[your-local-branch-name]`
+2. Checkout to the dev branch: `git checkout dev`
+3. Pull the latest changes from the dev branch: `git pull`
+4. Check back to your local branch: `git checkout [your-local-branch-name]`
+5. Merge the changes from dev branch to your own branch: `git merge dev`
+6. Keep working on your own branch.
 ```
 conda env create -f environment.yml
 conda activate model_collaboration
