@@ -4,7 +4,7 @@ The future is now.
 
 ### Quick Start
 
-Use the dev branch! Do `git checkout dev` please.
+First, clone the repo with `https://github.com/BunsenFeng/model_collaboration.git`.
 
 ```
 conda env create -f environment.yml
