@@ -4,7 +4,16 @@ The future is now.
 
 ### Quick Start
 
-First, clone the repo with `https://github.com/BunsenFeng/model_collaboration.git`.
+1. Clone the repo with `https://github.com/BunsenFeng/model_collaboration.git`.
+2. Checkout to the dev branch: `git checkout dev`
+3. Pull the latest changes from the dev branch to your local dev branch: `git pull`
+4. Create your own feature/hotfix branch on local: `git checkout -b [your-local-branch-name]`
+5. Make edtis on the scripts you care.
+6. Push any changes you made on your local branch to the GitHub server.
+7. Open a new Pull Request from the GitHub webpage, **make sure it's merging from `[your-local-branch-name]` to the `dev` branch**. Add any reviewer and Shangbin that matters to the changes.
+8. Once approved, merge the changes to the `dev` branch.
+9. After merging, you will see an option on the webpage to delete your own branch. Delete it.
+10. Loop from #2.
 
 ```
 conda env create -f environment.yml
