@@ -197,7 +197,7 @@ def reward_model_scores(list_of_input, list_of_output, gpu_id=0):
         scores.append(score)
     return scores
 
-def prepare_inputs(task, task_type, split):
+def prepare_inputs(task, task_type, split, ratio=1.0):
 
     input_list = []
 
@@ -214,19 +214,20 @@ def prepare_inputs(task, task_type, split):
                 options.append(item["choices"][option])
             formatted_question = format_mcq_question(question_text, options)
             input_list.append(formatted_question)
-    elif task_type == "exact_match" or task_type == "f1_match" or task_type == "noncompliance" or task_type == "reward_model":
+    elif task_type == "exact_match" or task_type == "f1_match" or task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
         for item in data:
             input_list.append(item["input"])
     else:
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
 
-    return input_list
+    return input_list[:int(len(input_list)*ratio)]
 
-def get_scores(task, task_type, split, outputs):
+def get_scores(task, task_type, split, outputs, ratio=1.0):
 
     with open("data/{}.json".format(task), "r") as f:
         data = json.load(f)[split]
+        data = data[:int(len(data)*ratio)]
 
     scores = []
 
@@ -279,8 +280,11 @@ def get_scores(task, task_type, split, outputs):
                 scores.append(1.0)
             else:
                 scores.append(0.0)
-    if task_type == "reward_model":
+    if task_type == "reward_model" or task_type == "text_generation" and split == "dev":
         load_reward_model()
-        scores = reward_model_scores(prepare_inputs(task, task_type, split)[:20], outputs)
+        scores = reward_model_scores(prepare_inputs(task, task_type, split)[:len(outputs)], outputs)
+    if task_type == "text_generation" and split != "dev":
+        # no need to eval
+        return [0] * len(outputs)
     
     return scores
