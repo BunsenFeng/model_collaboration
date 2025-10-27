@@ -23,6 +23,8 @@ If you are in the middle of the development, and you need the latest changes fro
 5. Merge the changes from dev branch to your own branch: `git merge dev`
 6. Keep working on your own branch. done.
 
+Questions about git? Don't take guesses, email `svenyan234@gmail.com` and cc `bunsenfeng@gmail.com`.
+
 ### After that, quick start!!
 
 ```
