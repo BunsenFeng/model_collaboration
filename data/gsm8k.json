@@ -1,5 +1,6 @@
 {
-    "dataset": "GSM8k",
+    "dataset": "gsm8k",
+    "task_type": "exact_match",
     "dev": [
         {
             "id": 438,

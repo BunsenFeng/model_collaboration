@@ -1,5 +1,6 @@
 {
     "name": "human_interest",
+    "task_type": "reward_model",
     "dev": [
         {
             "input": "In what ways do Reddit's upvote and downvote systems impact the visibility and perceived credibility of information shared on the site?",

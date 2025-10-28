@@ -119,11 +119,14 @@ def get_all_inputs(task=None):
     list_of_all_inputs = []
     files = os.listdir("data/")
     for file in files:
-        if file.endswith(".json") and (task is None or file.startswith(task)):
-            with open(os.path.join("data/", file), "r") as f:
-                task_type = json.load(f)["task_type"]
-            inputs = eval.prepare_inputs(file[:-5], task_type, "dev")
-            list_of_all_inputs.extend(inputs)
+        try:
+            if file.endswith(".json") and (task is None or file.startswith(task)):
+                with open(os.path.join("data/", file), "r") as f:
+                    task_type = json.load(f)["task_type"]
+                inputs = eval.prepare_inputs(file[:-5], task_type, "dev")
+                list_of_all_inputs.extend(inputs)
+        except:
+            print("Error processing file: {}".format(file))
     return list_of_all_inputs
             
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):

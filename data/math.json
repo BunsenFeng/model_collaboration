@@ -1,5 +1,6 @@
 {
     "name": "math",
+    "task_type": "exact_match",
     "dev": [
         {
             "input": "The expression $x^2 + 15x + 54$ can be written as  $(x + a)(x + b),$ and the expression $x^2 - 17x + 72$ written as $(x - b)(x - c)$, where $a$, $b$, and $c$ are integers. What is the value of $a + b + c$?",
