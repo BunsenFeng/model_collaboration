@@ -1,5 +1,6 @@
 {
     "name": "wikidyk",
+    "task_type": "f1_match",
     "dev": [
         {
             "id": 5735,

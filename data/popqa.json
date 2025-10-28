@@ -1,5 +1,6 @@
 {
     "name": "popqa",
+    "task_type": "f1_match",
     "dev": [
         {
             "input": "What sport does Jos\u00e9 Diogo Macedo Silva play?",
