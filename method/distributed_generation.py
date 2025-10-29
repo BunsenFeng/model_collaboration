@@ -19,7 +19,7 @@ def update_generation_hyperparameters(max_response_length, temperature, top_p, b
 
 def batch_generate_text(model_name, gpu_id, input_list, max_response_length, temperature, top_p, batch_size):
     # Load model and tokenizer
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}")
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         tokenizer.pad_token = tokenizer.eos_token
