@@ -133,6 +133,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     max_response_length = hyperparameters.get("max_response_length")
     batch_size = hyperparameters.get("batch_size", 16)
+    gpu_ids = hyperparameters.get("gpu_ids")
 
     # method-specific hyperparameters
     patch_size = hyperparameters.get("patch_size", 50)
@@ -141,7 +142,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     objective_flag = hyperparameters.get("objective_flag", False)
     training_instance_num = hyperparameters.get("training_instance_num", 250)
     rollout_per_instance = hyperparameters.get("rollout_per_instance", 16)
-    reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", None)
+    reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", gpu_ids[0])
     reward_model_name = hyperparameters.get("reward_model_name", "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2")
     wait_flag = hyperparameters.get("wait_flag", True)
 
