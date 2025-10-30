@@ -13,6 +13,7 @@ def logit_operation_generator(k):
         for i in range(k):
             final_logits += logits_list[i]  # top-k
             final_logits -= logits_list[i + k]  # bottom-k
+        final_logits += logits_list[0]  # apply that offset to the top-1 logits
         return final_logits
     return operation
 
