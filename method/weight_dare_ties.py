@@ -11,12 +11,17 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     population = hyperparameters.get("population", 5)
     max_iterations = hyperparameters.get("max_iterations", 5)
     mode = hyperparameters.get("mode", "average") # optimized or average
+    dare_ties_base_path = hyperparameters.get("dare_ties_base_path", "logs/dare_ties/")
+
+    if os.path.exists(dare_ties_base_path):
+        raise ValueError("dare_ties_base_path {} already exists. Please specify a new path to avoid overwriting.".format(dare_ties_base_path))
+    os.makedirs(dare_ties_base_path)
 
     starting_velocity_mode = hyperparameters.get("starting_velocity_mode", "random")
     weight_randomness = hyperparameters.get("weight_randomness", True)
     inertia = hyperparameters.get("inertia", 0.2)
-    cognitive_coeff = hyperparameters.get("cognitive_coeff", 1.3)
-    social_coeff = hyperparameters.get("social_coeff", 1.4)
+    cognitive_coeff = hyperparameters.get("cognitive_coeff", 0.3)
+    social_coeff = hyperparameters.get("social_coeff", 0.4)
     repel_coeff = hyperparameters.get("repel_coeff", 0.05)
     repel_term = hyperparameters.get("repel_term", True)
     step_length = hyperparameters.get("step_length", 0.5)
@@ -57,8 +62,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             gpu_id = gpu_ids[0]
             for i in range(len(list_of_weights)):
                 weight = list_of_weights[i]
-                merged_model_path = "logs/dare_ties_{}".format(i)
-                with open("logs/dare_ties.yml", "w") as f:
+                merged_model_path = dare_ties_base_path + "dare_ties_{}".format(i)
+                with open(dare_ties_base_path + "dare_ties.yml", "w") as f:
                     f.write("models:\n")
                     for j in range(len(model_names)):
                         f.write("  - model: " + model_names[j] + "\n")
@@ -68,11 +73,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                     f.write("base_model: " + model_names[0] + "\n")
                     f.write("dtype: float16\n")
                 
-                os.system("mergekit-yaml logs/dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_id))
+                os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_id))
 
             # evaluate the merged models on the dev set
             list_of_input_list = [dev_input_list for _ in range(len(list_of_weights))]
-            list_of_model_names = ["logs/dare_ties_{}".format(i) for i in range(len(list_of_weights))]
+            list_of_model_names = [dare_ties_base_path + "dare_ties_{}".format(i) for i in range(len(list_of_weights))]
             list_of_output_list = distributed_generation.distributed_generation(
                 list_of_model_names,
                 list_of_input_list,
@@ -104,8 +109,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         print("Using uniform weights for dare-ties: {}".format(normalized_best_weights))
 
     # merge the final model
-    merged_model_path = "logs/dare_ties_final"
-    with open("logs/dare_ties.yml", "w") as f:
+    merged_model_path = dare_ties_base_path + "final_model"
+    with open(dare_ties_base_path + "dare_ties.yml", "w") as f:
         f.write("models:\n")
         for j in range(len(model_names)):
             f.write("  - model: " + model_names[j] + "\n")
@@ -115,7 +120,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         f.write("base_model: " + model_names[0] + "\n")
         f.write("dtype: float16\n")
 
-    os.system("mergekit-yaml logs/dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_ids[0]))
+    os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_ids[0]))
     
     # evaluate it on the test set
     test_input_list = eval.prepare_inputs(task, task_type, "test")
