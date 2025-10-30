@@ -13,7 +13,7 @@ from method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 
-def single_sft(model_name, sft_data_path, gpu_id, output_model_path, response_template, batch_size=1, gradient_accumulation_steps=16,
+def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
                learning_rate=1e-5, epoch=3):
     """
     SFT of a single model on a single GPU.
@@ -22,17 +22,13 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, response_te
     gpu_id: the GPU id you want to use.
     output_model_path: the path to save the SFT model.
     """
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    torch.cuda.set_device(0)
 
     dataset = load_dataset("json", data_files=sft_data_path, split="train")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left", padding=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}")
-
-    collator = DataCollatorForCompletionOnlyLM(
-        response_template=response_template, 
-        tokenizer=tokenizer, 
-        mlm=False
-    )
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 
     if os.path.exists(output_model_path):
         print(f"Model path {output_model_path} exists. Deleting it to avoid conflicts.")
@@ -74,8 +70,7 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, response_te
         args=training_args,
         train_dataset=dataset,
         eval_dataset=dataset,
-        peft_config=peft_config,
-        data_collator=collator
+        peft_config=peft_config
     )
 
     trainer.train()
@@ -85,7 +80,7 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, response_te
     del model, tokenizer, trainer
     torch.cuda.empty_cache()
 
-def distributed_sft(list_of_model_names, list_of_sft_data_paths, list_of_gpu_ids, list_of_output_model_paths, response_template="<|im_start|>assistant\n",
+def distributed_sft(list_of_model_names, list_of_sft_data_paths, list_of_gpu_ids, list_of_output_model_paths,
                     batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-5, epoch=3):
     """
     Distributed SFT of multiple models on multiple GPUs.
@@ -106,7 +101,6 @@ def distributed_sft(list_of_model_names, list_of_sft_data_paths, list_of_gpu_ids
                     list_of_sft_data_paths[i + j],
                     list_of_gpu_ids[j],
                     list_of_output_model_paths[i + j],
-                    response_template,
                     batch_size,
                     gradient_accumulation_steps,
                     learning_rate,
