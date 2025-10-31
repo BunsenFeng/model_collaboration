@@ -139,7 +139,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - related paper(s):
     - [Model Swarms: Collaborative Search to Adapt LLM Experts via Swarm Intelligence](https://arxiv.org/abs/2410.11163)
 - method-specific hyperparameters:
-    - `swarm_bath_path`, default `logs/model_swarms/`: a place to do the bookkeeping for the swarm algorithm.
+    - `swarm_base_path`, default `logs/model_swarms/`: a place to do the bookkeeping for the swarm algorithm.
     - `base_model`, default None: the common base model architecture of these LLMs.
     - `fast_merge_flag`, default False: False if they are regular full-size models, True if they are lora adapters.
     - `max_iterations`, default 10: the maximum number of iterations.
