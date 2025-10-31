@@ -97,7 +97,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
 - method-specific hyperparameters:
     None
-- warning: you might need very small batch sizes.
+- warning: you might need very small batch sizes. len(gpu_ids) has to == len(model_names).
 - note to tester: one recommended `model_names`: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "allenai/Llama-3.1-Tulu-3-8B"]. Try another set of your own choices.
 
 #### Logit-level: Logit Contrastive
@@ -108,7 +108,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - [Tuning Language Models by Proxy](https://arxiv.org/abs/2401.08565)
 - method-specific hyperparameters:
     - `k`, default 1: the number of top and bottom LLMs to use for contrastive decoding.
-- warning: you might need very small batch sizes.
+- warning: you might need very small batch sizes. len(gpu_ids) has to == len(model_names).
 - note to tester: one recommended `model_names`: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "allenai/Llama-3.1-Tulu-3-8B"]. Try another set of your own choices.
 
 #### Weight-level: Greedy Soup
