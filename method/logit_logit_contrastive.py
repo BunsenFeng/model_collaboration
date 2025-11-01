@@ -22,10 +22,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     batch_size = hyperparameters.get("batch_size")
     max_new_tokens = hyperparameters.get("max_response_length")
     temperature = hyperparameters.get("temperature")
-    lambda_ = hyperparameters.get("lambda_")
 
     # method-specific hyperparameters
     k = hyperparameters.get("k", 1) # top-k and bottom-k
+    lambda_ = hyperparameters.get("lambda_", 0.2) # scaler for summed logit contrastion
 
     # evaluate models on the dev set to know the top-k and bottom-k models
     dev_input_list = eval.prepare_inputs(task, task_type, "dev")
