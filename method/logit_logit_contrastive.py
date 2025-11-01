@@ -6,15 +6,15 @@ from transformers import AutoTokenizer
 from method import distributed_generation
 
 # return a function that runs logit contrastive with top-k and bottom-k
-def logit_operation_generator(k):
+def logit_operation_generator(k, lambda_=0.2):
     def operation(logits_list):
         assert len(logits_list) == 2*k, "logits_list length must be 2*k"
         final_logits = torch.zeros_like(logits_list[0])
         for i in range(k):
             final_logits += logits_list[i]  # top-k
             final_logits -= logits_list[i + k]  # bottom-k
-        final_logits += logits_list[0]  # apply that offset to the top-1 logits
-        return final_logits
+        final_logits_output = lambda_ * final_logits + logits_list[0]  # apply that offset to the top-1 logits
+        return final_logits_output
     return operation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
@@ -22,12 +22,13 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     batch_size = hyperparameters.get("batch_size")
     max_new_tokens = hyperparameters.get("max_response_length")
     temperature = hyperparameters.get("temperature")
+    lambda_ = hyperparameters.get("lambda_")
 
     # method-specific hyperparameters
     k = hyperparameters.get("k", 1) # top-k and bottom-k
 
     # evaluate models on the dev set to know the top-k and bottom-k models
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=0.05)
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -59,7 +60,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         tokenizer=tokenizer
     )
 
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=0.02)
     outputs = logit_calc_object.batch_generate(
         prompts=test_input_list,
         tokenizer=logit_calc_object.tokenizer,
@@ -67,7 +68,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         max_new_tokens=max_new_tokens,
         do_sample=True,
         temprature=temperature,
-        arithmetic_func=logit_operation_generator(k)
+        arithmetic_func=logit_operation_generator(k, lambda_)
     )
 
     test_scores = eval.get_scores(task, task_type, "test", outputs)
