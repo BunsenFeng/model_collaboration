@@ -7,7 +7,7 @@ import random
 
 class NumericSwarm:
 
-    def __init__(self, dimension, population, starting_velocity_mode, weight_randomness, inertia, cognitive_coeff, social_coeff, repel_coeff, step_length, repel_term, step_length_factor, minimum_step_length, patience, restart_patience):
+    def __init__(self, dimension, population, starting_velocity_mode="random", weight_randomness=True, inertia=0.2, cognitive_coeff=0.3, social_coeff=0.4, repel_coeff=0.05, step_length=0.5, repel_term=True, step_length_factor=0.95, minimum_step_length=0.1, patience=5, restart_patience=3):
         
         self.dimension = dimension
         self.population = population
