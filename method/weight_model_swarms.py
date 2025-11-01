@@ -6,6 +6,11 @@ from method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    print("The model you are using for greedy soup are:")
+    for model_name in model_names:
+        print(model_name)
+    print("Make sure they share the same model architecture, or expect errors.")
+
     # method-specific hyperparameters
     swarm_base_path = hyperparameters.get("swarm_base_path", "logs/model_swarms/")
     if os.path.exists(swarm_base_path):

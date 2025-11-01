@@ -1,9 +1,18 @@
 import json
 from data import eval
+from utils import lora_check
 from utils.swarm import lora_merge
 from method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
+
+    print("The model you are using for greedy soup are:")
+    for model_name in model_names:
+        print(model_name)
+    print("Make sure they share the same model architecture, or expect errors.")
+
+    # checking if the models are lora adapters
+    model_names = lora_check.lora_to_full(model_names)
 
     # evaluating the models and rank them by dev set performance
     dev_input_list = eval.prepare_inputs(task, task_type, "dev")
