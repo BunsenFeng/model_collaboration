@@ -1,3 +1,4 @@
+import os
 import json
 from data import eval
 from utils import swarm
@@ -6,7 +7,9 @@ from method import distributed_generation
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # method-specific hyperparameters
-    swarm_bath_path = hyperparameters.get("swarm_bath_path", "logs/model_swarms/")
+    swarm_base_path = hyperparameters.get("swarm_base_path", "logs/model_swarms/")
+    if os.path.exists(swarm_base_path):
+        raise ValueError("Swarm base path {} already exists. Please specify a new path to avoid overwriting.".format(swarm_base_path))
     base_model = hyperparameters.get("base_model", None)
     if base_model is None:
         print("Taking the first model as the base model. Hopefully it is the one with the largest vocabulary size and thus embedding/lm head matrices.")
@@ -28,7 +31,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # initialize the swarm
     model_swarm = swarm.Swarm(
-        swarm_base_path = swarm_bath_path,
+        swarm_base_path = swarm_base_path,
         model_paths = model_names,
         base_model = base_model,
         fast_merge = fast_merge_flag,
@@ -66,7 +69,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
             avg_dev_score = sum(dev_score) / len(dev_score)
             list_of_dev_scores.append(avg_dev_score)
-            print("Model: {}, dev {} score: {}".format(model_paths[i], task_type, avg_dev_score))
+            print("Model: {}, dev {} score: {}".format(model_paths[i], task, avg_dev_score))
         
         # update the swarm based on the dev scores
         termination_flag = model_swarm.update(list_of_dev_scores)

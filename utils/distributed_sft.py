@@ -22,11 +22,13 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
     gpu_id: the GPU id you want to use.
     output_model_path: the path to save the SFT model.
     """
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    torch.cuda.set_device(0)
 
     dataset = load_dataset("json", data_files=sft_data_path, split="train")
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}")
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 
     if os.path.exists(output_model_path):
         print(f"Model path {output_model_path} exists. Deleting it to avoid conflicts.")
