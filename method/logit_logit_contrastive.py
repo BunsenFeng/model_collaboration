@@ -28,7 +28,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     k = hyperparameters.get("k", 1) # top-k and bottom-k
 
     # evaluate models on the dev set to know the top-k and bottom-k models
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=0.05)
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -60,7 +60,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         tokenizer=tokenizer
     )
 
-    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=0.02)
+    test_input_list = eval.prepare_inputs(task, task_type, "test")
     outputs = logit_calc_object.batch_generate(
         prompts=test_input_list,
         tokenizer=logit_calc_object.tokenizer,
