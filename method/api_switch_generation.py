@@ -133,7 +133,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     max_response_length = hyperparameters.get("max_response_length")
     batch_size = hyperparameters.get("batch_size", 16)
-    gpu_ids = hyperparameters.get("gpu_ids")
 
     # method-specific hyperparameters
     patch_size = hyperparameters.get("patch_size", 50)
