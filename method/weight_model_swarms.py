@@ -6,7 +6,7 @@ from method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
-    print("The model you are using for greedy soup are:")
+    print("The model you are using are:")
     for model_name in model_names:
         print(model_name)
     print("Make sure they share the same model architecture, or expect errors.")
