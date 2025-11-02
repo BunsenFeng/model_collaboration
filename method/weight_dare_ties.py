@@ -2,10 +2,19 @@ import os
 import json
 from data import eval
 import torch.nn.functional as F
+from utils import lora_check
 from method import distributed_generation
 from utils.numeric_swarm import NumericSwarm
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
+
+    print("The model you are using are:")
+    for model_name in model_names:
+        print(model_name)
+    print("Make sure they share the same model architecture, or expect errors.")
+
+    # check if the models are lora adapters
+    model_names = lora_check.lora_to_full(model_names)
 
     # method-specific hyperparameters
     population = hyperparameters.get("population", 5)

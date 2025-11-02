@@ -6,15 +6,15 @@ from transformers import AutoTokenizer
 from method import distributed_generation
 
 # return a function that runs logit contrastive with top-k and bottom-k
-def logit_operation_generator(k):
+def logit_operation_generator(k, lambda_=0.2):
     def operation(logits_list):
         assert len(logits_list) == 2*k, "logits_list length must be 2*k"
         final_logits = torch.zeros_like(logits_list[0])
         for i in range(k):
             final_logits += logits_list[i]  # top-k
             final_logits -= logits_list[i + k]  # bottom-k
-        final_logits += logits_list[0]  # apply that offset to the top-1 logits
-        return final_logits
+        final_logits_output = lambda_ * final_logits + logits_list[0]  # apply that offset to the top-1 logits
+        return final_logits_output
     return operation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
@@ -25,6 +25,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # method-specific hyperparameters
     k = hyperparameters.get("k", 1) # top-k and bottom-k
+    lambda_ = hyperparameters.get("lambda_", 0.2) # scaler for summed logit contrastion
 
     # evaluate models on the dev set to know the top-k and bottom-k models
     dev_input_list = eval.prepare_inputs(task, task_type, "dev")
@@ -67,7 +68,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         max_new_tokens=max_new_tokens,
         do_sample=True,
         temprature=temperature,
-        arithmetic_func=logit_operation_generator(k)
+        arithmetic_func=logit_operation_generator(k, lambda_)
     )
 
     test_scores = eval.get_scores(task, task_type, "test", outputs)
