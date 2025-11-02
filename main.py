@@ -7,6 +7,13 @@ import importlib
 from data import eval
 from multiprocessing import Pool
 from method import distributed_generation
+import torch._dynamo as dynamo
+# Increase the limit from the default (which is 256 for one_graph=True)
+# A value like 1024 might be a good starting point, but adjust as needed. 
+dynamo.config.cache_size_limit = 1024
+# You can also increase the recompile limit, though increasing cache_size_limit
+# is usually the better approach when dealing with distinct models.
+dynamo.config.recompile_limit = 1024
 
 if __name__ == "__main__":
     
