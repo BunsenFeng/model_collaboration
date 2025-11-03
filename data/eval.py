@@ -38,7 +38,7 @@ def normalize_answer(s: str) -> str:
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
 def extract_answer_text(response: str) -> str:
-    matches = re.findall(r"<answer>(.*?)</answer>", response, flags=re.IGNORECASE | re.DOTALL)
+    matches = re.findall(r"\\box\{(.*?)\}", response, flags=re.IGNORECASE | re.DOTALL)
     if matches:
         return matches[-1].strip()
     return response.strip()
@@ -220,7 +220,7 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
             input_list.append(formatted_question)
     elif task_type == "exact_match" or task_type == "f1_match":
         for item in data:
-            input_with_instruction = f"{item['input'].rstrip()}\n\nPlease provide the final, direct answer wrapped exactly as <answer>ANSWER</answer>"
+            input_with_instruction = f"{item['input'].rstrip()}\n\nPlease provide the final, direct answer wrapped exactly as \\box{{ANSWER}}"
             input_list.append(input_with_instruction)
     elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
         for item in data:
