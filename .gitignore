@@ -7,6 +7,8 @@ data/test.py
 test.py
 !test_config.json
 models/
+distill/
+data/*_devonly.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
