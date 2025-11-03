@@ -4,6 +4,7 @@ import json
 import torch
 import argparse
 import importlib
+import torch._dynamo as dynamo
 from data import eval
 from multiprocessing import Pool
 from method import distributed_generation
@@ -11,6 +12,10 @@ from method import distributed_generation
 if __name__ == "__main__":
     
     torch.multiprocessing.set_start_method('spawn')
+
+    torch.set_float32_matmul_precision('high')
+    dynamo.config.cache_size_limit = 1024
+    dynamo.config.recompile_limit = 1024
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_file", type=str, help="Path to the configuration file")

@@ -7,6 +7,7 @@ import torch
 import random
 import string
 from tqdm import tqdm
+from torch import _dynamo
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from openai import AzureOpenAI
 from collections import Counter
@@ -197,6 +198,13 @@ def reward_model_scores(list_of_input, list_of_output, gpu_id=0):
         scores.append(score)
     return scores
 
+def clear_reward_model():
+    global rm, rm_tokenizer
+    del rm
+    del rm_tokenizer
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
+
 def prepare_inputs(task, task_type, split, ratio=1.0):
 
     input_list = []
@@ -283,6 +291,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
     if task_type == "reward_model" or task_type == "text_generation" and split == "dev":
         load_reward_model()
         scores = reward_model_scores(prepare_inputs(task, task_type, split)[:len(outputs)], outputs)
+        clear_reward_model()
     if task_type == "text_generation" and split != "dev":
         # no need to eval
         return [0] * len(outputs)
