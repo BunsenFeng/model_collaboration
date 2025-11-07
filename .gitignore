@@ -9,6 +9,7 @@ test.py
 models/
 distill/
 data/*_devonly.json
+boxed.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
