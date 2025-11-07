@@ -39,9 +39,31 @@ def normalize_answer(s: str) -> str:
     return white_space_fix(remove_articles(remove_punc(lower(s))))
 
 def extract_answer_text(response: str) -> str:
-    matches = re.findall(r"\\box\{(.*?)\}", response, flags=re.IGNORECASE | re.DOTALL)
-    if matches:
-        return matches[-1].strip()
+    box_matches = re.findall(r"\\box(?:ed)?\s*\{(.*?)\}", response, flags=re.IGNORECASE | re.DOTALL)
+    if box_matches:
+        return box_matches[-1].strip()
+
+    inline_box_match = re.search(r"\\box(?:ed)?\s+([^\n\r]*)", response, flags=re.IGNORECASE)
+    if inline_box_match:
+        candidate = inline_box_match.group(1).strip()
+        if candidate:
+            return candidate
+
+    fallback_patterns = [
+        r"\bthe answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
+        r"\bfinal answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
+        r"\banswer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
+    ]
+    for pattern in fallback_patterns:
+        match = re.search(pattern, response, flags=re.IGNORECASE)
+        if match:
+            candidate = match.group(1).strip()
+            if candidate:
+                candidate = re.split(r"[\n\r]", candidate, 1)[0].strip()
+                candidate = candidate.rstrip(". ")
+                if candidate:
+                    return candidate
+
     return response.strip()
 
 def calculate_f1_score(prediction: str, ground_truth: str) -> float:
