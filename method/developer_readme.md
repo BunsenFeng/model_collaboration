@@ -9,7 +9,7 @@ After implementing and testing your method, before the pull request, add a descr
 **You may only submit one method per pull request. You may only modify the `.py` of your approach and the `user_readme.md`.** If you have suggestions for other methods / shared helper functions, please consult with Shangbin.
 
 #### A template
-A template of an approach is available in the `method/sample_approach.md` file. You can use this as a starting point for your own method.
+A template of an approach is available in the `method/sample_approach.py` file. You can use this as a starting point for your own method.
 
 #### Helper functions
 We provide a lot of helper functions for you to build on: distributed generation with multiple models and multiple GPUs, distributed sft, PSO for optimizing a bunch of weights/hyperparameters, etc.
