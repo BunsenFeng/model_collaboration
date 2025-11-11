@@ -146,3 +146,47 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - There are more hyperparameters for particle swarm optimization, please refer to `weight_model_swarms.py`. Only change them if you know what you are doing.
 - warning: HIGHLY recommended to use lora adapters and set `fast_merge_flag` to True to save computation and memory.
 - note to tester: recommended set of `model_names`: ["bunsenfeng/ds_science", "bunsenfeng/ds_oasst1", "bunsenfeng/ds_lima"] and ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]. These two settings could use `fast_merge_flag` as True which is wayyyyy faster. Optionally, try a set of full-sized models (not lora adapters) with `fast_merge_flag` as False if you have enough computation resources.
+
+#### Weight-level: PhatGoose
+- file: `weight_phatgoose.py`
+- description: full PhatGoose-style mixture-of-experts with per-token × per-module top-k routing over multiple LoRA experts. **All experts must be LoRA adapters of the same base model.** At each LoRA injection site, each expert has a learnable gate vector that scores token activations via normalized dot product. During inference, top-k experts are selected per token per module, and their LoRA deltas are combined with softmax-weighted routing. Gate vectors are trained separately per expert (with base model and LoRA weights frozen) using SFT loss on expert-specific data.
+- related paper(s):
+    - [Learning to Route Among Specialized Experts for Zero-Shot Generalization](https://arxiv.org/abs/2402.05859)
+- method-specific hyperparameters:
+    - `mode`, no default (required): operation mode, one of:
+        - `train_expert_gate`: train gate vectors for a single expert.
+        - `train_all_gates`: train gate vectors for all experts sequentially.
+        - `train_and_infer_full`: train all gates then immediately run inference.
+        - `infer_moe_full`: inference only (requires pre-trained gates).
+    - `base_model`, no default (required): the base model name or path that all LoRA experts share.
+    - `tokenizer_name`, default `base_model`: tokenizer name or path.
+    - **For `train_expert_gate` mode only:**
+        - `expert_path`, no default (required): path to the single LoRA expert directory.
+        - `expert_name`, default `basename(expert_path)`: name identifier for the expert.
+        - `sft_data_path`, no default (required): path to JSONL file with SFT data for gate training (format: `{"prompt": ..., "completion": ...}` per line).
+        - `init_gate_path`, default None: optional path to a pre-trained gate checkpoint for warm-starting this expert's gate training.
+    - **For `train_all_gates` and `train_and_infer_full` modes:**
+        - `expert_paths`, no default (required): list of paths to LoRA expert directories.
+        - `expert_names`, default `[basename(path) for path in expert_paths]`: list of name identifiers for experts, aligned with `expert_paths`.
+        - `sft_data_paths`, no default (required): list of paths to JSONL files with SFT data, one per expert, aligned with `expert_paths`.
+    - **Gate training hyperparameters (for all `train_*` modes):**
+        - `gate_steps`, default 100: number of training steps per expert for gate learning.
+        - `gate_batch_size`, default 4: batch size for gate training.
+        - `gate_lr`, default 0.005: learning rate for gate training (AdamW optimizer).
+        - `max_length`, default 1024: maximum sequence length for gate training.
+        - `grad_accum`, default 1: gradient accumulation steps during gate training.
+        - `gate_output_dir`, default `logs/phatgoose_full/<timestamp>/gates`: directory to save trained gate checkpoints.
+    - **For `infer_moe_full` mode (also used by `train_and_infer_full` after training):**
+        - `expert_paths`, no default (required): list of paths to LoRA expert directories.
+        - `expert_names`, default `[basename(path) for path in expert_paths]`: list of expert names.
+        - `gate_paths`, no default (required): list of paths to trained gate checkpoint files (`.pt`), one per expert, aligned with `expert_paths`. Not needed if using `train_and_infer_full` mode as gates are auto-loaded.
+        - `top_k`, default 2: number of experts to activate per token per module during inference.
+        - `score_type`, default `cosine`: scoring function for routing. Options: `cosine` (normalized dot product) or `dot` (unnormalized).
+        - `max_response_length`, default 128: maximum number of tokens to generate.
+        - `temperature`, default 0.7: sampling temperature.
+        - `top_p`, default 0.9: nucleus sampling parameter.
+        - `batch_size`, default 8: batch size for inference generation.
+        - `test_ratio`, default 1.0: fraction of test data to evaluate (1.0 = all data).
+        - `output_log_path`, default `logs/phatgoose_full/<task>_<num_experts>_<score>_<timestamp>.json`: path to save inference results.
+- warning: **All LoRA experts must be adapters of the same base model.** LoRA target modules must be `nn.Linear` layers. Currently only supports causal language models (AutoModelForCausalLM). len(gpu_ids) can be 1; the method does not require multi-GPU.
+- note to tester: since pre-trained LoRA adapters for the same base model are not easily found, I fine-tuned LoRA adapters of `Qwen/Qwen2.5-3B-Instruct` on different datasets (e.g., agieval, gsm8k, truthfulqa dev sets) and prepared corresponding SFT JSONL files. You can test with `mode: train_and_infer_full` using these or your own fine-tuned adapters. Start with small `gate_steps` (e.g., 30) for quick testing, increase to 100+ for better results.
