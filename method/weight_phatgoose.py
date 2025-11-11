@@ -577,7 +577,59 @@ def _read_jsonl(path: str) -> List[Dict[str, Any]]:
     return items
 
 
+def _prepare_sft_tuples_from_task(task: str, task_type: str, ratio: float = 1.0) -> List[Tuple[str, str]]:
+    """
+    Prepare (prompt, answer) pairs from task dev set for gate training.
+    Uses eval module to get inputs and constructs answers based on task type.
+    """
+    # Get dev inputs
+    dev_inputs = eval_mod.prepare_inputs(task, task_type, "dev", ratio=ratio)
+    
+    # Load task data file to get answers (use absolute path from script location)
+    script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    task_data_path = os.path.join(script_dir, "data", f"{task}.json")
+    if not os.path.exists(task_data_path):
+        raise FileNotFoundError(f"Task data file not found: {task_data_path}")
+    
+    with open(task_data_path, "r", encoding="utf-8") as f:
+        task_data = json.load(f)
+    
+    dev_data = task_data.get("dev", [])
+    if len(dev_data) == 0:
+        raise ValueError(f"No dev data found for task {task}")
+    
+    # Apply ratio if needed
+    if ratio < 1.0:
+        import math
+        n = max(1, math.floor(len(dev_data) * ratio))
+        dev_data = dev_data[:n]
+    
+    # Build (question, answer) pairs based on task type
+    pairs: List[Tuple[str, str]] = []
+    for i, item in enumerate(dev_data):
+        if i >= len(dev_inputs):
+            break
+        
+        question = dev_inputs[i]
+        
+        if task_type == "multiple_choice":
+            # For multiple choice, answer is the letter (e.g., "A", "B", "C", "D")
+            answer = str(item.get("answer", ""))
+        elif task_type == "open_ended":
+            # For open ended, answer is the text response
+            answer = str(item.get("answer", ""))
+        else:
+            # Default: try to get answer
+            answer = str(item.get("answer", ""))
+        
+        if question and answer:
+            pairs.append((question, answer))
+    
+    return pairs
+
+
 def _prepare_sft_tuples(data: List[Dict[str, Any]]) -> List[Tuple[str, str]]:
+    """Legacy function for JSONL format with prompt/completion keys."""
     pairs: List[Tuple[str, str]] = []
     for ex in data:
         prompt = ex.get("prompt")
@@ -651,7 +703,8 @@ def _train_single_expert_gates(
     tokenizer_name: str,
     expert_path: str,
     expert_name: str,
-    sft_data_path: str,
+    task: str,
+    task_type: str,
     device_str: str,
     steps: int = 100,
     batch_size: int = 4,
@@ -659,6 +712,7 @@ def _train_single_expert_gates(
     max_length: int = 1024,
     grad_accum: int = 1,
     seed: int = 42,
+    dev_ratio: float = 1.0,
     init_gate_path: Optional[str] = None,
 ) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any]]:
     torch.manual_seed(seed)
@@ -692,11 +746,10 @@ def _train_single_expert_gates(
     # Optimizer over gate params only
     opt = torch.optim.AdamW(train_params.values(), lr=lr)
 
-    # Load SFT data
-    data = _read_jsonl(sft_data_path)
-    pairs = _prepare_sft_tuples(data)
+    # Load gate training data from task dev set
+    pairs = _prepare_sft_tuples_from_task(task, task_type, ratio=dev_ratio)
     if len(pairs) == 0:
-        raise RuntimeError("Empty SFT data for gate training.")
+        raise RuntimeError(f"No training data for gate training from task {task} dev set.")
 
     _stage(f"Start gate training for expert {expert_name} | modules={len(module_paths)} | steps={steps}")
     step = 0
@@ -724,10 +777,13 @@ def _train_single_expert_gates(
         "expert_name": expert_name,
         "base_model": base_model_name,
         "tokenizer_name": tokenizer_name,
+        "task": task,
+        "task_type": task_type,
         "steps": steps,
         "batch_size": batch_size,
         "lr": lr,
         "max_length": max_length,
+        "dev_ratio": dev_ratio,
         "created": _now_str(),
         "module_paths": module_paths,
     }
@@ -847,8 +903,10 @@ def _infer_moe_full(
         ],
     }
     if output_log_path is None:
+        # Ensure logs are saved relative to the method script location
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         output_log_path = os.path.join(
-            "logs", "phatgoose_full", f"{task}_{len(expert_paths)}_{avg_score:.4f}_{_now_str()}.json"
+            script_dir, "logs", "phatgoose_full", f"{task}_{len(expert_paths)}_{avg_score:.4f}_{_now_str()}.json"
         )
     _ensure_dir(os.path.dirname(output_log_path))
     with open(output_log_path, "w", encoding="utf-8") as f:
@@ -878,16 +936,17 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         expert_name: str = hyperparameters.get(
             "expert_name", os.path.basename(expert_path.rstrip("/"))
         )
-        sft_data_path: str = hyperparameters["sft_data_path"]
         steps = int(hyperparameters.get("gate_steps", 100))
         gate_batch_size = int(hyperparameters.get("gate_batch_size", 4))
         gate_lr = float(hyperparameters.get("gate_lr", 5e-3))
         max_length = int(hyperparameters.get("max_length", 1024))
         grad_accum = int(hyperparameters.get("grad_accum", 1))
+        dev_ratio = float(hyperparameters.get("dev_ratio", 1.0))
         init_gate_path = hyperparameters.get("init_gate_path", None)
-        out_dir = hyperparameters.get(
-            "gate_output_dir", os.path.join("logs", "phatgoose_full", _now_str(), "gates")
-        )
+        # Ensure logs are saved relative to the method script location
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        default_out_dir = os.path.join(script_dir, "logs", "phatgoose_full", _now_str(), "gates")
+        out_dir = hyperparameters.get("gate_output_dir", default_out_dir)
         _ensure_dir(out_dir)
 
         gates, meta = _train_single_expert_gates(
@@ -895,13 +954,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             tokenizer_name=tokenizer_name,
             expert_path=expert_path,
             expert_name=expert_name,
-            sft_data_path=sft_data_path,
+            task=task,
+            task_type=task_type,
             device_str=device,
             steps=steps,
             batch_size=gate_batch_size,
             lr=gate_lr,
             max_length=max_length,
             grad_accum=grad_accum,
+            dev_ratio=dev_ratio,
             init_gate_path=init_gate_path,
         )
         save_path = os.path.join(out_dir, f"gate_{expert_name}.pt")
@@ -914,34 +975,35 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         expert_names: List[str] = hyperparameters.get(
             "expert_names", [os.path.basename(p.rstrip("/")) for p in expert_paths]
         )
-        sft_data_paths: List[str] = hyperparameters["sft_data_paths"]
-        assert (
-            len(expert_paths) == len(expert_names) == len(sft_data_paths)
-        ), "expert_paths, expert_names, sft_data_paths must have same length"
+        assert len(expert_paths) == len(expert_names), "expert_paths and expert_names must have same length"
         steps = int(hyperparameters.get("gate_steps", 100))
         gate_batch_size = int(hyperparameters.get("gate_batch_size", 4))
         gate_lr = float(hyperparameters.get("gate_lr", 5e-3))
         max_length = int(hyperparameters.get("max_length", 1024))
         grad_accum = int(hyperparameters.get("grad_accum", 1))
-        out_dir = hyperparameters.get(
-            "gate_output_dir", os.path.join("logs", "phatgoose_full", _now_str(), "gates")
-        )
+        dev_ratio = float(hyperparameters.get("dev_ratio", 1.0))
+        # Ensure logs are saved relative to the method script location
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        default_out_dir = os.path.join(script_dir, "logs", "phatgoose_full", _now_str(), "gates")
+        out_dir = hyperparameters.get("gate_output_dir", default_out_dir)
         _ensure_dir(out_dir)
         gate_paths: List[str] = []
-        for ep, en, ds in zip(expert_paths, expert_names, sft_data_paths):
+        for ep, en in zip(expert_paths, expert_names):
             _stage(f"Train gate for expert {en}")
             gates, meta = _train_single_expert_gates(
                 base_model_name=base_model,
                 tokenizer_name=tokenizer_name,
                 expert_path=ep,
                 expert_name=en,
-                sft_data_path=ds,
+                task=task,
+                task_type=task_type,
                 device_str=device,
                 steps=steps,
                 batch_size=gate_batch_size,
                 lr=gate_lr,
                 max_length=max_length,
                 grad_accum=grad_accum,
+                dev_ratio=dev_ratio,
             )
             save_path = os.path.join(out_dir, f"gate_{en}.pt")
             _save_gate_checkpoint(save_path, gates, meta)
