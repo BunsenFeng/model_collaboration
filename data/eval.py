@@ -307,3 +307,28 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
         return [0] * len(outputs)
     
     return scores
+
+def get_extracted_answers(task, task_type, split, outputs, ratio=1.0):
+
+    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
+        data = json.load(f)[split]
+        data = data[:int(len(data)*ratio)]
+
+    extracted_answers = []
+
+    if task_type == "multiple_choice":
+        assert "choices" in data[0], "Are you sure this is a multiple choice task?"
+        for item, output in zip(data, outputs):
+            options = []
+            for option in item["choices"].keys():
+                options.append(item["choices"][option])
+            chosen_letter, chosen_text = parse_model_response_mcq(output, options)
+            extracted_answers.append(chosen_letter)
+    if task_type == "exact_match":
+        for output in outputs:
+            extracted_answers.append(extract_answer_text(output))
+    if task_type == "f1_match":
+        for output in outputs:
+            extracted_answers.append(extract_answer_text(output))
+    
+    return extracted_answers
