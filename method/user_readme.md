@@ -94,9 +94,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 
 #### Text-level: Majority Vote
 - file: `text_majority_vote.py`
-- description: multiple LLMs independently generate answers for each query, and the final answer is selected based on majority voting. The answer that appears most frequently is chosen as the final output. Tie breaks arbitrarily.
-- related paper(s):
-    - [Self-Consistency Improves Chain of Thought Reasoning in Language Models](https://arxiv.org/abs/2203.11171)
+- description: Multiple LLMs independently generate answers for each query. The final answer is determined through majority voting, where the answer appearing most frequently among the models is selected as the output (ties are broken arbitrarily). This approach is applicable only to question types of "multiple_choice", "exact_match", or "f1_match".
 - method-specific hyperparameters: None
 - note to tester: recommend using an odd number of models.
 
