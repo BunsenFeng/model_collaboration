@@ -238,7 +238,7 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
         raise NotImplementedError
 
     return input_list[:int(len(input_list)*ratio)]
-    
+
 def get_scores(task, task_type, split, outputs, ratio=1.0):
 
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
