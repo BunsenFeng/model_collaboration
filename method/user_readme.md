@@ -92,6 +92,14 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `exclude_self`, default True: whether to exclude the response generator LLM when generating knowledge.
 - note to tester: just try different LLMs you'd like.
 
+#### Text-level: Majority Vote
+- file: `text_majority_vote.py`
+- description: multiple LLMs independently generate answers for each query, and the final answer is selected based on majority voting. The answer that appears most frequently is chosen as the final output. Tie breaks arbitrarily.
+- related paper(s):
+    - [Self-Consistency Improves Chain of Thought Reasoning in Language Models](https://arxiv.org/abs/2203.11171)
+- method-specific hyperparameters: None
+- note to tester: recommend using an odd number of models.
+
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
