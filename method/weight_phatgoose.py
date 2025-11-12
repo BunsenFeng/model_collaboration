@@ -4,26 +4,29 @@ Full PhatGoose-style token- and module-level routing for LoRA experts.
 This module implements a complete version aligned with the summarized paper:
 
 1) Per-token × per-module top-k routing. At every injected LoRA site, we compute
-   normalized dot-product scores between the current token activation and each expert’s
+   normalized dot-product scores between the current token activation and each expert's
    gate vector; select top-k and combine experts by softmax weights.
 
 2) Gate learning. For each expert and each LoRA site, we add a sigmoid gate scalar
-   sigma(v^T u_t) in front of that expert’s LoRA delta during training. We freeze base
+   sigma(v^T u_t) in front of that expert's LoRA delta during training. We freeze base
    and LoRA weights, and only update gate vectors using the same (SFT) objective. We
-   support training gates for one expert at a time (distributed-friendly) or looping
-   across experts sequentially in a single process.
+   train gates for each expert sequentially in a single process.
 
 3) Inference. For each LoRA site, we combine multiple experts simultaneously in the
    same forward: W u_t + sum_{z in top-k} w_{t,z} B_z A_z u_t.
 
 Interface: provides run_method(task, task_type, gpu_ids, model_names, hyperparameters)
-to fit into the model_collaboration framework. See developer_readme.md for details.
+to fit into the model_collaboration framework.
 
 Key modes (hyperparameters["mode"]):
-- "train_expert_gate": Train gate vectors for a single expert using SFT data.
-- "train_all_gates":  Loop over experts and train each gate sequentially.
-- "infer_moe_full":   Load base + experts + all gate checkpoints, run top-k routing.
-- "train_and_infer_full": Convenience: train_all_gates then infer_moe_full.
+- "train_and_infer": (RECOMMENDED) Train gates for all experts, then run inference.
+- "train_all_gates": Train gate vectors for all experts sequentially (no inference).
+- "infer_moe_full": Load pre-trained gates and run inference only.
+
+Usage:
+- Specify LoRA experts via model_names (supports HuggingFace Hub IDs or local paths).
+- The base_model is auto-detected from the first adapter's config file.
+- Example: model_names = ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt"]
 
 Gate checkpoint format (per expert): a torch file containing a dict
   {
@@ -51,6 +54,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from tqdm import tqdm
 
 from peft import PeftModel
 from data import eval as eval_mod
@@ -122,11 +126,71 @@ def _try_load_file(path: str, device: torch.device) -> Dict[str, torch.Tensor]:
     return {}
 
 
+def _download_adapter_if_needed(adapter_path_or_id: str) -> str:
+    """
+    Download adapter from HuggingFace Hub if it's not a local path.
+    Returns the local directory path.
+    """
+    if os.path.exists(adapter_path_or_id):
+        return adapter_path_or_id
+    
+    # Try to download from HuggingFace Hub
+    try:
+        from huggingface_hub import snapshot_download
+        _stage(f"Downloading adapter from HuggingFace Hub: {adapter_path_or_id}")
+        # Download to a cache directory
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cache_dir = os.path.join(script_dir, "logs", "adapter_cache")
+        _ensure_dir(cache_dir)
+        
+        # Create a safe directory name from the repo ID
+        safe_name = adapter_path_or_id.replace("/", "_")
+        local_path = os.path.join(cache_dir, safe_name)
+        
+        # Check if already downloaded
+        if os.path.exists(local_path) and os.path.exists(os.path.join(local_path, "adapter_config.json")):
+            _stage(f"Using cached adapter at {local_path}")
+            return local_path
+        
+        # Download
+        downloaded_path = snapshot_download(
+            repo_id=adapter_path_or_id,
+            local_dir=local_path,
+            local_dir_use_symlinks=False,
+        )
+        _stage(f"Downloaded adapter to {downloaded_path}")
+        return downloaded_path
+    except Exception as e:
+        raise FileNotFoundError(
+            f"Adapter '{adapter_path_or_id}' not found locally and failed to download from HuggingFace Hub: {e}"
+        )
+
+
+def _infer_base_model_from_adapter(adapter_path: str) -> Optional[str]:
+    """
+    Try to read base_model_name_or_path from adapter_config.json.
+    Returns None if not found.
+    """
+    config_path = os.path.join(adapter_path, "adapter_config.json")
+    if not os.path.exists(config_path):
+        return None
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        return config.get("base_model_name_or_path", None)
+    except Exception:
+        return None
+
+
 def _load_adapter_state(adapter_path: str, device: torch.device) -> Dict[str, torch.Tensor]:
     """
     Load a PEFT adapter state dict from a directory. Supports common filenames:
     adapter_model.bin, adapter_model.safetensors (if available), or model.safetensors.
+    Also supports HuggingFace Hub IDs - will download if needed.
     """
+    # Download from HuggingFace Hub if needed
+    adapter_path = _download_adapter_if_needed(adapter_path)
+    
     # Try PyTorch bin
     pt = _try_load_file(os.path.join(adapter_path, "adapter_model.bin"), device)
     if pt:
@@ -401,15 +465,29 @@ class WeightedLoraMoELinear(nn.Module):
             r = float(A.shape[0])
             scale = float(self.alpha_list[e]) / max(r, 1.0)
 
-            # gate scalar per token
-            v = self.train_gate_param
-            # optional stabilization by sqrt(d)
-            gate = torch.sigmoid((x * v).sum(dim=-1, keepdim=True) / math.sqrt(x.shape[-1]))
+            # Gate scalar per token (following PhatGoose paper implementation)
+            # Gate applied to input, not output: gate * x then pass through LoRA
+            # v = self.train_gate_param
+            # gate_scores = (x * v).sum(dim=-1, keepdim=True)  # without sqrt(d) to preserve gradient
+            # gate = torch.sigmoid(gate_scores)  # [..., 1]
+            
+            # # Apply gate to input, then pass through LoRA
+            # gated_x = x * gate  # [..., d_in]
+            # mid = torch.matmul(gated_x, A.t())  # [..., r]
+            # delta = torch.matmul(mid, B.t())  # [..., out]
+            # return base_out + scale * delta
 
-            # low-rank delta
-            mid = torch.matmul(x, A.t())  # [..., r]
-            delta = torch.matmul(mid, B.t())  # [..., out]
-            return base_out + gate * (scale * delta)
+            x32 = x.to(torch.float32)
+            v32 = self.train_gate_param.to(torch.float32)
+
+            gate_scores = (x32 * v32).sum(dim=-1, keepdim=True) / math.sqrt(x32.shape[-1])
+            gate_scores = gate_scores.clamp_(-20.0, 20.0)
+
+            gate = torch.sigmoid(gate_scores).to(x.dtype)
+            gated_x = x * gate
+            mid = torch.matmul(gated_x, A.t())
+            delta = torch.matmul(mid, B.t()) * scale
+            return base_out + delta
 
         # Inference: multi-expert top-k weighted sum
         assert self.infer_gate_vecs is not None
@@ -668,14 +746,27 @@ def _build_sft_batch(
         # Remove BOS of completion if duplicated; keep simple
         if len(c_ids) > 0 and tokenizer.bos_token_id is not None and c_ids[0] == tokenizer.bos_token_id:
             c_ids = c_ids[1:]
-        ids = p_ids + c_ids
-        # Truncate
-        if len(ids) > max_length:
-            ids = ids[-max_length:]
+        # ids = p_ids + c_ids
+        # # Truncate
+        # if len(ids) > max_length:
+        #     ids = ids[-max_length:]
+        # attn = [1] * len(ids)
+        # # Mask prompt part
+        # num_p = min(len(p_ids), len(ids))
+        # lbl = [-100] * num_p + ids[num_p:]
+
+        seq = p_ids + c_ids
+        total = len(seq)
+        L = min(max_length, total)
+        start = total - L
+        ids = seq[start:]
+        prompt_kept = max(0, len(p_ids) - start)
+        prompt_kept = min(prompt_kept, len(ids))
         attn = [1] * len(ids)
-        # Mask prompt part
-        num_p = min(len(p_ids), len(ids))
-        lbl = [-100] * num_p + ids[num_p:]
+        lbl = [-100] * prompt_kept + ids[prompt_kept:]
+        if all(x == -100 for x in lbl):
+            continue
+
         input_ids.append(torch.tensor(ids, dtype=torch.long))
         labels.append(torch.tensor(lbl, dtype=torch.long))
         attention_mask.append(torch.tensor(attn, dtype=torch.long))
@@ -712,7 +803,6 @@ def _train_single_expert_gates(
     max_length: int = 1024,
     grad_accum: int = 1,
     seed: int = 42,
-    dev_ratio: float = 1.0,
     init_gate_path: Optional[str] = None,
 ) -> Tuple[Dict[str, torch.Tensor], Dict[str, Any]]:
     torch.manual_seed(seed)
@@ -744,17 +834,17 @@ def _train_single_expert_gates(
     )
 
     # Optimizer over gate params only
-    opt = torch.optim.AdamW(train_params.values(), lr=lr)
+    opt = torch.optim.AdamW(train_params.values(), lr=lr, weight_decay=0.01)
 
-    # Load gate training data from task dev set
-    pairs = _prepare_sft_tuples_from_task(task, task_type, ratio=dev_ratio)
+    # Load gate training data from task dev set (use all dev data)
+    pairs = _prepare_sft_tuples_from_task(task, task_type, ratio=1.0)
     if len(pairs) == 0:
         raise RuntimeError(f"No training data for gate training from task {task} dev set.")
 
     _stage(f"Start gate training for expert {expert_name} | modules={len(module_paths)} | steps={steps}")
-    step = 0
     idx = 0
-    while step < steps:
+    pbar = tqdm(range(steps), desc=f"Training gates for {expert_name}")
+    for step in pbar:
         batch_pairs = pairs[idx : idx + batch_size]
         if len(batch_pairs) < batch_size:
             idx = 0
@@ -767,9 +857,8 @@ def _train_single_expert_gates(
         if (step + 1) % grad_accum == 0:
             opt.step()
             opt.zero_grad(set_to_none=True)
-        if (step + 1) % 10 == 0:
-            _stage(f"step {step+1}/{steps} loss={loss.item():.4f}")
-        step += 1
+        # Update progress bar with loss info
+        pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
     # Collect learned gates
     learned: Dict[str, torch.Tensor] = {mp: p.detach().clone().to("cpu") for mp, p in train_params.items()}
@@ -783,7 +872,6 @@ def _train_single_expert_gates(
         "batch_size": batch_size,
         "lr": lr,
         "max_length": max_length,
-        "dev_ratio": dev_ratio,
         "created": _now_str(),
         "module_paths": module_paths,
     }
@@ -808,7 +896,7 @@ def _batch_generate(
     outputs: List[str] = []
     model.eval()
     with torch.no_grad():
-        for i in range(0, len(prompts), batch_size):
+        for i in tqdm(range(0, len(prompts), batch_size), desc="Generating responses"):
             batch_prompts = prompts[i : i + batch_size]
             batch_prompts = _apply_chat_template_if_available(tokenizer, batch_prompts)
             inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True, truncation=True)
@@ -840,21 +928,22 @@ def _infer_moe_full(
     task_type: str,
     base_model: str,
     tokenizer_name: str,
-    expert_paths: List[str],
-    expert_names: List[str],
+    model_names: List[str],
     gate_paths: List[str],
+    hyperparameters: Dict[str, Any],
     device: str,
-    max_new_tokens: int,
-    temperature: float,
-    top_p: float,
-    batch_size: int,
-    top_k: int,
-    score_type: str,
-    test_ratio: float = 1.0,
     output_log_path: Optional[str] = None,
 ):
     _stage("Prepare test inputs")
-    test_inputs = eval_mod.prepare_inputs(task, task_type, "test", ratio=test_ratio)
+    test_inputs = eval_mod.prepare_inputs(task, task_type, "test")
+    
+    # Extract hyperparameters
+    max_new_tokens = int(hyperparameters.get("max_response_length", 128))
+    temperature = float(hyperparameters.get("temperature", 0.7))
+    top_p = float(hyperparameters.get("top_p", 0.9))
+    batch_size = int(hyperparameters.get("batch_size", 8))
+    top_k = int(hyperparameters.get("top_k", 2))
+    score_type = hyperparameters.get("score_type", "cosine")
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
     _configure_tokenizer(tokenizer, context_label="infer_moe_full")
 
@@ -863,7 +952,8 @@ def _infer_moe_full(
         base_model, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
     )
     device_t = next(base.parameters()).device
-    # Load LoRA deltas
+    # Download experts if needed and load LoRA deltas
+    expert_paths = [_download_adapter_if_needed(name) for name in model_names]
     lora_map, module_paths = _collect_all_experts_loras(base, expert_paths, device_t)
     if len(lora_map) == 0:
         raise RuntimeError("No common LoRA modules found across experts.")
@@ -886,16 +976,12 @@ def _infer_moe_full(
     scores = eval_mod.get_scores(task, task_type, "test", outputs)
     avg_score = float(sum(scores) / max(1, len(scores)))
 
+    # Simplified log format (similar to weight_model_swarms)
     logs = {
         "task": task,
         "task_type": task_type,
-        "mode": "infer_moe_full",
-        "base_model": base_model,
-        "expert_paths": expert_paths,
-        "expert_names": expert_names,
-        "gate_paths": gate_paths,
-        "top_k": top_k,
-        "score_type": score_type,
+        "model_names": model_names,
+        "hyperparameters": hyperparameters,
         "avg_test_score": avg_score,
         "logs": [
             {"input": test_inputs[i], "output": outputs[i], "score": scores[i]}
@@ -906,7 +992,7 @@ def _infer_moe_full(
         # Ensure logs are saved relative to the method script location
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         output_log_path = os.path.join(
-            script_dir, "logs", "phatgoose_full", f"{task}_{len(expert_paths)}_{avg_score:.4f}_{_now_str()}.json"
+            script_dir, "logs", "phatgoose_full", f"{task}_{len(model_names)}_{avg_score:.4f}_{_now_str()}.json"
         )
     _ensure_dir(os.path.dirname(output_log_path))
     with open(output_log_path, "w", encoding="utf-8") as f:
@@ -921,67 +1007,45 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     mode = hyperparameters.get("mode", "infer_moe_full")
-    base_model = hyperparameters.get("base_model", (model_names[0] if model_names else None))
+    
+    # Auto-infer base_model from first LoRA adapter if not specified
+    base_model = hyperparameters.get("base_model", None)
     if base_model is None:
-        raise ValueError("base_model must be provided or model_names non-empty")
+        if not model_names or len(model_names) == 0:
+            raise ValueError("Either base_model must be specified in hyperparameters or model_names must be provided")
+        # Try to infer from first adapter's config
+        first_adapter_local = _download_adapter_if_needed(model_names[0])
+        inferred = _infer_base_model_from_adapter(first_adapter_local)
+        if inferred is not None:
+            base_model = inferred
+            _stage(f"Auto-detected base model from adapter config: {base_model}")
+        else:
+            print("[weight_phatgoose] Warning: Could not auto-detect base model from adapter config.")
+            print(f"[weight_phatgoose] Using first model as base: {model_names[0]}")
+            print("[weight_phatgoose] If this is incorrect, please specify 'base_model' in hyperparameters.")
+            base_model = model_names[0]
+    
     tokenizer_name = hyperparameters.get("tokenizer_name", base_model)
 
     _stage(
         f"Start run_method | task={task} task_type={task_type} mode={mode} device={device}"
     )
 
-    if mode == "train_expert_gate":
-        # single expert
-        expert_path: str = hyperparameters["expert_path"]
-        expert_name: str = hyperparameters.get(
-            "expert_name", os.path.basename(expert_path.rstrip("/"))
-        )
+    if mode == "train_all_gates" or mode == "train_and_infer":
+        # Use model_names as expert paths (like other weight methods)
+        if not model_names or len(model_names) == 0:
+            raise ValueError("model_names must be provided")
+        expert_paths: List[str] = model_names
+        # Generate expert names from paths/IDs
+        expert_names: List[str] = [
+            p.replace("/", "_") if "/" in p else os.path.basename(p.rstrip("/"))
+            for p in expert_paths
+        ]
         steps = int(hyperparameters.get("gate_steps", 100))
         gate_batch_size = int(hyperparameters.get("gate_batch_size", 4))
         gate_lr = float(hyperparameters.get("gate_lr", 5e-3))
         max_length = int(hyperparameters.get("max_length", 1024))
         grad_accum = int(hyperparameters.get("grad_accum", 1))
-        dev_ratio = float(hyperparameters.get("dev_ratio", 1.0))
-        init_gate_path = hyperparameters.get("init_gate_path", None)
-        # Ensure logs are saved relative to the method script location
-        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        default_out_dir = os.path.join(script_dir, "logs", "phatgoose_full", _now_str(), "gates")
-        out_dir = hyperparameters.get("gate_output_dir", default_out_dir)
-        _ensure_dir(out_dir)
-
-        gates, meta = _train_single_expert_gates(
-            base_model_name=base_model,
-            tokenizer_name=tokenizer_name,
-            expert_path=expert_path,
-            expert_name=expert_name,
-            task=task,
-            task_type=task_type,
-            device_str=device,
-            steps=steps,
-            batch_size=gate_batch_size,
-            lr=gate_lr,
-            max_length=max_length,
-            grad_accum=grad_accum,
-            dev_ratio=dev_ratio,
-            init_gate_path=init_gate_path,
-        )
-        save_path = os.path.join(out_dir, f"gate_{expert_name}.pt")
-        _save_gate_checkpoint(save_path, gates, meta)
-        _stage(f"Saved expert gate to {save_path}")
-        return 0
-
-    if mode == "train_all_gates" or mode == "train_and_infer_full":
-        expert_paths: List[str] = hyperparameters["expert_paths"]
-        expert_names: List[str] = hyperparameters.get(
-            "expert_names", [os.path.basename(p.rstrip("/")) for p in expert_paths]
-        )
-        assert len(expert_paths) == len(expert_names), "expert_paths and expert_names must have same length"
-        steps = int(hyperparameters.get("gate_steps", 100))
-        gate_batch_size = int(hyperparameters.get("gate_batch_size", 4))
-        gate_lr = float(hyperparameters.get("gate_lr", 5e-3))
-        max_length = int(hyperparameters.get("max_length", 1024))
-        grad_accum = int(hyperparameters.get("grad_accum", 1))
-        dev_ratio = float(hyperparameters.get("dev_ratio", 1.0))
         # Ensure logs are saved relative to the method script location
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         default_out_dir = os.path.join(script_dir, "logs", "phatgoose_full", _now_str(), "gates")
@@ -1003,7 +1067,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 lr=gate_lr,
                 max_length=max_length,
                 grad_accum=grad_accum,
-                dev_ratio=dev_ratio,
             )
             save_path = os.path.join(out_dir, f"gate_{en}.pt")
             _save_gate_checkpoint(save_path, gates, meta)
@@ -1012,25 +1075,16 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
         if mode == "train_all_gates":
             return 0
-        # else continue to inference
+        # else (train_and_infer) continue to inference
         hyperparameters = dict(hyperparameters)
         hyperparameters["gate_paths"] = gate_paths
         mode = "infer_moe_full"
 
     if mode == "infer_moe_full":
-        expert_paths: List[str] = hyperparameters["expert_paths"]
-        expert_names: List[str] = hyperparameters.get(
-            "expert_names", [os.path.basename(p.rstrip("/")) for p in expert_paths]
-        )
+        # Use model_names as expert paths (like other weight methods)
+        if not model_names or len(model_names) == 0:
+            raise ValueError("model_names must be provided")
         gate_paths: List[str] = hyperparameters["gate_paths"]
-        # Generation knobs
-        max_new_tokens = int(hyperparameters.get("max_response_length", 128))
-        temperature = float(hyperparameters.get("temperature", 0.7))
-        top_p = float(hyperparameters.get("top_p", 0.9))
-        batch_size = int(hyperparameters.get("batch_size", 8))
-        test_ratio = float(hyperparameters.get("test_ratio", 1.0))
-        top_k = int(hyperparameters.get("top_k", 2))
-        score_type = hyperparameters.get("score_type", "cosine")
         out_path = hyperparameters.get("output_log_path", None)
 
         _infer_moe_full(
@@ -1038,17 +1092,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             task_type,
             base_model,
             tokenizer_name,
-            expert_paths,
-            expert_names,
+            model_names,
             gate_paths,
+            hyperparameters,
             device,
-            max_new_tokens,
-            temperature,
-            top_p,
-            batch_size,
-            top_k,
-            score_type,
-            test_ratio,
             out_path,
         )
         return 0
