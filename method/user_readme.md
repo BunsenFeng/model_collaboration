@@ -92,6 +92,12 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `exclude_self`, default True: whether to exclude the response generator LLM when generating knowledge.
 - note to tester: just try different LLMs you'd like.
 
+#### Text-level: Majority Vote
+- file: `text_majority_vote.py`
+- description: Multiple LLMs independently generate answers for each query. The final answer is determined through majority voting, where the answer appearing most frequently among the models is selected as the output. When there is a tie, the tie-breaking strategy is used to select the final answer. This approach is applicable only to question types of "multiple_choice", "exact_match", or "f1_match".
+- method-specific hyperparameters:
+    - `tie`, default "random": the tie-breaking strategy. Options are "random" (arbitrarily select one of the tied answers) or "dev-based" (evaluate the models that vote for tied answers on the dev set, then use the answer from the best-performing model).
+
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
