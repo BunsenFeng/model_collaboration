@@ -800,7 +800,7 @@ def _train_single_expert_gates(
     steps: int = 100,
     batch_size: int = 1,
     lr: float = 5e-3,
-    max_length: int = 1024,
+    max_length: int = 512,
     grad_accum: int = 1,
     seed: int = 42,
     init_gate_path: Optional[str] = None,
@@ -1044,7 +1044,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         steps = int(hyperparameters.get("gate_steps", 100))
         gate_batch_size = int(hyperparameters.get("gate_batch_size", 1))
         gate_lr = float(hyperparameters.get("gate_lr", 5e-3))
-        max_length = int(hyperparameters.get("max_length", 1024))
+        max_length = int(hyperparameters.get("max_length", 512))
         grad_accum = int(hyperparameters.get("grad_accum", 1))
         # Ensure logs are saved relative to the method script location
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

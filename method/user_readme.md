@@ -163,7 +163,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
         - `gate_steps`, default 100: number of training steps per expert for gate learning.
         - `gate_batch_size`, default 1: batch size for gate training.
         - `gate_lr`, default 0.005: learning rate for gate training (AdamW optimizer). Matches the original PhatGoose implementation.
-        - `max_length`, default 1024: maximum sequence length for gate training.
+        - `max_length`, default 512: maximum sequence length for gate training.
         - `grad_accum`, default 1: gradient accumulation steps during gate training. Original paper uses 32, but 1 works with small batch sizes.
         - `gate_output_dir`, default `model_collaboration/logs/phatgoose/<timestamp>/gates`: directory to save trained gate checkpoints.
     - **Inference hyperparameters (for `train_and_infer` and `infer_moe_full` modes):**
