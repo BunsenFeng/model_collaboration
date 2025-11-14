@@ -1002,8 +1002,10 @@ def _infer_moe_full(
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # device visibility
+    physical_gpu_info = ""
     if isinstance(gpu_ids, list) and len(gpu_ids) > 0:
         os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in gpu_ids])
+        physical_gpu_info = f"cuda:{gpu_ids[0]}"
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     mode = hyperparameters.get("mode", "train_and_infer")
@@ -1028,7 +1030,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     tokenizer_name = hyperparameters.get("tokenizer_name", base_model)
 
     _stage(
-        f"Start run_method | task={task} task_type={task_type} mode={mode} device={device}"
+        f"Start run_method | task={task} task_type={task_type} mode={mode} device={physical_gpu_info}"
     )
 
     if mode == "train_all_gates" or mode == "train_and_infer":
