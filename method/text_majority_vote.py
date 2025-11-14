@@ -108,11 +108,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     assert tie_breaking in ["random", "dev-based"], "tie parameter must be either 'random' or 'dev-based'"
 
     if tie_breaking == "dev-based":
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev", 0.1)
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
         dev_scores_cache = {}
 
     # evaluate on the test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test", 0.02) # grab the inputs for the test set
+    test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
 
     list_of_input_list = [test_input_list for _ in model_names] # replicate the test inputs for each model
     list_of_output_list = distributed_generation.distributed_generation(
