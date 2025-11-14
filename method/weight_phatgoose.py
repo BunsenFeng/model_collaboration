@@ -69,7 +69,7 @@ def _now_str():
 
 
 def _stage(msg: str):
-    print(f"[weight_phatgoose_full][{_now_str()}] {msg}")
+    print(f"[weight_phatgoose][{_now_str()}] {msg}")
 
 
 def _ensure_dir(path: str):
@@ -101,7 +101,7 @@ def _configure_tokenizer(tokenizer, context_label: str = ""):
         changed.append("padding_side='left'")
     if changed:
         label = f" ({context_label})" if context_label else ""
-        print(f"[weight_phatgoose_full] Decoder-only fix{label}: set " + ", ".join(changed))
+        print(f"[weight_phatgoose] Decoder-only fix{label}: set " + ", ".join(changed))
 
 
 # -----------------------------
@@ -798,7 +798,7 @@ def _train_single_expert_gates(
     task_type: str,
     device_str: str,
     steps: int = 100,
-    batch_size: int = 4,
+    batch_size: int = 1,
     lr: float = 5e-3,
     max_length: int = 1024,
     grad_accum: int = 1,
@@ -992,7 +992,7 @@ def _infer_moe_full(
         # Ensure logs are saved relative to the method script location
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         output_log_path = os.path.join(
-            script_dir, "logs", "phatgoose_full", f"{task}_{len(model_names)}_{avg_score:.4f}_{_now_str()}.json"
+            script_dir, "logs", f"{task}_{len(model_names)}_{avg_score:.4f}_phatgoose.json"
         )
     _ensure_dir(os.path.dirname(output_log_path))
     with open(output_log_path, "w", encoding="utf-8") as f:
@@ -1006,7 +1006,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in gpu_ids])
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-    mode = hyperparameters.get("mode", "infer_moe_full")
+    mode = hyperparameters.get("mode", "train_and_infer")
     
     # Auto-infer base_model from first LoRA adapter if not specified
     base_model = hyperparameters.get("base_model", None)
@@ -1042,13 +1042,13 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             for p in expert_paths
         ]
         steps = int(hyperparameters.get("gate_steps", 100))
-        gate_batch_size = int(hyperparameters.get("gate_batch_size", 4))
+        gate_batch_size = int(hyperparameters.get("gate_batch_size", 1))
         gate_lr = float(hyperparameters.get("gate_lr", 5e-3))
         max_length = int(hyperparameters.get("max_length", 1024))
         grad_accum = int(hyperparameters.get("grad_accum", 1))
         # Ensure logs are saved relative to the method script location
         script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        default_out_dir = os.path.join(script_dir, "logs", "phatgoose_full", _now_str(), "gates")
+        default_out_dir = os.path.join(script_dir, "logs", "phatgoose", _now_str(), "gates")
         out_dir = hyperparameters.get("gate_output_dir", default_out_dir)
         _ensure_dir(out_dir)
         gate_paths: List[str] = []
@@ -1101,3 +1101,4 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         return 0
 
     raise ValueError(f"Unknown mode: {mode}")
+    

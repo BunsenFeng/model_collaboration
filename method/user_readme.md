@@ -153,7 +153,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - related paper(s):
     - [Learning to Route Among Specialized Experts for Zero-Shot Generalization](https://arxiv.org/abs/2402.05859)
 - method-specific hyperparameters:
-    - `mode`, no default (required): operation mode. *RECOMMENDED: use `train_and_infer`* for end-to-end training and evaluation. Available modes:
+    - `mode`, default `train_and_infer` for end-to-end training and evaluation. Available modes:
         - `train_and_infer`: train gate vectors for all experts, then immediately run inference.
         - `train_all_gates`: train gate vectors for all experts only (no inference). Use if you want to save gates for later reuse.
         - `infer_moe_full`: inference only (requires pre-trained gates). Use if you already have trained gate checkpoints.
@@ -161,11 +161,11 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `tokenizer_name`, default `base_model`: tokenizer name or path.
     - **Gate training hyperparameters (for `train_and_infer` and `train_all_gates` modes):**
         - `gate_steps`, default 100: number of training steps per expert for gate learning.
-        - `gate_batch_size`, default 4: batch size for gate training.
+        - `gate_batch_size`, default 1: batch size for gate training.
         - `gate_lr`, default 0.005: learning rate for gate training (AdamW optimizer). Matches the original PhatGoose implementation.
         - `max_length`, default 1024: maximum sequence length for gate training.
         - `grad_accum`, default 1: gradient accumulation steps during gate training. Original paper uses 32, but 1 works with small batch sizes.
-        - `gate_output_dir`, default `model_collaboration/logs/phatgoose_full/<timestamp>/gates`: directory to save trained gate checkpoints.
+        - `gate_output_dir`, default `model_collaboration/logs/phatgoose/<timestamp>/gates`: directory to save trained gate checkpoints.
     - **Inference hyperparameters (for `train_and_infer` and `infer_moe_full` modes):**
         - `gate_paths`, no default (required for `infer_moe_full` mode only): list of paths to trained gate checkpoint files (`.pt`), one per expert. Not needed for `train_and_infer` as gates are auto-loaded after training.
         - `top_k`, default 2: number of experts to activate per token per module during inference.
@@ -174,6 +174,6 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
         - `temperature`, default 0.7: sampling temperature.
         - `top_p`, default 0.9: nucleus sampling parameter.
         - `batch_size`, default 8: batch size for inference generation.
-        - `output_log_path`, default `model_collaboration/logs/phatgoose_full/<task>_<num_experts>_<score>_<timestamp>.json`: path to save inference results.
+        - `output_log_path`, default `model_collaboration/logs/<task>_<num_experts>_<score>_phatgoose.json`: path to save inference results.
 - warning: **All LoRA experts must be adapters of the same base model.** LoRA target modules must be `nn.Linear` layers. Currently only supports causal language models (AutoModelForCausalLM). len(gpu_ids) can be 1; the method does not require multi-GPU.
 - note to tester: recommended `model_names`: `["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]` (LoRA adapters of Qwen2.5-7B-Instruct). These will be automatically downloaded from HuggingFace Hub. Use `mode: train_and_infer` for simplest testing.
