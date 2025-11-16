@@ -62,6 +62,21 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `reward_model_name`, default `Skywork/Skywork-Reward-Llama-3.1-8B-v0.2`: the reward model to evaluate generations when there is a tie on the task.
 - note to tester: try different LLMs you'd like.
 
+#### API-level: Graph Router
+- file: `api_graph_routing.py`
+- description: train a graph router model to select among candidate LLMs. First, evaluate models on the dev set to get scores list to determine who is best on each query. Secondly, construct graph router train-validate input data and train graph model. Thirdly, generation with the selected LLM for each query.
+- related paper(s):
+    - [GraphRouter: A Graph-based Router for LLM Selections](https://arxiv.org/pdf/2410.03834)
+- method-specific hyperparameters:
+    - `embedding_model`, default `sentence-transformers/all-MiniLM-L6-v2`: the model for extracting embedding.
+    - `model_descriptions`, default None: a list of strings describing each candidate model, in the same order as `model_names`. 
+    - `task_descriptions`, default None: a list of strings describing task, in the same order as `task`.
+    - `hidden_features`, default 8: the hidden dimension for graph router.
+    - `in_edges`, default 3: the input features number for graph router.
+    - `train_mask_rate`, default 0.5: the rate to mask train data.
+    - `scenario`, default `Performance First`: the balance between performance and cost.
+- note to tester: try different LLMs you'd like.
+
 #### Text-level: Multiagent Refine/Debate
 - file: `text_multiagent_refine.py`
 - description: multiple LLMs collaborate to refine the answers of each other. First, evaluate all models on the dev set to select a final summarizer. At each round, each LLM sees the answers of all LLMs from the previous round and refines its own answer. After several rounds, the final answers are aggregated by the summarizer LLM.
