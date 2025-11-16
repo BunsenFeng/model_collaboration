@@ -1,5 +1,6 @@
 import os
 import json
+import random
 from data import eval
 import torch.nn.functional as F
 from utils import lora_check
@@ -24,7 +25,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     dare_ties_base_path = dare_ties_base_path[:-1] + "_" + task + "/"
     if os.path.exists(dare_ties_base_path):
-        raise ValueError("dare_ties_base_path {} already exists. Please specify a new path to avoid overwriting.".format(dare_ties_base_path))
+        dare_ties_base_path = dare_ties_base_path[:-1] + str(random.randint(0, 10000000)) + "/"
+        print("Warning: dare_ties base path already exists. Using new path: {}".format(dare_ties_base_path))
+        # raise ValueError("dare_ties_base_path {} already exists. Please specify a new path to avoid overwriting.".format(dare_ties_base_path))
     os.makedirs(dare_ties_base_path)
 
     starting_velocity_mode = hyperparameters.get("starting_velocity_mode", "random")
