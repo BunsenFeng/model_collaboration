@@ -170,3 +170,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         json.dump(experiment_logs, f, indent=4)
 
     return 0
+
+if __name__ == "__main__":
+    run_method()

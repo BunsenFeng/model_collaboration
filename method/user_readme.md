@@ -92,6 +92,18 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `exclude_self`, default True: whether to exclude the response generator LLM when generating knowledge.
 - note to tester: just try different LLMs you'd like.
 
+#### Text-level: Heterogeneous Swarms
+- file: `text_heterogeneous_swarms.py`
+- description: multiple LLMs form a directed acyclic graph structure to collaboratively generate responses. Each LLM's output is passed to other LLMs through the directed edges in the graph, to become part of the input context of another LLM. The graph structure is optimized with particle swarm optimization on the dev set to maximize performance.
+- related paper(s):
+    - [Heterogeneous Swarms: Jointly Optimizing Model Roles and Weights for Multi-LLM Systems](https://arxiv.org/abs/2502.04510)
+    - [Model Swarms: Collaborative Search to Adapt LLM Experts via Swarm Intelligence](https://arxiv.org/abs/2410.11163)
+- method-specific hyperparameters:
+    - `population`, default 5: the population size for particle swarm optimization, essentially how many graph structures to explore in each iteration.
+    - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization.
+    - There are more hyperparameters for particle swarm optimization, please refer to `text_heterogeneous_swarms.py`. Only change them if you know what you are doing.
+- warning: this could be slow with large `population` and `max_iterations`. Reduce them to save computation.
+
 #### Text-level: Majority Vote
 - file: `text_majority_vote.py`
 - description: Multiple LLMs independently generate answers for each query. The final answer is determined through majority voting, where the answer appearing most frequently among the models is selected as the output. When there is a tie, the tie-breaking strategy is used to select the final answer. This approach is applicable only to question types of "multiple_choice", "exact_match", or "f1_match".
