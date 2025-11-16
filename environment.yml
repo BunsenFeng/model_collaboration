@@ -112,6 +112,7 @@ dependencies:
       - tenacity==9.1.2
       - tokenizers==0.21.2
       - torch==2.7.1
+      - torch-geometric==2.7.0
       - torchaudio==2.7.1
       - torchvision==0.22.1
       - tqdm==4.67.1
