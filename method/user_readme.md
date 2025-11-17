@@ -70,7 +70,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - method-specific hyperparameters:
     - `embedding_model`, default `sentence-transformers/all-MiniLM-L6-v2`: the model for extracting embedding.
     - `model_descriptions`, default None: a list of strings describing each candidate model, in the same order as `model_names`. 
-    - `task_description`, default None: a strings describing task.
+    - `task_description`, default task name: a string describing task. 
     - `hidden_features`, default 8: the hidden dimension for graph router.
     - `in_edges`, default 3: the input features number for graph router.
     - `train_mask_rate`, default 0.5: the rate to mask train data.

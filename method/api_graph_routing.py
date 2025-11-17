@@ -38,7 +38,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     split_ratio = hyperparameters.get("split_ratio", [0.7, 0.15, 0.15])  # train, val, test
     scenario = hyperparameters.get("scenario", "Performance First")  # "Performance First", "Balance", "Cost First"
     model_descriptions = hyperparameters.get("model_descriptions", None)
-    task_descriptions = hyperparameters.get("task_descriptions", None)
+    task_descriptions = hyperparameters.get("task_descriptions", f"{task}") # default to be task name
     
     # Preparing router training data from dev set and get scores
     print("Preparing dev set data...")
