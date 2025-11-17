@@ -10,6 +10,8 @@ models/
 distill/
 data/*_devonly.json
 boxed.py
+config.slurm
+log.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
