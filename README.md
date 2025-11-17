@@ -2,6 +2,15 @@
 
 The future is now.
 
+### Contributors who just joined us, read this
+
+Thank you for joining this effort! Kindly do the following:
+1. Get familiar with "Github Setup" in this readme: you need to create your own branch, code in your branch, and submit pull requests from your branch to the dev branch. **Never edit anything on the dev branch.**
+2. Follow "After that, quick start!!" in this readme.
+3. Read the beginning of `method/user_readme.md` and briefly check out the methods we already have here.
+4. Follow `method/sample_approach.py` and `method/developer_readme.md` to develop your own method. Try to use the helper functions provided there if possible (such as `distributed_generation.distributed_generation`).
+5. After you implemented and tested your method, git add commit push, open a pull request from your branch to dev, assign your point of contact and Shangbin as the two reviewers.
+
 ### Github Setup
 
 1. Clone the repo with `https://github.com/BunsenFeng/model_collaboration.git`.
