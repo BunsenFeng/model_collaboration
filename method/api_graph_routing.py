@@ -38,8 +38,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     split_ratio = hyperparameters.get("split_ratio", [0.7, 0.15, 0.15])  # train, val, test
     scenario = hyperparameters.get("scenario", "Performance First")  # "Performance First", "Balance", "Cost First"
     model_descriptions = hyperparameters.get("model_descriptions", None)
-    task_descriptions = hyperparameters.get("task_descriptions", f"{task}") # default to be task name
+    task_description = hyperparameters.get("task_description", None) # default to be task name
     
+    assert model_descriptions != None, "The model_descriptions is needed in hyperparameters in task config."
+    assert task_description != None, "The task_description is needed in hyperparameters in task config."
+    assert len(model_descriptions) == len(model_names), "The number of model_descriptions must match model numbers."
+
     # Preparing router training data from dev set and get scores
     print("Preparing dev set data...")
     dev_input_list = eval.prepare_inputs(task, task_type, "dev")
@@ -130,7 +134,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     mask_test[test_indices] = 1
     
     # Create task embeddings (can use task name or description)
-    task_embeddings = get_embedding(embedding_model_name, [task_descriptions] * num_queries)
+    task_embeddings = get_embedding(embedding_model_name, [task_description] * num_queries)
     
     # Prepare combined edge features, [number_query * number_model, 2]
     combined_edge = np.concatenate((cost_list.reshape(-1, 1), effect_list.reshape(-1, 1)), axis=1)
@@ -235,7 +239,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     test_query_embeddings = get_embedding(embedding_model_name, test_input_list)
     
     # Create test task embeddings (ensure same dimension as model embeddings)
-    test_task_embeddings = get_embedding(embedding_model_name,[task_descriptions] * len(test_input_list))
+    test_task_embeddings = get_embedding(embedding_model_name,[task_description] * len(test_input_list))
     
     # Prepare test graph data
     num_test_queries = len(test_input_list)
