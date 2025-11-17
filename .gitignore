@@ -11,6 +11,8 @@ distill/
 data/*_devonly.json
 boxed.py
 gpt_rejudge.py
+config.slurm
+log.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
