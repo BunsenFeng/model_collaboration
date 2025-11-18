@@ -92,6 +92,24 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `exclude_self`, default True: whether to exclude the response generator LLM when generating knowledge.
 - note to tester: just try different LLMs you'd like.
 
+#### Text-level: Heterogeneous Swarms
+- file: `text_heterogeneous_swarms.py`
+- description: multiple LLMs form a directed acyclic graph structure to collaboratively generate responses. Each LLM's output is passed to other LLMs through the directed edges in the graph, to become part of the input context of another LLM. The graph structure is optimized with particle swarm optimization on the dev set to maximize performance.
+- related paper(s):
+    - [Heterogeneous Swarms: Jointly Optimizing Model Roles and Weights for Multi-LLM Systems](https://arxiv.org/abs/2502.04510)
+    - [Model Swarms: Collaborative Search to Adapt LLM Experts via Swarm Intelligence](https://arxiv.org/abs/2410.11163)
+- method-specific hyperparameters:
+    - `population`, default 5: the population size for particle swarm optimization, essentially how many graph structures to explore in each iteration.
+    - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization.
+    - There are more hyperparameters for particle swarm optimization, please refer to `text_heterogeneous_swarms.py`. Only change them if you know what you are doing.
+- warning: this could be slow with large `population` and `max_iterations`. Reduce them to save computation.
+
+#### Text-level: Majority Vote
+- file: `text_majority_vote.py`
+- description: Multiple LLMs independently generate answers for each query. The final answer is determined through majority voting, where the answer appearing most frequently among the models is selected as the output. When there is a tie, the tie-breaking strategy is used to select the final answer. This approach is applicable only to question types of "multiple_choice", "exact_match", or "f1_match".
+- method-specific hyperparameters:
+    - `tie`, default "random": the tie-breaking strategy. Options are "random" (arbitrarily select one of the tied answers) or "dev-based" (evaluate the models that vote for tied answers on the dev set, then use the answer from the best-performing model).
+
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
@@ -146,3 +164,34 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - There are more hyperparameters for particle swarm optimization, please refer to `weight_model_swarms.py`. Only change them if you know what you are doing.
 - warning: HIGHLY recommended to use lora adapters and set `fast_merge_flag` to True to save computation and memory.
 - note to tester: recommended set of `model_names`: ["bunsenfeng/ds_science", "bunsenfeng/ds_oasst1", "bunsenfeng/ds_lima"] and ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]. These two settings could use `fast_merge_flag` as True which is wayyyyy faster. Optionally, try a set of full-sized models (not lora adapters) with `fast_merge_flag` as False if you have enough computation resources.
+
+#### Weight-level: PhatGoose
+- file: `weight_phatgoose.py`
+- description: full PhatGoose-style mixture-of-experts with per-token × per-module top-k routing over multiple LoRA experts. **All experts must be LoRA adapters of the same base model.** At each LoRA injection site, each expert has a learnable gate vector that scores token activations via normalized dot product. During inference, top-k experts are selected per token per module, and their LoRA deltas are combined with softmax-weighted routing. Gate vectors are trained separately per expert (with base model and LoRA weights frozen) using SFT loss on the task's dev set data.
+- related paper(s):
+    - [Learning to Route Among Specialized Experts for Zero-Shot Generalization](https://arxiv.org/abs/2402.05859)
+- method-specific hyperparameters:
+    - `mode`, default `train_and_infer` for end-to-end training and evaluation. Available modes:
+        - `train_and_infer`: train gate vectors for all experts, then immediately run inference.
+        - `train_all_gates`: train gate vectors for all experts only (no inference). Use if you want to save gates for later reuse.
+        - `infer_moe_full`: inference only (requires pre-trained gates). Use if you already have trained gate checkpoints.
+    - `base_model`, default auto-detect: the base model that all LoRA experts share. **The code will automatically detect this from the first adapter's config file.** You can also manually specify a HuggingFace Hub ID or local path if needed.
+    - `tokenizer_name`, default `base_model`: tokenizer name or path.
+    - **Gate training hyperparameters (for `train_and_infer` and `train_all_gates` modes):**
+        - `gate_steps`, default 100: number of training steps per expert for gate learning.
+        - `gate_batch_size`, default 1: batch size for gate training.
+        - `gate_lr`, default 0.005: learning rate for gate training (AdamW optimizer). Matches the original PhatGoose implementation.
+        - `max_length`, default 512: maximum sequence length for gate training.
+        - `grad_accum`, default 1: gradient accumulation steps during gate training. Original paper uses 32, but 1 works with small batch sizes.
+        - `gate_output_dir`, default `model_collaboration/logs/phatgoose/<timestamp>/gates`: directory to save trained gate checkpoints.
+    - **Inference hyperparameters (for `train_and_infer` and `infer_moe_full` modes):**
+        - `gate_paths`, no default (required for `infer_moe_full` mode only): list of paths to trained gate checkpoint files (`.pt`), one per expert. Not needed for `train_and_infer` as gates are auto-loaded after training.
+        - `top_k`, default 2: number of experts to activate per token per module during inference.
+        - `score_type`, default `cosine`: scoring function for routing. Options: `cosine` (normalized dot product) or `dot` (unnormalized).
+        - `max_response_length`, default 128: maximum number of tokens to generate.
+        - `temperature`, default 0.7: sampling temperature.
+        - `top_p`, default 0.9: nucleus sampling parameter.
+        - `batch_size`, default 8: batch size for inference generation.
+        - `output_log_path`, default `model_collaboration/logs/<task>_<num_experts>_<score>_phatgoose.json`: path to save inference results.
+- warning: **All LoRA experts must be adapters of the same base model.** LoRA target modules must be `nn.Linear` layers. Currently only supports causal language models (AutoModelForCausalLM). len(gpu_ids) can be 1; the method does not require multi-GPU.
+- note to tester: recommended `model_names`: `["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]` (LoRA adapters of Qwen2.5-7B-Instruct). These will be automatically downloaded from HuggingFace Hub. Use `mode: train_and_infer` for simplest testing.

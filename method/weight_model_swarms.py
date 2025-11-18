@@ -13,6 +13,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # method-specific hyperparameters
     swarm_base_path = hyperparameters.get("swarm_base_path", "logs/model_swarms/")
+    swarm_base_path = swarm_base_path[:-1] + "_" + task + "/"
     if os.path.exists(swarm_base_path):
         raise ValueError("Swarm base path {} already exists. Please specify a new path to avoid overwriting.".format(swarm_base_path))
     base_model = hyperparameters.get("base_model", None)

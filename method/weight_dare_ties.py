@@ -22,6 +22,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     mode = hyperparameters.get("mode", "average") # optimized or average
     dare_ties_base_path = hyperparameters.get("dare_ties_base_path", "logs/dare_ties/")
 
+    dare_ties_base_path = dare_ties_base_path[:-1] + "_" + task + "/"
     if os.path.exists(dare_ties_base_path):
         raise ValueError("dare_ties_base_path {} already exists. Please specify a new path to avoid overwriting.".format(dare_ties_base_path))
     os.makedirs(dare_ties_base_path)
@@ -169,3 +170,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         json.dump(experiment_logs, f, indent=4)
 
     return 0
+
+if __name__ == "__main__":
+    run_method()

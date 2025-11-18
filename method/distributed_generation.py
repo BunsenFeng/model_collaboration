@@ -1,6 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
+from torch import _dynamo
 from multiprocessing import Pool
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -58,6 +59,10 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
         decoded_outputs = tokenizer.batch_decode(outputs[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
         # decoded_outputs = tokenizer.batch_decode(outputs, skip_special_tokens=True)
         output_list.extend(decoded_outputs)
+    del model
+    del tokenizer
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
     return output_list
 
 def distributed_generation(list_of_model_name, list_of_input_list, list_of_gpu_id, max_response_length=None):

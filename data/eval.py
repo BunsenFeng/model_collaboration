@@ -7,11 +7,14 @@ import torch
 import random
 import string
 from tqdm import tqdm
+from torch import _dynamo
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from openai import AzureOpenAI
 from collections import Counter
 from multiprocessing import Pool
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification
+
+DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def normalize_answer(s: str) -> str:
     """
@@ -34,6 +37,34 @@ def normalize_answer(s: str) -> str:
             return ""
     
     return white_space_fix(remove_articles(remove_punc(lower(s))))
+
+def extract_answer_text(response: str) -> str:
+    box_matches = re.findall(r"\\box(?:ed)?\s*\{(.*?)\}", response, flags=re.IGNORECASE | re.DOTALL)
+    if box_matches:
+        return box_matches[-1].strip()
+
+    inline_box_match = re.search(r"\\box(?:ed)?\s+([^\n\r]*)", response, flags=re.IGNORECASE)
+    if inline_box_match:
+        candidate = inline_box_match.group(1).strip()
+        if candidate:
+            return candidate
+
+    fallback_patterns = [
+        r"\bthe answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
+        r"\bfinal answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
+        r"\banswer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
+    ]
+    for pattern in fallback_patterns:
+        match = re.search(pattern, response, flags=re.IGNORECASE)
+        if match:
+            candidate = match.group(1).strip()
+            if candidate:
+                candidate = re.split(r"[\n\r]", candidate, 1)[0].strip()
+                candidate = candidate.rstrip(". ")
+                if candidate:
+                    return candidate
+
+    return response.strip()
 
 def calculate_f1_score(prediction: str, ground_truth: str) -> float:
     """
@@ -77,13 +108,9 @@ def calculate_f1_score(prediction: str, ground_truth: str) -> float:
     return f1
 
 def calculate_exact_match(prediction: str, ground_truth: str) -> float:
-    # as long as the normalized ground truth is found in the normalized prediction, it is a match
-
     normalized_prediction = normalize_answer(prediction)
     normalized_ground_truth = normalize_answer(ground_truth)
-    # print(normalized_prediction, normalized_ground_truth)
-    # Check if the normalized ground truth is a substring of the normalized prediction
-    if normalized_ground_truth in normalized_prediction:
+    if normalized_prediction == normalized_ground_truth:
         return 1.0
     else:
         return 0.0
@@ -197,11 +224,18 @@ def reward_model_scores(list_of_input, list_of_output, gpu_id=0):
         scores.append(score)
     return scores
 
+def clear_reward_model():
+    global rm, rm_tokenizer
+    del rm
+    del rm_tokenizer
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
+
 def prepare_inputs(task, task_type, split, ratio=1.0):
 
     input_list = []
 
-    with open("data/{}.json".format(task), "r") as f:
+    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
         data = json.load(f)
         data = data[split]
 
@@ -214,7 +248,11 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
                 options.append(item["choices"][option])
             formatted_question = format_mcq_question(question_text, options)
             input_list.append(formatted_question)
-    elif task_type == "exact_match" or task_type == "f1_match" or task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
+    elif task_type == "exact_match" or task_type == "f1_match":
+        for item in data:
+            input_with_instruction = f"{item['input'].rstrip()}\n\nPlease provide the final, direct answer wrapped exactly as \\box{{ANSWER}}"
+            input_list.append(input_with_instruction)
+    elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
         for item in data:
             input_list.append(item["input"])
     else:
@@ -225,7 +263,7 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
 
 def get_scores(task, task_type, split, outputs, ratio=1.0):
 
-    with open("data/{}.json".format(task), "r") as f:
+    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
         data = json.load(f)[split]
         data = data[:int(len(data)*ratio)]
 
@@ -247,29 +285,31 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
                     scores.append(0.0)
     if task_type == "exact_match":
         for item, output in zip(data, outputs):
-            #print(output, item["output"])
-            em_score = calculate_exact_match(output, item["output"])
+            extracted_output = extract_answer_text(output)
+            em_score = calculate_exact_match(extracted_output, item["output"])
             scores.append(em_score)
     if task_type == "f1_match":
         if task == "popqa":
             # parse string of list "[\"Akkineni Nagarjuna\", \"Nagarjuna Akkineni\", \"Nagarjuna\", \"Akkineni Nagarjuna Rao\"]" into a list
             for item, output in zip(data, outputs):
+                extracted_output = extract_answer_text(output)
                 string_of_list = item["output"]
                 string_of_list = string_of_list.replace("[", "").replace("]", "").replace("\"", "").replace("'", "")
                 options = [option.strip() for option in string_of_list.split(",")]
                 max_f1_match = 0.0
                 for option in options:
-                    f1_match = calculate_f1_score(output, option)
+                    f1_match = calculate_f1_score(extracted_output, option)
                     if f1_match > max_f1_match:
                         max_f1_match = f1_match
                 scores.append(max_f1_match)
         else:
             for item, output in zip(data, outputs):
-                f1_score = calculate_f1_score(output, item["output"])
+                extracted_output = extract_answer_text(output)
+                f1_score = calculate_f1_score(extracted_output, item["output"])
                 scores.append(f1_score)
     if task_type == "noncompliance":
         category_list = []
-        with open("data/"+task+".json", "r") as f:
+        with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
             full_data = json.load(f)
             for item in full_data[split]:
                 category_list.append(item["category"])
@@ -283,6 +323,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
     if task_type == "reward_model" or task_type == "text_generation" and split == "dev":
         load_reward_model()
         scores = reward_model_scores(prepare_inputs(task, task_type, split)[:len(outputs)], outputs)
+        clear_reward_model()
     if task_type == "text_generation" and split != "dev":
         # no need to eval
         return [0] * len(outputs)

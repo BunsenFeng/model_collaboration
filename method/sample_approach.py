@@ -121,7 +121,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         "model_names": model_names,
         "hyperparameters": hyperparameters,
         "avg_test_score": avg_test_score,
-        "logs": [] # score the reponse, score, and other method-specific info for each test input
+        "logs": [] # score the response, score, and other method-specific info for each test input
     }
     for i in range(len(test_input_list)):
         log_entry = {
