@@ -13,8 +13,24 @@ from openai import AzureOpenAI
 from collections import Counter
 from multiprocessing import Pool
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification
+from vllm import LLM, SamplingParams
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+
+VERIFIER_PROMPT_TEMPLATE = (
+    "User: ### Question: {question}\n\n"
+    "### Ground Truth Answer: {ground_truth}\n\n"
+    "### Student Answer: {student_answer}\n\n"
+    "For the above question, please verify if the student's answer is equivalent to the ground truth answer.\n"
+    "Do not solve the question by yourself; just check if the student's answer is equivalent to the ground truth answer.\n"
+    "If the student's answer is correct, output \"Final Decision: Yes\". If the student's answer is incorrect, output \"Final Decision: No\". Assistant:"
+)
+
+VERIFIER_PASS_TAG = "Final Decision: Yes"
+GENERAL_VERIFIER_MODEL_NAME = "TIGER-Lab/general-verifier"
+GENERAL_VERIFIER_MAX_TOKENS = 1024
+GENERAL_VERIFIER_TEMPERATURE = 0.0
+GENERAL_VERIFIER_TENSOR_PARALLEL_SIZE = 1
 
 def normalize_answer(s: str) -> str:
     """
@@ -50,6 +66,12 @@ def extract_answer_text(response: str) -> str:
             return candidate
 
     fallback_patterns = [
+        r"Final Answer:\s*((?:[^<]|<[^<])*?)\n",
+        r"Final Answer is:\s*((?:[^<]|<[^<])*?)\n",
+        r"The answer is:\s*((?:[^<]|<[^<])*?)\n",
+        r"Answer:\s*((?:[^<]|<[^<])*?)\n",
+        r"Solution:\s*((?:[^<]|<[^<])*?)\n",
+        r"The solution is:\s*((?:[^<]|<[^<])*?)\n",
         r"\bthe answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
         r"\bfinal answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
         r"\banswer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
@@ -252,6 +274,21 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
         for item in data:
             input_with_instruction = f"{item['input'].rstrip()}\n\nPlease provide the final, direct answer wrapped exactly as \\box{{ANSWER}}"
             input_list.append(input_with_instruction)
+    elif task_type == "general_verifier":
+        for item in data:
+            if "input" in item:
+                input_list.append(item["input"])
+            elif "question" in item:
+                if "choices" in item:
+                    options = []
+                    for option in item["choices"].keys():
+                        options.append(item["choices"][option])
+                    formatted_question = format_mcq_question(item["question"], options)
+                    input_list.append(formatted_question)
+                else:
+                    input_list.append(item["question"])
+            else:
+                input_list.append(item.get("prompt", ""))
     elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
         for item in data:
             input_list.append(item["input"])
@@ -268,6 +305,9 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
         data = data[:int(len(data)*ratio)]
 
     scores = []
+
+    if task_type == "general_verifier":
+        return general_verifier_score(task, split, outputs, ratio)
 
     if task_type == "multiple_choice":
         assert "choices" in data[0], "Are you sure this is a multiple choice task?"
@@ -328,4 +368,80 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
         # no need to eval
         return [0] * len(outputs)
     
+    return scores
+
+def general_verifier_score(task, split, outputs, ratio=1.0):
+    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
+        dataset = json.load(f)[split]
+
+    max_examples = min(len(outputs), int(len(dataset) * ratio))
+    dataset = dataset[:max_examples]
+    outputs = outputs[:max_examples]
+
+    if max_examples == 0:
+        return []
+
+    def extract_question_text(item):
+        if "choices" in item and "question" in item:
+            options = []
+            for option in item["choices"].keys():
+                options.append(item["choices"][option])
+            return format_mcq_question(item["question"], options)
+        if "input" in item and item["input"] is not None:
+            return item["input"]
+        if "question" in item and item["question"] is not None:
+            return item["question"]
+        return item.get("prompt", "") or ""
+
+    def extract_ground_truth(item):
+        if "output" in item and item["output"] is not None:
+            return item["output"]
+        if "answer" in item and item["answer"] is not None:
+            answer_value = item["answer"]
+            if isinstance(answer_value, str) and "choices" in item and answer_value in item["choices"]:
+                return item["choices"][answer_value]
+            if isinstance(answer_value, list):
+                return ", ".join(str(ans) for ans in answer_value)
+            return str(answer_value)
+        return ""
+
+    def escape_braces(text):
+        if text is None:
+            return ""
+        return text.replace("{", "{{").replace("}", "}}")
+
+    prompts = []
+    for item, student_answer in zip(dataset, outputs):
+        question_text = str(extract_question_text(item))
+        ground_truth_text = str(extract_ground_truth(item))
+        student_answer_text = student_answer if isinstance(student_answer, str) else str(student_answer)
+        if not student_answer_text.strip():
+            student_answer_text = "No answer provided."
+        else:
+            student_answer_text = extract_answer_text(student_answer_text)
+
+        prompt = VERIFIER_PROMPT_TEMPLATE.format(
+            question=escape_braces(question_text),
+            ground_truth=escape_braces(ground_truth_text),
+            student_answer=escape_braces(student_answer_text),
+        )
+        prompts.append(prompt)
+
+    model = LLM(
+        model=GENERAL_VERIFIER_MODEL_NAME,
+        gpu_memory_utilization=0.5
+    )
+    generated_texts = model.generate(prompts, sampling_params=SamplingParams(temperature=GENERAL_VERIFIER_TEMPERATURE, max_tokens=GENERAL_VERIFIER_MAX_TOKENS))
+    if len(generated_texts) != len(prompts):
+        raise RuntimeError(
+            f"General verifier returned {len(generated_texts)} responses for {len(prompts)} prompts."
+        )
+
+    scores = []
+    for generated_text in generated_texts:
+        if VERIFIER_PASS_TAG in generated_text.outputs[0].text:
+            scores.append(1.0)
+        else:
+            scores.append(0.0)
+
     return scores
