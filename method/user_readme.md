@@ -92,6 +92,33 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `exclude_self`, default True: whether to exclude the response generator LLM when generating knowledge.
 - note to tester: just try different LLMs you'd like.
 
+#### Text-level: LLM Blender
+- file: `text_llm_blender.py`
+- description: implement a text-level version of LLM-Blender. For each query, all base LLMs first generate their own candidate answers. A ranker LLM, optionally fine-tuned on dev pairwise preferences, compares candidates in an A/B fashion and aggregates wins to obtain a ranking. The top-k ranked candidates are then passed to a fuser LLM, optionally fine-tuned on dev with gold answers as supervision (when available), which generates a single fused answer that combines and refines the candidates. The same pipeline is applied on the test set for evaluation.
+- related paper(s):
+    - [LLM-Blender: Ensembling Large Language Models with Pairwise Ranking and Generation Fusion](https://arxiv.org/abs/2402.08115)
+- method-specific hyperparameters:
+    - `top_k`, default 3: how many top-ranked candidate answers to pass from the ranker to the fuser for each query. Will be clipped to `[1, len(model_names)]`.
+    - `ranker_model_name`, default `Qwen/Qwen2.5-7B-Instruct`: causal LM (HuggingFace name or local path) used as the ranker/judge model. Given `(question, candidates)`, this model is prompted to output scores for each candidate.
+    - `ranker_gpu_id`, default `gpu_ids[0]`: GPU id to use for ranker inference.
+    - `ranker_max_response_length`, default 128: maximum number of tokens to generate when the ranker LM is judging candidate answers (short outputs are sufficient).
+    - `fuser_model_name`, default first entry of `model_names`: causal LM used as the fuser model that reads the question and top-k candidate answers and generates the final answer.
+    - `fuser_gpu_id`, default `gpu_ids[0]`: GPU id to use for fuser inference.
+    - `fuser_max_response_length`, default `max_response_length` from the config: maximum number of tokens for the fused final answer.
+    - `train_ranker_on_dev`, default False: whether to train the ranker on the dev set before evaluation on the test set. If True, the method will (1) generate candidate answers and scores on the dev split for all base models, (2) construct pairwise preference data based on dev scores, and (3) run SFT via `utils.distributed_sft.single_sft` to fine-tune `ranker_model_name`. At inference time, the ranker is always used in a pairwise A/B comparison mode with win-count aggregation. The trained checkpoint is saved under `logs/text_llm_blender/ranker_model_<task>_<num_models>/` and used only for the current run.
+    - `train_fuser_on_dev`, default False: whether to train the fuser on the dev set before evaluation on the test set. If True, the method will (1) use dev scores to select top-k candidate answers per example, (2) build fusion prompts with these candidates, (3) use the dataset gold dev answer as the supervision target when available (and fall back to the best-scoring candidate otherwise), and (4) run SFT via `utils.distributed_sft.single_sft` to fine-tune `fuser_model_name`. The trained checkpoint is saved under `logs/text_llm_blender/fuser_model_<task>_<num_models>/` and used only for the current run.
+    - `ranker_sft_batch_size`, default 1: per-device train batch size for ranker SFT when `train_ranker_on_dev` is True.
+    - `ranker_sft_gradient_accumulation_steps`, default 16: gradient accumulation steps for ranker SFT.
+    - `ranker_sft_learning_rate`, default 1e-5: learning rate for ranker SFT.
+    - `ranker_sft_epoch`, default 3: number of training epochs for ranker SFT.
+    - `fuser_sft_batch_size`, default 1: per-device train batch size for fuser SFT when `train_fuser_on_dev` is True.
+    - `fuser_sft_gradient_accumulation_steps`, default 16: gradient accumulation steps for fuser SFT.
+    - `fuser_sft_learning_rate`, default 1e-5: learning rate for fuser SFT.
+    - `fuser_sft_epoch`, default 3: number of training epochs for fuser SFT.
+- note to tester:
+    - For pure zero-shot ranking and fusion, set `train_ranker_on_dev: false` and `train_fuser_on_dev: false`, and choose reasonable `ranker_model_name` / `fuser_model_name` (e.g., `ranker_model_name: "Qwen/Qwen2.5-7B-Instruct"`, `fuser_model_name` as one of your candidate models).
+    - To adapt the ranker and/or fuser to a specific task, set the corresponding `train_*_on_dev` flags to true. Intermediate SFT data and checkpoints will be saved under `logs/text_llm_blender/` (e.g., `ranker_sft_<task>_<num_models>.jsonl`, `ranker_model_<task>_<num_models>/`). The final evaluation log remains `logs/<task>_<num_models>_<score>_llm_blender.json` as usual.
+
 #### Text-level: Heterogeneous Swarms
 - file: `text_heterogeneous_swarms.py`
 - description: multiple LLMs form a directed acyclic graph structure to collaboratively generate responses. Each LLM's output is passed to other LLMs through the directed edges in the graph, to become part of the input context of another LLM. The graph structure is optimized with particle swarm optimization on the dev set to maximize performance.
