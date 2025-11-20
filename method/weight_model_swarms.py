@@ -1,5 +1,6 @@
 import os
 import json
+import random
 from data import eval
 from utils import swarm
 from method import distributed_generation
@@ -15,7 +16,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     swarm_base_path = hyperparameters.get("swarm_base_path", "logs/model_swarms/")
     swarm_base_path = swarm_base_path[:-1] + "_" + task + "/"
     if os.path.exists(swarm_base_path):
-        raise ValueError("Swarm base path {} already exists. Please specify a new path to avoid overwriting.".format(swarm_base_path))
+        swarm_base_path = swarm_base_path[:-1] + str(random.randint(0, 10000000)) + "/"
+        print("Warning: Swarm base path already exists. Using new path: {}".format(swarm_base_path))
+        # raise ValueError("Swarm base path {} already exists. Please specify a new path to avoid overwriting.".format(swarm_base_path))
     base_model = hyperparameters.get("base_model", None)
     if base_model is None:
         print("Taking the first model as the base model. Hopefully it is the one with the largest vocabulary size and thus embedding/lm head matrices.")
