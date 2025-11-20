@@ -13,7 +13,6 @@ from openai import AzureOpenAI
 from collections import Counter
 from multiprocessing import Pool
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification
-from vllm import LLM, SamplingParams
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -30,7 +29,7 @@ VERIFIER_PASS_TAG = "Final Decision: Yes"
 GENERAL_VERIFIER_MODEL_NAME = "TIGER-Lab/general-verifier"
 GENERAL_VERIFIER_MAX_TOKENS = 1024
 GENERAL_VERIFIER_TEMPERATURE = 0.0
-GENERAL_VERIFIER_TENSOR_PARALLEL_SIZE = 1
+GENERAL_VERIFIER_BATCH_SIZE = 32
 
 def normalize_answer(s: str) -> str:
     """
@@ -427,19 +426,38 @@ def general_verifier_score(task, split, outputs, ratio=1.0):
         )
         prompts.append(prompt)
 
-    model = LLM(
-        model=GENERAL_VERIFIER_MODEL_NAME,
-        gpu_memory_utilization=0.5
-    )
-    generated_texts = model.generate(prompts, sampling_params=SamplingParams(temperature=GENERAL_VERIFIER_TEMPERATURE, max_tokens=GENERAL_VERIFIER_MAX_TOKENS))
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
+
+    model = AutoModelForCausalLM.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, use_fast=True)
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
+    tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    generated_texts = []
+    batch_size = GENERAL_VERIFIER_BATCH_SIZE
+    for i in tqdm(range(0, len(prompts), batch_size), desc="Verifying"):
+        batch_prompts = prompts[i:i+batch_size]
+        inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(model.device)
+        batch_outputs = model.generate(
+            **inputs,
+            max_new_tokens=1024,
+            temperature=0.0,
+            do_sample=False
+        )
+        generated_tokens = batch_outputs[:, inputs.input_ids.shape[1]:]
+        decoded_outputs = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        generated_texts.extend(decoded_outputs)
+
     if len(generated_texts) != len(prompts):
         raise RuntimeError(
             f"General verifier returned {len(generated_texts)} responses for {len(prompts)} prompts."
         )
 
     scores = []
-    for generated_text in generated_texts:
-        if VERIFIER_PASS_TAG in generated_text.outputs[0].text:
+    for text in generated_texts:
+        if VERIFIER_PASS_TAG in text:
             scores.append(1.0)
         else:
             scores.append(0.0)
