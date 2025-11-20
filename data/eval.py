@@ -329,3 +329,26 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
         return [0] * len(outputs)
     
     return scores
+
+def aggregate_scores(task, scores, split="test", ratio=1.0):
+    if task == "culturebench_hard":
+        with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
+            data = json.load(f)[split]
+            data = data[:int(len(data)*ratio)]
+
+        question_scores = {}
+        for item, score in zip(data, scores):
+            qid = item["question_id"]
+            if qid not in question_scores:
+                question_scores[qid] = []
+            question_scores[qid].append(score)
+
+        aggregated_scores = []
+        for qid in question_scores:
+            if all(s == 1.0 for s in question_scores[qid]):
+                aggregated_scores.append(1.0)
+            else:
+                aggregated_scores.append(0.0)
+        return sum(aggregated_scores) / len(aggregated_scores) if aggregated_scores else 0.0
+    
+    return sum(scores) / len(scores) if scores else 0.0

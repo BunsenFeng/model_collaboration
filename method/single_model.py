@@ -65,7 +65,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         output_list.extend(decoded_outputs)
 
     test_scores = eval.get_scores(task, task_type, "test", output_list)
-    avg_test_score = sum(test_scores) / len(test_scores)
+    avg_test_score = eval.aggregate_scores(task, test_scores, "test")
     print("Model: {}, test {} score: {}".format(model_names[0], task, avg_test_score))
 
     # save the logs
