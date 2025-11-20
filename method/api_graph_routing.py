@@ -350,7 +350,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         json.dump(experiment_logs, f, indent=4)
     
     # Cleanup
-    del embedding_model
     del gnn_predict
     torch.cuda.empty_cache()
     
