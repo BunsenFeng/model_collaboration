@@ -83,8 +83,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             elif mode == "just_ask":
                 # add just ask prompt
                 input_list_with_ask = []
-                for i in range(len(current_test_input_list)):
-                    input_list_with_ask.append(just_ask_prompt(current_test_input_list[i]))
+                for k in range(len(current_test_input_list)):
+                    input_list_with_ask.append(just_ask_prompt(current_test_input_list[k]))
 
                 # generate responses
                 list_of_output_list = distributed_generation.distributed_generation(
