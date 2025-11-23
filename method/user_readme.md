@@ -152,6 +152,24 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - method-specific hyperparameters:
     - `tie`, default "random": the tie-breaking strategy. Options are "random" (arbitrarily select one of the tied answers) or "dev-based" (evaluate the models that vote for tied answers on the dev set, then use the answer from the best-performing model).
 
+#### Text-level: Multiagent Finetuning
+- file: `text_multiagent_finetuning.py`
+- description: implement a multiagent finetuning loop where several copies of the same base model act as generation and critic agents. On the dev set, agents first run a multi-round debate: round 0 produces initial answers, later rounds let each agent see a summary of the other agents’ previous answers plus its own history and refine its response. For each iteration, we (1) majority-vote over the final extracted answers to get a consensus per question, (2) build per-agent generation datasets from examples where that agent’s *initial* answer agrees with the consensus, and (3) build per-agent critic datasets from full debate histories where the *final* answer agrees with the consensus, mixing “fixed my mistake” and “stayed correct” cases. Each generation and critic agent is then SFT-trained (LoRA) on its own dataset, and the process can repeat for multiple iterations. At test time, the finetuned agents run the same debate protocol and the final prediction is decided by majority vote over extracted answers.
+- related paper(s):
+    - [Multiagent Finetuning: Self Improvement with Diverse Reasoning Chains](https://arxiv.org/abs/2501.05707)
+- method-specific hyperparameters:
+    - `iterations`, default 1: number of finetuning iterations (debate → build datasets → SFT).
+    - `rounds`, default 2: total debate rounds (0 = initial generation, later rounds = critics).
+    - `w`, default 0.5: relative weight of critic examples where the agent corrected an initially wrong answer versus examples where it stayed correct.
+    - `training_ratio`, default 1.0: fraction of the dev split used to build the SFT datasets.
+    - `sft_epochs`, default 1: number of epochs for LoRA SFT for each agent.
+    - `sft_learning_rate`, default 1e-5: learning rate for SFT.
+    - `sft_batch_size`, default 1: per-device batch size for SFT.
+    - `sft_grad_accum`, default 16: gradient accumulation steps for SFT.
+- notes:
+    - Currently supports `task_type` in `["multiple_choice", "exact_match", "f1_match"]`, using the existing `data/eval.py` extraction logic for voting and scoring.
+    - Use moderate-sized models and small `iterations` / `rounds` if compute is limited; each iteration runs a full multi-model debate plus SFT.
+
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
