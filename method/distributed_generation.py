@@ -113,6 +113,72 @@ def distributed_generation(list_of_model_name, list_of_input_list, list_of_gpu_i
     
     return list_of_output_list
 
+def batch_generate_text_with_score(model_name, gpu_id, input_list, max_response_length, temperature, top_p, batch_size):
+
+    # Load model and tokenizer
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.padding_side = "left"
+    except:
+        raise ValueError("Tokenizer loading failed. Please check the model name. If it is a lora module, upload your tokenizer to the huggingface repo too.")
+    output_list = []
+    logit_scores = [] # list of list, each list is a logit history
+    for i in tqdm(range(0, len(input_list), batch_size)):
+        batch_inputs = input_list[i:i+batch_size]
+        # try to apply chat template
+        try:
+            chat_inputs = []
+            for input in batch_inputs:
+                chat = [
+                    # {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": input}
+                ]
+                chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+                chat_inputs.append(chat_input)
+        except:
+            chat_inputs = batch_inputs
+        
+        inputs = tokenizer(chat_inputs, return_tensors="pt", padding=True, truncation=True).to(model.device)
+        # generate response with logit information in each token
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=max_response_length,
+                temperature=temperature,
+                top_p=top_p,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+                return_dict_in_generate=True,
+                output_scores=True,
+            )
+        # `output` is dict, with `sequences`(texts), `scores`(each step's logit scores), ...
+        # Text, sequences
+        output_sequences_id = outputs["sequences"]
+        # output texts
+        decoded_outputs = tokenizer.batch_decode(output_sequences_id[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
+        # logit in each token
+        logit_score = outputs["scores"] # num_steps length, each element is [bs, vocab_size]
+        scores = [[] for _ in range(batch_size)] # list to store each response logit record
+        for i in range(len(logit_score)):
+            # each step logit
+            current_logit_score = logit_score[i] # [bs, vocab_size]
+            # select top-k, default k=5
+            current_logit_score_top_k, _ = torch.topk(current_logit_score, k=5, dim=-1) # [bs, 5]
+            # softmax
+            probs = torch.softmax(current_logit_score_top_k, dim=-1) # [bs, 5]
+            # each response stores max prob [0, 1]
+            for j in range(batch_size):
+                scores[j].append(max(probs[j]))
+        logit_scores.extend(scores)
+        output_list.extend(decoded_outputs)
+    del model
+    del tokenizer
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
+    return output_list, logit_scores
+
 if __name__ == "__main__":
 
     update_generation_hyperparameters(50, 0.7, 0.9, 4)

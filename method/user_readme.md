@@ -77,6 +77,18 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `scenario`, default `Performance First`: the balance between performance and cost.
 - note to tester: try different LLMs you'd like.
 
+#### API-level: Cascade
+- file: `api_cascade.py`
+- description: given a list of models from weak to strong, defer question to next model if current model is unconfident.
+- related paper(s):
+    - [FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance](https://arxiv.org/pdf/2305.05176)
+    - [Language Model Cascades: Token-level uncertainty and beyond](https://arxiv.org/pdf/2404.10136)
+- method-specific hyperparameters:
+    - `mode`, default `logit`: the mode for judge model confidence. Mode `logit` average token probability in response as model confidence. If confidence less than threshold, then deferred. Mode `just_ask` ask model to mention it is unconfident of its answer. If unconfident is in output, then deferred.
+    - `threshold`, default 0.9: the threshold to judge deferral in `logit` mode. If model confidence less than threshold, then deferred.
+    - (suggested) `model_names`: arrange model names from weak to strong, from cheap to expensive. For instance, `["Qwen/Qwen2.5-3B-Instruct","Qwen/Qwen2.5-7B-Instruct"]`
+- note to tester: try different LLMs you'd like.
+
 #### Text-level: Multiagent Refine/Debate
 - file: `text_multiagent_refine.py`
 - description: multiple LLMs collaborate to refine the answers of each other. First, evaluate all models on the dev set to select a final summarizer. At each round, each LLM sees the answers of all LLMs from the previous round and refines its own answer. After several rounds, the final answers are aggregated by the summarizer LLM.
