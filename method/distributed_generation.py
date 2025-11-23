@@ -169,7 +169,7 @@ def batch_generate_text_with_score(model_name, gpu_id, input_list, max_response_
             # softmax
             probs = torch.softmax(current_logit_score_top_k, dim=-1) # [bs, 5]
             # each response stores max prob [0, 1]
-            for j in range(batch_size):
+            for j in range(probs.shape[0]):
                 scores[j].append(max(probs[j]))
         logit_scores.extend(scores)
         output_list.extend(decoded_outputs)
