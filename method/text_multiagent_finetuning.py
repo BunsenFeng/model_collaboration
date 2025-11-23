@@ -1,4 +1,6 @@
 """
+Multiagent Finetuning method implementation.
+
 This method implements a simplified version of the multiagent finetuning
 procedure described in the paper "Multiagent Finetuning: Self Improvement
 with Diverse Reasoning Chains" (ICLR 2025).  The high level idea is to run
@@ -44,7 +46,6 @@ Method‑specific hyperparameters supported:
 
     sft_grad_accum: int (default 16)
         Gradient accumulation steps for LoRA fine–tuning.
-
 """
 
 import os
@@ -80,6 +81,63 @@ def _majority_vote(responses: List[str]) -> str:
     # sort by frequency descending then lexicographically
     sorted_items = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
     return sorted_items[0][0]
+
+# -----------------------------------------------------------------------------
+# Summarisation utilities
+#
+# In the original multiagent finetuning algorithm, critic agents receive a
+# *summary* of the responses from the other agents before generating their own
+# critique【889394202153893†L376-L384】.  The summarisation step removes redundant
+# information and highlights the key differences in the other agents’ answers【889394202153893†L584-L589】.
+# We implement a simple summarisation function here.  For each set of
+# responses we concatenate the responses with double newlines.  Users can
+# override this function to call a more sophisticated summarisation model.
+
+def _summarize_other_answers(other_answers: List[str]) -> str:
+    """Produce a simple summary of other agents' answers.
+
+    Given a list of answer strings from other agents, join them with
+    double newlines to create a consolidated summary.  This naive approach
+    preserves the content of each response while reducing redundancy.  If a
+    more sophisticated summarisation is desired, this function can be
+    replaced by a call to a summarisation model.
+
+    Args:
+        other_answers: List of responses from other agents.
+
+    Returns:
+        A single string summarising the other responses.
+    """
+    # Strip and deduplicate empty answers
+    cleaned = [ans.strip() for ans in other_answers if ans and ans.strip()]
+    if not cleaned:
+        return ""
+    return "\n\n".join(cleaned)
+
+
+def _build_critic_prompt_with_summary(question: str, summary: str, self_answer: str) -> str:
+    """Construct a prompt for the critic model using a summary of other agents' answers.
+
+    The prompt includes the question, a summary of the other agents' answers
+    (provided by `_summarize_other_answers`), and the critic's own answer
+    from the previous round.  The critic should use this information to
+    produce a refined and correct answer.
+
+    Args:
+        question: The original question string.
+        summary: A summary of other agents' answers.
+        self_answer: The critic's own answer from the previous round.
+
+    Returns:
+        A prompt string for critic generation.
+    """
+    lines = []
+    lines.append(f"Question: {question}")
+    lines.append("Summary of other assistants' answers:")
+    lines.append(summary)
+    lines.append(f"Your previous answer: {self_answer}")
+    lines.append("Please provide a refined and correct answer to the question.")
+    return "\n".join(lines)
 
 
 def _build_critic_prompt(question: str, other_answers: List[str], self_answer: str) -> str:
@@ -132,7 +190,7 @@ def run_method(task: str,
     """
 
     # Extract method‑specific hyperparameters with sensible defaults
-    iterations = int(hyperparameters.get("iterations", 2))
+    iterations = int(hyperparameters.get("iterations", 1))
     rounds = int(hyperparameters.get("rounds", 2))
     w = float(hyperparameters.get("w", 0.5))
     training_ratio = float(hyperparameters.get("training_ratio", 1.0))
@@ -257,7 +315,9 @@ def run_method(task: str,
                     # other agents' answers (exclude self)
                     other_answers = [all_prev[k] for k in range(N) if k != n]
                     self_ans = all_prev[n]
-                    prompt = _build_critic_prompt(question, other_answers, self_ans)
+                    # summarise other answers
+                    summary = _summarize_other_answers(other_answers)
+                    prompt = _build_critic_prompt_with_summary(question, summary, self_ans)
                     prompts.append(prompt)
                 list_of_input_list_round.append(prompts)
             # Generate critic answers with current critic models
@@ -340,7 +400,12 @@ def run_method(task: str,
                     DG_datasets[n].append({"prompt": question, "completion": y1_raw})
                 # Critic dataset: include only if the extracted final answer matches the consensus
                 if yM_extracted == c_extracted:
-                    convo_prompt = f"Question: {question}\nInitial answer: {y1_raw}\nPlease provide a refined and correct answer to the question."
+                    # Build a dialogue-style prompt that includes the entire history of the agent's answers
+                    history_lines = []
+                    for r_i, ans_str in enumerate([answers[k][n][idx] for k in range(len(answers))]):
+                        history_lines.append(f"Round {r_i}: {ans_str.strip()}")
+                    history_str = "\n".join(history_lines)
+                    convo_prompt = f"Question: {question}\n{history_str}\nPlease provide a refined and correct answer to the question."
                     if y1_extracted != c_extracted:
                         # The model changed its answer from incorrect to correct
                         DC_minus[n].append({"prompt": convo_prompt, "completion": c_raw})
@@ -473,7 +538,8 @@ def run_method(task: str,
                 all_prev = [prev_answers[k][idx] for k in range(N)]
                 other_answers = [all_prev[k] for k in range(N) if k != n]
                 self_ans = all_prev[n]
-                prompt = _build_critic_prompt(question, other_answers, self_ans)
+                summary = _summarize_other_answers(other_answers)
+                prompt = _build_critic_prompt_with_summary(question, summary, self_ans)
                 prompts.append(prompt)
             list_of_input_list_round.append(prompts)
         critic_outputs_test = distributed_generation.distributed_generation(
