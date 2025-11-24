@@ -1,5 +1,5 @@
 """
-A blank template for implementing your approach.
+Method: text_structure.py
 """
 import json
 from data import eval
@@ -108,7 +108,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     if structure_type == "other":
         assert structure_matrix is not None, "Please provide a structure matrix (list of lists of size num_models x num_models) for 'other' structure type."
         assert len(structure_matrix) == len(model_names), "Structure matrix size must match number of models."
-        assert len(structure_matrix[0]) == len(model_names), "Structure matrix must be square with size equal to number of models."
+        assert all(len(row) == len(model_names) for row in structure_matrix), "All rows in structure matrix must have length equal to number of models."
         # check if all cells are either 0 or 1
         for i in range(len(structure_matrix)):
             for j in range(len(structure_matrix)):
@@ -128,14 +128,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
 
 
-    # 3. optionally, do something based on the dev set of the dataset
-    # could be: selecting a model as the summarizer/evaluator/... based on dev performance
-    # could be: finetuning the models somehow on the dev set
-    # could be: setting some sort of hyperparameter/threshold based on the dev set
-    # it's ok that your approach doesn't have this step, e.g. multiagent debate
-    # if you ever saves anything during this step, make sure to save it in `logs/<your_method_name>/`!
-
-    # a most simple example, select the best model based on dev set performance
+    # 3. select best model for final score based on the dev set of the dataset
     print("Evaluating models on dev set to select the best model...")
     dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
     # evaluate every model on it through distributed generation
@@ -159,9 +152,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Best model selected for final generation: {}".format(best_model_name))
 
 
-
-
-
     # start the multi-round interaction between models
     print("Round 0: Starting multi-round interaction by generating initial outputs with each model...")
     test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
@@ -176,8 +166,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     all_input_list = [list_of_input_list]
     all_output_list = [list_of_output_list] # round * len(model_names) * len(test_input_list)
-    for interation_round in range(num_rounds - 1):
-        print("Round {}/{} (with interaction)".format(interation_round + 1, num_rounds - 1))
+    for interaction_round in range(num_rounds - 1):
+        print("Round {}/{} (with interaction)".format(interaction_round + 1, num_rounds - 1))
         new_list_of_input_list = [] # len(model_names) * len(test_input_list)
         # new_list_of_output_list = [] # len(model_names) * len(test_input_list)
         no_in_edges_model_idx = []
