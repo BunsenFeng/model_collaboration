@@ -327,28 +327,21 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
     if task_type == "text_generation" and split != "dev":
         # no need to eval
         return [0] * len(outputs)
+
+    if task == "culturebench":
+        question_to_indices = {}
+        for idx, item in enumerate(data):
+            qid = item.get("question_id")
+            if qid is None:
+                continue
+            if qid not in question_to_indices:
+                question_to_indices[qid] = []
+            question_to_indices[qid].append(idx)
+
+        for indices in question_to_indices.values():
+            group_scores = [scores[i] for i in indices]
+            group_value = 1.0 if all(score == 1.0 for score in group_scores) else 0.0
+            for i in indices:
+                scores[i] = group_value
     
     return scores
-
-def aggregate_scores(task, scores, split="test", ratio=1.0):
-    if task == "culturebench_hard":
-        with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-            data = json.load(f)[split]
-            data = data[:int(len(data)*ratio)]
-
-        question_scores = {}
-        for item, score in zip(data, scores):
-            qid = item["question_id"]
-            if qid not in question_scores:
-                question_scores[qid] = []
-            question_scores[qid].append(score)
-
-        aggregated_scores = []
-        for qid in question_scores:
-            if all(s == 1.0 for s in question_scores[qid]):
-                aggregated_scores.append(1.0)
-            else:
-                aggregated_scores.append(0.0)
-        return sum(aggregated_scores) / len(aggregated_scores) if aggregated_scores else 0.0
-    
-    return sum(scores) / len(scores) if scores else 0.0

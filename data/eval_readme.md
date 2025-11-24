@@ -28,6 +28,7 @@ Then, here are all the combinations of `(task, task_type)` that I have implement
 (alpacaeval, reward_model)
 (wildchat, reward_model)
 (sciriff, exact_match)
+(culturebench, exact_match)
 (human_interest, reward_model) # the three instruction following datasets are all evaluated by a reward model now. should we change to something else? up to you
 ```
 
