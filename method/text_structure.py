@@ -11,7 +11,7 @@ import numpy as np
 # optionally, `from utils.numeric_swarm import NumericSwarm` if your approach optimizes continuous vectors of hyperparameters/weights
 """
 {
-    "method": "api_prompt_routing", // the name under method/ folder, names like <type>_<approach>.py
+    "method": "text_structure", // the name under method/ folder, names like <type>_<approach>.py
     "task": "agieval", // the name under data/ folder, see data/eval_readme.md
     "task_type": "multiple_choice", // see data/eval_readme.md
     "gpu_ids": [0,1,2], // a list of GPUs available
@@ -28,7 +28,7 @@ import numpy as np
         // and then, method-specific hyperparameters
         "num_rounds": 3, // number of rounds of updates between models
         "structure_type": "your_structure_type", // chain, tree, star, circle, complete, other
-        "structure_matrix": [[]], // optional, only applicable if structure_type is "other", matrix of size num_models x num_models defining the structure
+        "structure_matrix": [[0, 1, 0], [1, 0, 1], [0, 1, 0]], // optional, only applicable if structure_type is "other", matrix of size num_models x num_models defining the structure
     }
 }
 """
@@ -136,6 +136,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # if you ever saves anything during this step, make sure to save it in `logs/<your_method_name>/`!
 
     # a most simple example, select the best model based on dev set performance
+    print("Evaluating models on dev set to select the best model...")
     dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
     # evaluate every model on it through distributed generation
     list_of_input_list = [dev_input_list for _ in model_names] # replicate the dev inputs for each model
@@ -162,6 +163,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
 
     # start the multi-round interaction between models
+    print("Round 0: Starting multi-round interaction by generating initial outputs with each model...")
     test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
     # evaluate every model on it through distributed generation
     list_of_input_list = [test_input_list for _ in model_names] # replicate the test inputs for each model
@@ -174,8 +176,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     all_input_list = [list_of_input_list]
     all_output_list = [list_of_output_list] # round * len(model_names) * len(test_input_list)
-    for round in range(num_rounds - 1):
-        print("Interaction round {}/{}".format(round + 1, num_rounds - 1))
+    for interation_round in range(num_rounds - 1):
+        print("Round {}/{} (with interaction)".format(interation_round + 1, num_rounds - 1))
         new_list_of_input_list = [] # len(model_names) * len(test_input_list)
         # new_list_of_output_list = [] # len(model_names) * len(test_input_list)
         no_in_edges_model_idx = []
@@ -192,9 +194,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 model_response_list = all_output_list[-1][i]
                 neighbor_response_lists = [all_output_list[-1][j] for j in in_idxs]
                 cur_model_input_list = []
-                for k in range(len(dev_input_list)):
+                for k in range(len(test_input_list)):
                     neighbor_responses = [neighbor_response_lists[m][k] for m in range(len(neighbor_response_lists))]
-                    new_prompt = re_generate_prompt(dev_input_list[k], model_response_list[k], neighbor_responses)
+                    new_prompt = re_generate_prompt(test_input_list[k], model_response_list[k], neighbor_responses)
                     cur_model_input_list.append(new_prompt)
                 new_list_of_input_list.append(cur_model_input_list)
         new_list_of_output_list = distributed_generation.distributed_generation(
@@ -208,7 +210,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         for i in range(len(model_names)):
             if len(all_output_list[-1][i]) == 0 and len(all_output_list) > 1:
                 print("Model {}: {} did not regenerate, keeping previous outputs.".format(i, model_names[i]))
-                all_output_list[-1][i] = all_output_list[-2][i] # keep the previous outputs if no regeneration happened
+                all_output_list[-1][i] = all_output_list[-2][i][:] # keep the previous outputs if no regeneration happened
 
 
 
@@ -216,9 +218,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 #####################################
 
     test_scores_dict = {}
-
+    final_output_list = []
+    avg_test_score = 0
+    test_scores = []
     for i in range(len(model_names)):
-        print("Final outputs from model {}: {}".format(model_names[i], all_output_list[-1][i][:3])) # print first 3 outputs as a sample
+        # print("Final outputs from model {}: {}".format(model_names[i], all_output_list[-1][i][:2])) # print first 3 outputs as a sample
         cur_test_outputs = all_output_list[-1][i]
         cur_test_score = eval.get_scores(task, task_type, "test", cur_test_outputs) #
         cur_avg_test_score = sum(cur_test_score) / len(cur_test_score)
@@ -227,8 +231,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             final_output_list = cur_test_outputs
             test_scores = cur_test_score
             avg_test_score = cur_avg_test_score
-        print("Model: {}, final test {} score: {}".format(model_names[i], task, cur_avg_test_score))
-
+        print("Model_{}: {}, final test {} score: {}".format(i, model_names[i], task, cur_avg_test_score))
+    print("Best model for final output: {}, avg test {} score: {}".format(best_model_name, task, avg_test_score))
+    
+    if not final_output_list:
+        print("CRITICAL ERROR: Best model output was not captured.")
+        return 1
 
     # 5. save the logs
     # please follow the exact same format here
@@ -252,7 +260,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     # save to a json file
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    # CHANGE! your method name
     log_filename = "logs/{}_{}_{}_text_structure.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
