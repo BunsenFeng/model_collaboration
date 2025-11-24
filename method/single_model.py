@@ -26,7 +26,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # )
 
     # set to multiple devices in the list of gpu_ids
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(gpu_id) for gpu_id in gpu_ids])
+    # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(gpu_id) for gpu_id in gpu_ids])
 
     model_name = model_names[0]
 
