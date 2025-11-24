@@ -85,7 +85,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - [Language Model Cascades: Token-level uncertainty and beyond](https://arxiv.org/pdf/2404.10136)
 - method-specific hyperparameters:
     - `mode`, default `logit`: the mode for judge model confidence. Mode `logit` average token probability in response as model confidence. If confidence less than threshold, then deferred. Mode `just_ask` ask model to mention it is unconfident of its answer. If unconfident is in output, then deferred.
-    - `threshold`, default 0.9: the threshold to judge deferral in `logit` mode. If model confidence less than threshold, then deferred.
+    - `percentage`, default 0.5: the percentage to select deferral threshold in `logit` mode. For each model except last model, calculate responses' scores on dev set. For each model, select its threshold as top `percentage` value in its dev set responses scores.
     - (suggested) `model_names`: arrange model names from weak to strong, from cheap to expensive. For instance, `["Qwen/Qwen2.5-3B-Instruct","Qwen/Qwen2.5-7B-Instruct"]`
 - note to tester: try different LLMs you'd like.
 

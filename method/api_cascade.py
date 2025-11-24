@@ -3,6 +3,7 @@ LLM API level cascade
 """
 import json
 from data import eval
+import torch
 from method import distributed_generation
 
 def just_ask_prompt(input):
@@ -21,8 +22,8 @@ def score_confidence(logit_score):
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     print("The model you are using are:")
-    for model_name in model_names:
-        print(model_name)
+    for i in range(len(model_names)):
+        print(f"Index {i + 1}: {model_names[i]}")
     print("Make sure they are in cascading structure.")
 
     # extract the general hyperparameters from the hyperparameters dict
@@ -34,7 +35,34 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # extract the method-specific hyperparameters from the hyperparameters dict
     mode = hyperparameters.get("mode", "logit") # confidence: `logit` or `just_ask`
     assert mode == "logit" or mode == "just_ask", "unsupported mode"
-    threshold = hyperparameters.get("threshold", 0.9) # threshold value
+    percentage = hyperparameters.get("percentage", 0.5) # threshold percentage, default Top 50%
+
+    print(f"Current mode: {mode}")
+
+    # Determine threshold
+    if mode == "logit":
+        threshold_list = []
+        print(f"Finding threshold in dev set under logit mode")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        for i in range(len(model_names)-1): # find threshld for every model except last model
+            output_list, list_logit_scores_list = distributed_generation.batch_generate_text_with_score(
+                        model_name=model_names[0],
+                        gpu_id=gpu_ids[0],
+                        input_list=dev_input_list,
+                        max_response_length=max_response_length,
+                        temperature=temperature,
+                        top_p=top_p,
+                        batch_size=batch_size,
+                    )
+            # record logit scores
+            dev_scores = []
+            for k in range(len(output_list)):
+                dev_scores.append(score_confidence(list_logit_scores_list[k]))
+            # select threshold
+            print(f"For model {model_names[i]}, dev set max confidence {max(dev_scores)}, min confidence {min(dev_scores)}")
+            threshold = torch.quantile(torch.tensor(dev_scores), percentage) # Top (percentage * 100) % threshold
+            print(f"For model {model_names[i]}, select threshold {threshold} for Top {percentage * 100} % elements")
+            threshold_list.append(threshold)
 
     # prepare test set input
     test_input_list = eval.prepare_inputs(task, task_type, "test")
@@ -73,7 +101,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 count = 0
                 for index, unsolved in unsolved_dict.items():
                     if unsolved:
-                        if score_confidence(list_logit_scores_list[count]) >= threshold: # solved
+                        current_threshld = threshold_list[i]
+                        if current_threshld and score_confidence(list_logit_scores_list[count]) >= current_threshld: # solved
                             unsolved_dict[index] = False
                             answer_dict[index] = output_list[count] # accept as final answer
                             count += 1
