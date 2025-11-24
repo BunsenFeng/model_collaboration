@@ -26,9 +26,9 @@ import numpy as np
         "top_p": 0.9,
         "batch_size": 8, // per GPU batch size
         // and then, method-specific hyperparameters
+        "num_rounds": 3, // number of rounds of updates between models
         "structure_type": "your_structure_type", // chain, tree, star, circle, complete, other
-        "structure_matrix": [] // optional, only applicable if structure_type is "other", matrix of size num_models x num_models defining the structure
-        "output_model": ["model_1_name"] // optional, a list of model names to record final outputs from (default: all models)
+        "structure_matrix": [[]], // optional, only applicable if structure_type is "other", matrix of size num_models x num_models defining the structure
     }
 }
 """
@@ -75,6 +75,15 @@ def generate_adj(n, graph_type, structure_matrix=None):
         adj_matrix = np.array(structure_matrix)
     return adj_matrix
 
+def re_generate_prompt(initial_prompt, model_response, neighbor_responses):
+    prompt = f"Task: {initial_prompt}\n"
+    prompt += "Based on your previous response and the responses from other AI assistants, provide an updated response.\n"
+    prompt += f"Your previous response: {model_response}\n"
+    prompt += "Responses from other AI assistants:\n"
+    for i in range(len(neighbor_responses)):
+        prompt += f"Assistant {i+1}: {neighbor_responses[i]}\n"
+    prompt += "\nPlease consider the above information carefully and provide your updated response."
+    return prompt
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     """
@@ -88,10 +97,13 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         You get these arguments from the config file that users pass in.
     """
 
-    # 1. extract the general hyperparameters from the hyperparameters dict
+    # 1. extract the hyperparameters from the hyperparameters dict
+    num_rounds = hyperparameters.get("num_rounds", None)
+    assert type(num_rounds) == int and num_rounds > 0, "Please provide num_rounds (positive integer) in hyperparameters."
+    if num_rounds == 1:
+        print("Warning: num_rounds is 1, which means no interaction between models will happen.")
     structure_type = hyperparameters.get("structure_type", "not_supported")
     structure_matrix = hyperparameters.get("structure_matrix", None)
-    output_model = hyperparameters.get("output_model", model_names)
     assert structure_type in ["chain", "tree", "star", "circle", "complete", "other"], "Invalid structure type, please provide one of the supported types: chain, tree, star, circle, complete, other."
     if structure_type == "other":
         assert structure_matrix is not None, "Please provide a structure matrix (list of lists of size num_models x num_models) for 'other' structure type."
@@ -106,32 +118,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         if structure_matrix is not None:
             print("Warning: structure_matrix is provided but will be ignored since structure_type is not 'other'.")
     structure_matrix = generate_adj(len(model_names), structure_type, structure_matrix)
-    assert all([model in model_names for model in output_model]), "All output models must be in the list of model names."
 
     # print model names and indices like 0: model_name[0],...
     model_dict = {i: model_names[i] for i in range(len(model_names))}
     print("Model indices and names: {}".format(model_dict))
+    print("Number of rounds: {}".format(num_rounds))
     print("Structure type: {}".format(structure_type))
     print("Structure matrix: {}".format(structure_matrix.tolist()))
-    print("Output models: {}".format(output_model))
-    
 
 
-
-    # max_response_length = hyperparameters.get("max_response_length")
-    # temperature = hyperparameters.get("temperature")
-    # top_p = hyperparameters.get("top_p")
-    # batch_size = hyperparameters.get("batch_size")
-
-    # 2. optionally, extract the method-specific hyperparameters from the hyperparameters dict
-    # users would pass this in via the config file, through the "hyperparameters" dict
-    # you need to tell users to set them in the readme
-    # you should also provide a default value (in most cases)
-
-    # method_specific_hyperparameter_a = hyperparameters.get("method_specific_hyperparameter_a", default_value_a)
-    # method_specific_hyperparameter_b = hyperparameters.get("method_specific_hyperparameter_b", default_value_b)
-    # no default value, will throw an error if the user doesn't provide it in the config file
-    # method_specific_hyperparameter_c = hyperparameters.get("method_specific_hyperparameter_c")
 
     # 3. optionally, do something based on the dev set of the dataset
     # could be: selecting a model as the summarizer/evaluator/... based on dev performance
@@ -142,7 +137,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # a most simple example, select the best model based on dev set performance
     dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
-
     # evaluate every model on it through distributed generation
     list_of_input_list = [dev_input_list for _ in model_names] # replicate the dev inputs for each model
     list_of_output_list = distributed_generation.distributed_generation(
@@ -162,18 +156,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     best_model_index = list_of_dev_scores.index(max(list_of_dev_scores))
     best_model_name = model_names[best_model_index]
     print("Best model selected for final generation: {}".format(best_model_name))
-    # you can then use best_model_name somehow in the next step
 
-    # 4. evaluate the approach on the test set
-    # based on the stuff you did in the dev set, you arrived at some final approach
-    # generate responses with it, evaluate it, do logging
 
+
+
+
+    # start the multi-round interaction between models
     test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
-
-    # let's implement a multi-agent summary approach
-    # each model generates their own response
-    # then the best model from dev set generates the final response based on all model responses
-
+    # evaluate every model on it through distributed generation
     list_of_input_list = [test_input_list for _ in model_names] # replicate the test inputs for each model
     list_of_output_list = distributed_generation.distributed_generation(
         model_names,
@@ -181,36 +171,71 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         gpu_ids
     ) # will be size len(model_names) x len(test_input_list)
 
-    # now have the best model generate the final responses based on all model responses
-    final_input_list = []
-    for i in range(len(test_input_list)):
-        prompt = "You are part of a team of AI assistants collaborating to answer the user's question. Each assistant provides their own answer: use their answers to generate the final answer.\n\n"
-        prompt += "Question: {}\n\n".format(test_input_list[i])
-        prompt += "Assistants' answers:\n"
-        for j in range(len(model_names)):
-            prompt += "- {}\n".format(list_of_output_list[j][i])
-        prompt += "\nPlease provide the final answer to the question."
-        final_input_list.append(prompt)
+    
+    all_input_list = [list_of_input_list]
+    all_output_list = [list_of_output_list] # round * len(model_names) * len(test_input_list)
+    for round in range(num_rounds - 1):
+        print("Interaction round {}/{}".format(round + 1, num_rounds - 1))
+        new_list_of_input_list = [] # len(model_names) * len(test_input_list)
+        # new_list_of_output_list = [] # len(model_names) * len(test_input_list)
+        no_in_edges_model_idx = []
+        for i in range(len(model_names)):
+            model_name = model_names[i]
+            in_edges = structure_matrix[:, i]
+            in_idxs = np.nonzero(in_edges)[0]
+            if len(in_idxs) == 0:
+                print("Model {} has no incoming edges, skipping regeneration.".format(model_name))
+                new_list_of_input_list.append([])
+                no_in_edges_model_idx.append(i)
+                # new_list_of_output_list.append(all_output_list[-1][i])
+            else:
+                model_response_list = all_output_list[-1][i]
+                neighbor_response_lists = [all_output_list[-1][j] for j in in_idxs]
+                cur_model_input_list = []
+                for k in range(len(dev_input_list)):
+                    neighbor_responses = [neighbor_response_lists[m][k] for m in range(len(neighbor_response_lists))]
+                    new_prompt = re_generate_prompt(dev_input_list[k], model_response_list[k], neighbor_responses)
+                    cur_model_input_list.append(new_prompt)
+                new_list_of_input_list.append(cur_model_input_list)
+        new_list_of_output_list = distributed_generation.distributed_generation(
+            model_names,
+            new_list_of_input_list,
+            gpu_ids
+        ) # will be size len(model_names) x len(test_input_list)
+        all_input_list.append(new_list_of_input_list)
+        all_output_list.append(new_list_of_output_list)
+        print("no_in_edges_model_idx: {}".format(no_in_edges_model_idx))
+        for i in range(len(model_names)):
+            if len(all_output_list[-1][i]) == 0 and len(all_output_list) > 1:
+                print("Model {}: {} did not regenerate, keeping previous outputs.".format(i, model_names[i]))
+                all_output_list[-1][i] = all_output_list[-2][i] # keep the previous outputs if no regeneration happened
 
-    # you can generate with a single model using distributed_generation too
-    # just pass [model], [input_list], [gpu_id] to it
-    final_output_list = distributed_generation.distributed_generation(
-        [best_model_name],
-        [final_input_list],
-        [gpu_ids[0]] # just use the first GPU for the final generation
-    )[0] # get the only output list, [0] is important because the output is list of list and [0] takes the list out
 
-    # evaluate the final outputs
-    test_scores = eval.get_scores(task, task_type, "test", final_output_list)
-    avg_test_score = sum(test_scores) / len(test_scores)
-    print("Final test {} score of the approach: {}".format(task, avg_test_score))
+
+
+#####################################
+
+    test_scores_dict = {}
+
+    for i in range(len(model_names)):
+        print("Final outputs from model {}: {}".format(model_names[i], all_output_list[-1][i][:3])) # print first 3 outputs as a sample
+        cur_test_outputs = all_output_list[-1][i]
+        cur_test_score = eval.get_scores(task, task_type, "test", cur_test_outputs) #
+        cur_avg_test_score = sum(cur_test_score) / len(cur_test_score)
+        test_scores_dict[model_names[i]] = cur_avg_test_score
+        if model_names[i] == best_model_name:
+            final_output_list = cur_test_outputs
+            test_scores = cur_test_score
+            avg_test_score = cur_avg_test_score
+        print("Model: {}, final test {} score: {}".format(model_names[i], task, cur_avg_test_score))
+
 
     # 5. save the logs
     # please follow the exact same format here
     experiment_logs = {
         "task": task,
         "task_type": task_type,
-        "method": "your_approach_name", # CHANGE!
+        "method": "text_structure", 
         "model_names": model_names,
         "hyperparameters": hyperparameters,
         "avg_test_score": avg_test_score,
@@ -228,7 +253,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # save to a json file
     # file name with task, number of models, and avg_test_score with 4 decimal places
     # CHANGE! your method name
-    log_filename = "logs/{}_{}_{}_your_approach_name.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "logs/{}_{}_{}_text_structure.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 
