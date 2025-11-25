@@ -176,7 +176,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - note: 
     - In each round, the model only sees the outputs from the immediately preceding round, not the entire conversation history.
     - The `structure_matrix` initialized for built-in options is bi-directional by default. However, when using `other`, the matrix does not have to be bi-directional and allows for custom uni-directional flows.
-    - If a model does not have in-edges in the `structure_matrix`, then it will keep its output from the last turn.
+    - If a model does not have in-edges according to the `structure_matrix`, then it will keep its output from the last turn.
     - The models are evaluated on the dev set first without any interaction, where the best model will be selected to compute the final score on the test set after collaboration.
 #### Text-level: Multiagent Finetuning
 - file: `text_multiagent_finetuning.py`
