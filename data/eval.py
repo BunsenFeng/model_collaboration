@@ -6,6 +6,8 @@ import json
 import torch
 import random
 import string
+import subprocess
+import tempfile
 from tqdm import tqdm
 from torch import _dynamo
 from tenacity import retry, wait_random_exponential, stop_after_attempt
@@ -30,6 +32,8 @@ GENERAL_VERIFIER_MODEL_NAME = "TIGER-Lab/general-verifier"
 GENERAL_VERIFIER_MAX_TOKENS = 1024
 GENERAL_VERIFIER_TEMPERATURE = 0.0
 GENERAL_VERIFIER_BATCH_SIZE = 32
+
+CODE_EXECUTION_TIMEOUT = 10  # seconds per test case
 
 def normalize_answer(s: str) -> str:
     """
@@ -222,6 +226,109 @@ def is_noncompliance(text, category):
         return True
     return False
 
+
+def extract_code_block(response: str, language: str = "python") -> str:
+    """
+    Extracts code from a model response. Tries to find code blocks first,
+    then falls back to the entire response.
+    """
+    # Try to find fenced code blocks with language tag
+    pattern = rf"```(?:{language})?\s*\n(.*?)```"
+    matches = re.findall(pattern, response, flags=re.DOTALL | re.IGNORECASE)
+    if matches:
+        return matches[-1].strip()
+    
+    # Try to find any fenced code block
+    pattern = r"```\s*\n?(.*?)```"
+    matches = re.findall(pattern, response, flags=re.DOTALL)
+    if matches:
+        return matches[-1].strip()
+    
+    # Fall back to the entire response
+    return response.strip()
+
+def execute_code_safely(code: str, test_input: str, timeout: int = CODE_EXECUTION_TIMEOUT, language: str = "python") -> tuple:
+    """
+    Safely executes code with given input and returns (success, output, error).
+    
+    Args:
+        code: The code to execute
+        test_input: Input to provide via stdin
+        timeout: Maximum execution time in seconds
+        language: Programming language (currently supports "python")
+    
+    Returns:
+        tuple: (success: bool, stdout: str, stderr: str)
+    """
+    if language != "python":
+        return False, "", f"Language {language} not supported"
+    
+    temp_file = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(code)
+            temp_file = f.name
+        
+        result = subprocess.run(
+            ['python', temp_file],
+            input=test_input,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+        return True, result.stdout, result.stderr
+    except subprocess.TimeoutExpired:
+        return False, "", "Timeout"
+    except Exception as e:
+        return False, "", str(e)
+    finally:
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+
+def extract_function_name(code: str) -> str:
+    """
+    Extracts the first function name from the code.
+    """
+    match = re.search(r"def\s+(\w+)\s*\(", code)
+    if match:
+        return match.group(1)
+    return None
+
+def evaluate_code_solution(code: str, test_code: str, timeout: int = CODE_EXECUTION_TIMEOUT, language: str = "python") -> float:
+    """
+    Evaluates code against test assertions and returns 1.0 if all pass, 0.0 otherwise.
+    
+    Args:
+        code: The code solution to evaluate
+        test_code: A string containing test code with assertions that call `candidate` function
+        timeout: Timeout for execution in seconds
+        language: Programming language
+    
+    Returns:
+        float: 1.0 if all assertions pass, 0.0 otherwise
+    """
+    if not test_code:
+        return 0.0
+    
+    # Extract the function name from the solution and create an alias to `candidate`
+    func_name = extract_function_name(code)
+    if func_name is None:
+        return 0.0
+    
+    # Combine solution code with test code
+    # Add alias: candidate = <function_name>
+    combined_code = f"{code}\n\ncandidate = {func_name}\n\n{test_code}\n\ncheck(candidate)\n"
+    
+    success, stdout, stderr = execute_code_safely(combined_code, "", timeout, language)
+    
+    # If execution succeeded without assertion errors, all tests passed
+    if success and "AssertionError" not in stderr:
+        return 1.0
+    return 0.0
+
 def load_reward_model(gpu_id=0, model_name="Skywork/Skywork-Reward-Llama-3.1-8B-v0.2"):
     device = "cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu"
     global rm, rm_tokenizer
@@ -291,6 +398,11 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
     elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
         for item in data:
             input_list.append(item["input"])
+    elif task_type == "coding":
+        for item in data:
+            # Support various field names for the problem description
+            problem = item.get("input", item.get("question", item.get("prompt", "")))
+            input_list.append(problem)
     else:
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
@@ -366,6 +478,14 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
     if task_type == "text_generation" and split != "dev":
         # no need to eval
         return [0] * len(outputs)
+    
+    if task_type == "coding":
+        for item, output in zip(data, outputs):
+            test_code = item.get("test", item.get("test_code", ""))
+            language = item.get("language", "python")
+            code = extract_code_block(output, language)
+            score = evaluate_code_solution(code, test_code, CODE_EXECUTION_TIMEOUT, language)
+            scores.append(score)
 
     if task == "culturebench":
         question_to_indices = {}
