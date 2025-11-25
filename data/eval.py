@@ -327,5 +327,21 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
     if task_type == "text_generation" and split != "dev":
         # no need to eval
         return [0] * len(outputs)
+
+    if task == "culturebench":
+        question_to_indices = {}
+        for idx, item in enumerate(data):
+            qid = item.get("question_id")
+            if qid is None:
+                continue
+            if qid not in question_to_indices:
+                question_to_indices[qid] = []
+            question_to_indices[qid].append(idx)
+
+        for indices in question_to_indices.values():
+            group_scores = [scores[i] for i in indices]
+            group_value = 1.0 if all(score == 1.0 for score in group_scores) else 0.0
+            for i in indices:
+                scores[i] = group_value
     
     return scores
