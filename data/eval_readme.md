@@ -10,6 +10,8 @@ You can find the code in `data/eval.py`. The evaluation logic mainly involves tw
 
 `get_scores(task, task_type, split, outputs)`: given `task`, `task_type`, `split`, and the generated `outputs`, return the evaluation scores as a list.
 
+The `general_verifier` task type leverages the [TIGER-Lab/general-verifier 1.5B LLM](https://huggingface.co/TIGER-Lab/general-verifier) to assess whether a generated answer matches the ground truth. It is compatible with the following task types: `multiple_choice`, `exact_match`, and `f1_match`.
+
 Then, here are all the combinations of `(task, task_type)` that I have implemented for evaluation so far.
 
 ```
