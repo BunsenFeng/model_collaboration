@@ -34,4 +34,4 @@ Then, here are all the combinations of `(task, task_type)` that I have implement
 
 Additionally, there is a `text_generation` task type, for people that just want to generate text without evaluation or do their custom evaluation elsewhere. You can try `(wildchat, text_generation)` for that. Essentially any data JSON file with an `input` field can be used with this task type.
 
-Your job in phase 1 is to try **every single one of them** to see if the evaluation logic is correct. You could use the `text_multiagent_refine` approach to generate the outputs, no need to go through all approaches (others will). Thank you! Consult with me and open a pull request for any changes to `data/eval.py` or `data/` in general if you find any issues.
+Your job in phase 1 is to try **every single one of them** to see if the evaluation logic is correct. You could use the `text_multiagent_refine` approach to generate the outputs, no need to go through all approaches (others will). Thank you! Consult with me and open a pull request for any changes to `data/eval.py` or `data/` in general if you find any issues. 
