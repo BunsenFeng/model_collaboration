@@ -36,6 +36,9 @@ Then, here are all the combinations of `(task, task_type)` that I have implement
 (tablemwp_free_text, exact_match)
 (mbpp, coding)
 (humaneval, coding)
+(medmcqa, multiple_choice)
+(medqa, multiple_choice)
+(pubmedqa, exact_match)
 ```
 
 Additionally, there is a `text_generation` task type, for people that just want to generate text without evaluation or do their custom evaluation elsewhere. You can try `(wildchat, text_generation)` for that. Essentially any data JSON file with an `input` field can be used with this task type.
