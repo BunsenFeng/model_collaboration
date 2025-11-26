@@ -133,7 +133,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         f.write("base_model: " + model_names[0] + "\n")
         f.write("dtype: float16\n")
 
-    os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_ids[0]))
+    os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path)
+    # os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_ids[0]))
     
     # evaluate it on the test set
     test_input_list = eval.prepare_inputs(task, task_type, "test")

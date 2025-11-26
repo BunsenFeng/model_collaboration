@@ -16,6 +16,21 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoMode
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
+VERIFIER_PROMPT_TEMPLATE = (
+    "User: ### Question: {question}\n\n"
+    "### Ground Truth Answer: {ground_truth}\n\n"
+    "### Student Answer: {student_answer}\n\n"
+    "For the above question, please verify if the student's answer is equivalent to the ground truth answer.\n"
+    "Do not solve the question by yourself; just check if the student's answer is equivalent to the ground truth answer.\n"
+    "If the student's answer is correct, output \"Final Decision: Yes\". If the student's answer is incorrect, output \"Final Decision: No\". Assistant:"
+)
+
+VERIFIER_PASS_TAG = "Final Decision: Yes"
+GENERAL_VERIFIER_MODEL_NAME = "TIGER-Lab/general-verifier"
+GENERAL_VERIFIER_MAX_TOKENS = 1024
+GENERAL_VERIFIER_TEMPERATURE = 0.0
+GENERAL_VERIFIER_BATCH_SIZE = 32
+
 def normalize_answer(s: str) -> str:
     """
     Lowercases text and removes punctuation, articles, and extra whitespace.
@@ -50,6 +65,12 @@ def extract_answer_text(response: str) -> str:
             return candidate
 
     fallback_patterns = [
+        r"Final Answer:\s*((?:[^<]|<[^<])*?)\n",
+        r"Final Answer is:\s*((?:[^<]|<[^<])*?)\n",
+        r"The answer is:\s*((?:[^<]|<[^<])*?)\n",
+        r"Answer:\s*((?:[^<]|<[^<])*?)\n",
+        r"Solution:\s*((?:[^<]|<[^<])*?)\n",
+        r"The solution is:\s*((?:[^<]|<[^<])*?)\n",
         r"\bthe answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
         r"\bfinal answer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
         r"\banswer\s*(?:is|=)?\s*[:\-]?\s*(.+)",
@@ -252,6 +273,21 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
         for item in data:
             input_with_instruction = f"{item['input'].rstrip()}\n\nPlease provide the final, direct answer wrapped exactly as \\box{{ANSWER}}"
             input_list.append(input_with_instruction)
+    elif task_type == "general_verifier":
+        for item in data:
+            if "input" in item:
+                input_list.append(item["input"])
+            elif "question" in item:
+                if "choices" in item:
+                    options = []
+                    for option in item["choices"].keys():
+                        options.append(item["choices"][option])
+                    formatted_question = format_mcq_question(item["question"], options)
+                    input_list.append(formatted_question)
+                else:
+                    input_list.append(item["question"])
+            else:
+                input_list.append(item.get("prompt", ""))
     elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
         for item in data:
             input_list.append(item["input"])
@@ -268,6 +304,9 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
         data = data[:int(len(data)*ratio)]
 
     scores = []
+
+    if task_type == "general_verifier":
+        return general_verifier_score(task, split, outputs, ratio)
 
     if task_type == "multiple_choice":
         assert "choices" in data[0], "Are you sure this is a multiple choice task?"
@@ -327,5 +366,116 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
     if task_type == "text_generation" and split != "dev":
         # no need to eval
         return [0] * len(outputs)
+
+    if task == "culturebench":
+        question_to_indices = {}
+        for idx, item in enumerate(data):
+            qid = item.get("question_id")
+            if qid is None:
+                continue
+            if qid not in question_to_indices:
+                question_to_indices[qid] = []
+            question_to_indices[qid].append(idx)
+
+        for indices in question_to_indices.values():
+            group_scores = [scores[i] for i in indices]
+            group_value = 1.0 if all(score == 1.0 for score in group_scores) else 0.0
+            for i in indices:
+                scores[i] = group_value
     
+    return scores
+
+def general_verifier_score(task, split, outputs, ratio=1.0):
+    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
+        dataset = json.load(f)[split]
+
+    max_examples = min(len(outputs), int(len(dataset) * ratio))
+    dataset = dataset[:max_examples]
+    outputs = outputs[:max_examples]
+
+    if max_examples == 0:
+        return []
+
+    def extract_question_text(item):
+        if "choices" in item and "question" in item:
+            options = []
+            for option in item["choices"].keys():
+                options.append(item["choices"][option])
+            return format_mcq_question(item["question"], options)
+        if "input" in item and item["input"] is not None:
+            return item["input"]
+        if "question" in item and item["question"] is not None:
+            return item["question"]
+        return item.get("prompt", "") or ""
+
+    def extract_ground_truth(item):
+        if "output" in item and item["output"] is not None:
+            return item["output"]
+        if "answer" in item and item["answer"] is not None:
+            answer_value = item["answer"]
+            if isinstance(answer_value, str) and "choices" in item and answer_value in item["choices"]:
+                return item["choices"][answer_value]
+            if isinstance(answer_value, list):
+                return ", ".join(str(ans) for ans in answer_value)
+            return str(answer_value)
+        return ""
+
+    def escape_braces(text):
+        if text is None:
+            return ""
+        return text.replace("{", "{{").replace("}", "}}")
+
+    prompts = []
+    for item, student_answer in zip(dataset, outputs):
+        question_text = str(extract_question_text(item))
+        ground_truth_text = str(extract_ground_truth(item))
+        student_answer_text = student_answer if isinstance(student_answer, str) else str(student_answer)
+        if not student_answer_text.strip():
+            student_answer_text = "No answer provided."
+        else:
+            student_answer_text = extract_answer_text(student_answer_text)
+
+        prompt = VERIFIER_PROMPT_TEMPLATE.format(
+            question=escape_braces(question_text),
+            ground_truth=escape_braces(ground_truth_text),
+            student_answer=escape_braces(student_answer_text),
+        )
+        prompts.append(prompt)
+
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
+
+    model = AutoModelForCausalLM.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, use_fast=True)
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
+    tokenizer.pad_token_id = tokenizer.eos_token_id
+
+    generated_texts = []
+    batch_size = GENERAL_VERIFIER_BATCH_SIZE
+    for i in tqdm(range(0, len(prompts), batch_size), desc="Verifying"):
+        batch_prompts = prompts[i:i+batch_size]
+        inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(model.device)
+        batch_outputs = model.generate(
+            **inputs,
+            max_new_tokens=1024,
+            temperature=0.0,
+            do_sample=False
+        )
+        generated_tokens = batch_outputs[:, inputs.input_ids.shape[1]:]
+        decoded_outputs = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        generated_texts.extend(decoded_outputs)
+
+    if len(generated_texts) != len(prompts):
+        raise RuntimeError(
+            f"General verifier returned {len(generated_texts)} responses for {len(prompts)} prompts."
+        )
+
+    scores = []
+    for text in generated_texts:
+        if VERIFIER_PASS_TAG in text:
+            scores.append(1.0)
+        else:
+            scores.append(0.0)
+
     return scores
