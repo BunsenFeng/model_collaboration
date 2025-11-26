@@ -34,6 +34,9 @@ Then, here are all the combinations of `(task, task_type)` that I have implement
 (human_interest, reward_model) # the three instruction following datasets are all evaluated by a reward model now. should we change to something else? up to you
 (tablemwp_multiple_choice, multiple_choice)
 (tablemwp_free_text, exact_match)
+(gpqa_diamond, multiple_choice)
+(gpqa_extended, multiple_choice)
+(gpqa_main, multiple_choice)
 (medmcqa, multiple_choice)
 (medqa, multiple_choice)
 (pubmedqa, exact_match)
