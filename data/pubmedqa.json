@@ -1,8 +1,7 @@
 {
   "name": "pubmedqa",
   "task_type": "exact_match",
-  "dev": [],
-  "test": [
+  "dev": [
     {
       "id": 0,
       "pubid": 21645374,
@@ -3002,7 +3001,9 @@
       "pubid": 10593212,
       "input": "Question: Does loss of consciousness predict neuropsychological decrements after concussion?\n\nContext: To investigate the importance of loss of consciousness (LOC) in predicting neuropsychological test performance in a large sample of patients with head injury., Retrospective comparison of neuropsychological test results for patients who suffered traumatic LOC, no LOC, or uncertain LOC., Allegheny General Hospital, Pittsburgh, Pennsylvania., The total number of patients included in this study was 383., Neuropsychological test measures, including the visual reproduction, digit span, and logical memory subtests of the Wechsler memory scale (revised), the Trail Making test, Wisconsin Card Sorting test, Hopkins Verbal Learning test, Controlled Oral Word Association, and the Galveston Orientation and Amnesia test (GOAT)., No significant differences were found between the LOC, no LOC, or uncertain LOC groups for any of the neuropsychological measures used. Patients who had experienced traumatic LOC did not perform more poorly on neuropsychological testing than those with no LOC or uncertain LOC. All three groups demonstrated mildly decreased performance on formal tests of speed of information processing, attentional process, and memory.\n\nAnswer 'yes', 'no', or 'maybe'.",
       "output": "no"
-    },
+    }
+  ],
+  "test": [
     {
       "id": 500,
       "pubid": 12630042,
