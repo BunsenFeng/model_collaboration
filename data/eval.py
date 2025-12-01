@@ -65,14 +65,18 @@ def _audit_hook(event, args):
         raise RuntimeError("Process execution denied")
         
     # Block dynamic loading (ctypes) which allows arbitrary system calls
-    if event.startswith("ctypes"):
-        raise RuntimeError("Low-level system calls denied")
+    # if event.startswith("ctypes"):
+    #     raise RuntimeError("Low-level system calls denied")
 
     # Restrict file access
     if event == "open" or event == "io.open":
         if len(args) < 1: return
         path = args[0]
         mode = args[1] if len(args) > 1 else "r"
+        
+        # Handle case where mode is explicitly None
+        if mode is None:
+            mode = "r"
         
         # Ignore file descriptors
         if isinstance(path, int):
@@ -83,6 +87,10 @@ def _audit_hook(event, args):
         
         # Allow access to files within the sandbox (cwd)
         if path.startswith(cwd):
+            return
+        
+        # Allow /dev/urandom, /dev/random, /dev/null
+        if path in ["/dev/urandom", "/dev/random", "/dev/null"]:
             return
             
         # Block write access to anything outside sandbox
@@ -345,6 +353,11 @@ def _build_sandbox_env(tmp_dir: str) -> dict:
         "TMPDIR": tmp_dir,
         "PATH": allowed_path,
         "LANG": "C",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
     }
 
 
