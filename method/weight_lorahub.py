@@ -221,7 +221,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # =========================================================================
     # Run inference on the full test set using the optimized model.
     print("> Evaluating optimized model on Test Set ...")
-    test_input_list = eval.prepare_inputs(task, task_type, "test")[:10]
+    test_input_list = eval.prepare_inputs(task, task_type, "test")
     
     test_outputs = inference_on_test_set(
         model=model,
