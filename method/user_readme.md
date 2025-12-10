@@ -292,7 +292,5 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - `max_inference_step`, default 20: the maximum number of iterations (budget) for the optimizer. Since generation is performed at every step, keep this number reasonable.
     - `lora_weight_bound`, default 1.5: the boundary for the search space of the adapter weights (e.g., search within [-1.5, 1.5]).
     - `regular_coef`, default 0.05: the coefficient for L1 regularization to prevent weights from becoming too large.
-    - `max_new_tokens`, default 256: the maximum number of tokens to generate during inference.
-    - `batch_size`, default 4: the batch size used for the final inference on the full test set.
 - warning: **All LoRA adapters must share the same base model architecture.** This implementation optimizes based on **generation accuracy**, not likelihood loss. This ensures the metric aligns with the final goal.
 - note to tester: recommended set of `model_names`: ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].

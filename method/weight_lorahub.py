@@ -28,9 +28,9 @@ def load_base_model_and_lora_modules(lora_module_list: List[str], model_name_or_
     )
     
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, trust_remote_code=True)
+    tokenizer.padding_side = 'left' 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-        tokenizer.padding_side = 'left' 
 
     try:
         peft_model = PeftModel.from_pretrained(base_model, lora_module_list[0])
@@ -148,7 +148,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     max_inference_step = hyperparameters.get("max_inference_step", 20)
     lora_weight_bound = hyperparameters.get("lora_weight_bound", 1.5)
     regular_coef = hyperparameters.get("regular_coef", 0.05)
-    max_new_tokens = hyperparameters.get("max_new_tokens", 256)
+    max_response_length = hyperparameters.get("max_response_length", 256)
     test_batch_size = hyperparameters.get("batch_size", 4) 
     if test_batch_size is None: test_batch_size = 4
 
@@ -174,7 +174,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         get_score_by_generation, 
         model=model, tokenizer=tokenizer, cache=cache, 
         input_texts=dev_input_list, task=task, task_type=task_type, 
-        device=device, max_new_tokens=max_new_tokens, regular_coef=regular_coef
+        device=device, max_new_tokens=max_response_length, regular_coef=regular_coef
     )
 
     instrum = ng.p.Array(
@@ -229,7 +229,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         input_texts=test_input_list,
         batch_size=test_batch_size,
         device=device,
-        max_new_tokens=max_new_tokens
+        max_new_tokens=max_response_length
     )
 
     # Score the results
