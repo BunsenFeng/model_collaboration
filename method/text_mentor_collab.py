@@ -2,6 +2,20 @@ import json
 from data import eval
 from utils.mentor_collab import MentorCollab
 
+MENTOR_COLLAB_TRAIN_SUPPORT_MODELS = [
+    "Qwen/Qwen3-1.7B",
+    "Qwen/Qwen3-8B-Base",
+    "meta-llama/Llama-3.1-8B",
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "google/gemma-3-4b-it",
+    "google/gemma-3-4b-pt"
+]
+
+TASK_TYPES = [
+    "Math",
+    "General"
+]
+
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     generator = hyperparameters.get("generator")
     mentor = hyperparameters.get("mentor")
@@ -10,12 +24,27 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     decision_proportion = hyperparameters.get("decision_proportion", 0.25)
     patch_size = hyperparameters.get("patch_size", 16)
     max_new_tokens = hyperparameters.get("max_response_length")
-    
+    task = hyperparameters.get("task", "General")
     mode = hyperparameters.get("mode", "free")
+    mlp_threshold = hyperparameters.get("mlp_threshold", 0.5)
+
     if mode == "train":
-        raise NotImplementedError("Training-based mode is not implemented yet.")
+        if generator not in MENTOR_COLLAB_TRAIN_SUPPORT_MODELS:
+            raise NotImplementedError("Generator model {} is not supported for training-based mode.".format(generator))
+    if task not in TASK_TYPES:
+        raise NotImplementedError("Task type {} is not supported.".format(task))
     
-    mentor_collab = MentorCollab(generator, mentor, generator_devices, mentor_devices, decision_proportion, patch_size)
+    mentor_collab = MentorCollab(
+        generator=generator, 
+        mentor=mentor, 
+        generator_devices=generator_devices, 
+        mentor_devices=mentor_devices, 
+        mode=mode,
+        decision_proportion=decision_proportion, 
+        patch_size=patch_size,
+        task=task,
+        mlp_threshold=mlp_threshold
+    )
     test_input_list = eval.prepare_inputs(task, task_type, "test")
     outputs = []
     for input in test_input_list:
@@ -24,7 +53,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     test_scores = eval.get_scores(task, task_type, "test", outputs)
     avg_test_scores = sum(test_scores) / len(test_scores)
-    print("Final test {} score after logit fusion: {}".format(task, avg_test_scores))
+    print("Final test {} score after mentorcollab: {}".format(task, avg_test_scores))
     
     experiment_logs = {
         "task": task,
