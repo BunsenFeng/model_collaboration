@@ -5,7 +5,7 @@ from method import distributed_generation
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # method-specific hyperparameters
-    rounds = hyperparameters.get("round", 1)
+    rounds = hyperparameters.get("round", 3)
 
     # selecting a model as the final summarizer based on performance on the dev set
     dev_input_list = eval.prepare_inputs(task, task_type, "dev")
