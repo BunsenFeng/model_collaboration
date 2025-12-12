@@ -13,7 +13,7 @@ TOP_P = None
 BATCH_SIZE = None
 BIG_MODEL_MODE = None
 
-def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size, big_model_mode):
+def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size, big_model_mode=False):
     global MAX_RESPONSE_LENGTH, TEMPERATURE, TOP_P, BATCH_SIZE, BIG_MODEL_MODE
     MAX_RESPONSE_LENGTH = max_response_length
     TEMPERATURE = temperature
