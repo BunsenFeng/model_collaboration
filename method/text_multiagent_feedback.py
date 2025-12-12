@@ -23,7 +23,7 @@ def refine_based_on_feedback_prompt_generator(input, output, feedbacks):
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # method-specific hyperparameters
-    rounds = hyperparameters.get("round", 1)
+    rounds = hyperparameters.get("round", 3)
     feedback_count = hyperparameters.get("feedback_count", 3)
 
     # selecting a model as the final summarizer based on performance on the dev set
