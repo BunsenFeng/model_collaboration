@@ -6,6 +6,10 @@ import json
 import torch
 import random
 import string
+import subprocess
+import tempfile
+import sys
+import signal
 from tqdm import tqdm
 from torch import _dynamo
 from tenacity import retry, wait_random_exponential, stop_after_attempt
@@ -13,6 +17,10 @@ from openai import AzureOpenAI
 from collections import Counter
 from multiprocessing import Pool
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification
+
+
+# Disable tokenizer thread parallelism to avoid fork warnings emitted during evaluation.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -30,6 +38,95 @@ GENERAL_VERIFIER_MODEL_NAME = "TIGER-Lab/general-verifier"
 GENERAL_VERIFIER_MAX_TOKENS = 1024
 GENERAL_VERIFIER_TEMPERATURE = 0.0
 GENERAL_VERIFIER_BATCH_SIZE = 32
+
+CODE_EXECUTION_TIMEOUT = 10  # seconds per test case
+CODE_EXECUTION_MEMORY_LIMIT_MB = 512
+CODE_EXECUTION_FSIZE_LIMIT_MB = 5
+CODE_EXECUTION_MAX_PROCESSES = 4
+
+SANDBOX_PREAMBLE = """
+import sys
+import os
+
+# Initialize allowed paths for reading (stdlib, site-packages, etc.)
+ALLOWED_READ_PATHS = [os.path.abspath(p) for p in sys.path if p and os.path.isdir(p)]
+if hasattr(sys, 'prefix'):
+    ALLOWED_READ_PATHS.append(os.path.abspath(sys.prefix))
+if hasattr(sys, 'base_prefix'):
+    ALLOWED_READ_PATHS.append(os.path.abspath(sys.base_prefix))
+
+def _audit_hook(event, args):
+    # Block network access
+    if event.startswith("socket") or event.startswith("remote"):
+        raise RuntimeError("Network access denied")
+    
+    # Block spawning new processes
+    if event.startswith("subprocess") or event in ["os.system", "os.posix_spawn", "os.spawn"]:
+        raise RuntimeError("Process execution denied")
+        
+    # Block dynamic loading (ctypes) which allows arbitrary system calls
+    # if event.startswith("ctypes"):
+    #     raise RuntimeError("Low-level system calls denied")
+
+    # Restrict file access
+    if event == "open" or event == "io.open":
+        if len(args) < 1: return
+        path = args[0]
+        mode = args[1] if len(args) > 1 else "r"
+        
+        # Handle case where mode is explicitly None
+        if mode is None:
+            mode = "r"
+        
+        # Ignore file descriptors
+        if isinstance(path, int):
+            return
+            
+        path = os.path.abspath(str(path))
+        cwd = os.getcwd()
+        
+        # Allow access to files within the sandbox (cwd)
+        if path.startswith(cwd):
+            return
+        
+        # Allow /dev/urandom, /dev/random, /dev/null
+        if path in ["/dev/urandom", "/dev/random", "/dev/null"]:
+            return
+            
+        # Block write access to anything outside sandbox
+        if "w" in mode or "a" in mode or "+" in mode or "x" in mode:
+            raise RuntimeError(f"Write access denied: {path}")
+        
+        # For read access, only allow system paths
+        is_allowed = False
+        for allowed_path in ALLOWED_READ_PATHS:
+            if path.startswith(allowed_path):
+                is_allowed = True
+                break
+        
+        if not is_allowed:
+            raise RuntimeError(f"Read access denied: {path}")
+
+    # Block file deletion and renaming
+    if event in ["os.remove", "os.unlink", "os.rmdir", "os.rename", "shutil.rmtree"]:
+        if len(args) < 1: return
+        path = str(args[0])
+        path = os.path.abspath(path)
+        cwd = os.getcwd()
+        
+        # Allow modification within sandbox
+        if path.startswith(cwd):
+            return
+            
+        raise RuntimeError(f"File modification denied: {path}")
+
+sys.addaudithook(_audit_hook)
+"""
+
+try:
+    import resource
+except ImportError:
+    resource = None
 
 def normalize_answer(s: str) -> str:
     """
@@ -223,6 +320,167 @@ def is_noncompliance(text, category):
         return True
     return False
 
+
+def extract_code_block(response: str, language: str = "python") -> str:
+    """
+    Extracts code from a model response. Tries to find code blocks first,
+    then falls back to the entire response.
+    """
+    # Try to find fenced code blocks with language tag
+    pattern = rf"```(?:{language})?\s*\n(.*?)```"
+    matches = re.findall(pattern, response, flags=re.DOTALL | re.IGNORECASE)
+    if matches:
+        return matches[-1].strip()
+    
+    # Try to find any fenced code block
+    pattern = r"```\s*\n?(.*?)```"
+    matches = re.findall(pattern, response, flags=re.DOTALL)
+    if matches:
+        return matches[-1].strip()
+    
+    # Fall back to the entire response
+    return response.strip()
+
+def _build_sandbox_env(tmp_dir: str) -> dict:
+    """
+    Construct a minimal environment to limit inherited secrets/privileges.
+    """
+    allowed_path = os.environ.get("EVAL_SANDBOX_PATH", "/usr/bin:/bin")
+    return {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONHASHSEED": "0",
+        "HOME": tmp_dir,
+        "TMPDIR": tmp_dir,
+        "PATH": allowed_path,
+        "LANG": "C",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+    }
+
+
+def _build_preexec_fn(timeout: int):
+    """
+    Returns a callable that tightens OS-level resource limits before exec.
+    """
+    if resource is None or os.name != "posix":
+        return None
+
+    def _set_limits():
+        # Limit CPU time
+        cpu_time = max(1, timeout)
+        resource.setrlimit(resource.RLIMIT_CPU, (cpu_time, cpu_time + 1))
+
+        # Limit memory (address space)
+        memory_bytes = CODE_EXECUTION_MEMORY_LIMIT_MB * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_AS, (memory_bytes, memory_bytes))
+
+        # Limit file sizes and number of files/processes
+        file_bytes = CODE_EXECUTION_FSIZE_LIMIT_MB * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_FSIZE, (file_bytes, file_bytes))
+        resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
+        resource.setrlimit(resource.RLIMIT_NPROC, (CODE_EXECUTION_MAX_PROCESSES, CODE_EXECUTION_MAX_PROCESSES))
+        resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+
+        # Ensure new session and restrictive umask
+        os.setsid()
+        os.umask(0o077)
+
+        # Reset potentially ignored signals so limits take effect
+        signal.signal(signal.SIGXCPU, signal.SIG_DFL)
+        signal.signal(signal.SIGXFSZ, signal.SIG_DFL)
+
+    return _set_limits
+
+
+def execute_code_safely(code: str, test_input: str, timeout: int = CODE_EXECUTION_TIMEOUT, language: str = "python") -> tuple:
+    """
+    Executes code inside a temporary sandbox with OS-level resource limits.
+    
+    Args:
+        code: The code to execute
+        test_input: Input to provide via stdin
+        timeout: Maximum wall-clock execution time in seconds
+        language: Programming language (currently supports "python")
+    
+    Returns:
+        tuple: (success: bool, stdout: str, stderr: str)
+    """
+    if language != "python":
+        return False, "", f"Language {language} not supported"
+    
+    with tempfile.TemporaryDirectory(prefix="eval_sandbox_") as tmp_dir:
+        temp_file = os.path.join(tmp_dir, "solution.py")
+        with open(temp_file, "w") as f:
+            f.write(SANDBOX_PREAMBLE + "\n" + code)
+
+        cmd = [sys.executable, "-I", temp_file]
+        env = _build_sandbox_env(tmp_dir)
+        preexec_fn = _build_preexec_fn(timeout)
+
+        try:
+            result = subprocess.run(
+                cmd,
+                input=test_input,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=tmp_dir,
+                env=env,
+                preexec_fn=preexec_fn,
+                close_fds=True,
+            )
+            success = result.returncode == 0
+            return success, result.stdout, result.stderr
+        except subprocess.TimeoutExpired:
+            return False, "", "Timeout"
+        except Exception as e:
+            return False, "", str(e)
+
+def extract_function_name(code: str) -> str:
+    """
+    Extracts the first function name from the code.
+    """
+    match = re.search(r"def\s+(\w+)\s*\(", code)
+    if match:
+        return match.group(1)
+    return None
+
+def evaluate_code_solution(code: str, test_code: str, timeout: int = CODE_EXECUTION_TIMEOUT, language: str = "python") -> float:
+    """
+    Evaluates code against test assertions and returns 1.0 if all pass, 0.0 otherwise.
+    
+    Args:
+        code: The code solution to evaluate
+        test_code: A string containing test code with assertions that call `candidate` function
+        timeout: Timeout for execution in seconds
+        language: Programming language
+    
+    Returns:
+        float: 1.0 if all assertions pass, 0.0 otherwise
+    """
+    if not test_code:
+        return 0.0
+    
+    # Extract the function name from the solution and create an alias to `candidate`
+    func_name = extract_function_name(code)
+    if func_name is None:
+        return 0.0
+    
+    # Combine solution code with test code
+    # Add alias: candidate = <function_name>
+    combined_code = f"{code}\n\ncandidate = {func_name}\n\n{test_code}\n\ncheck(candidate)\n"
+    
+    success, stdout, stderr = execute_code_safely(combined_code, "", timeout, language)
+    
+    # If execution succeeded without assertion errors, all tests passed
+    if success and "AssertionError" not in stderr:
+        return 1.0
+    return 0.0
+
 def load_reward_model(gpu_id=0, model_name="Skywork/Skywork-Reward-Llama-3.1-8B-v0.2"):
     device = "cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu"
     global rm, rm_tokenizer
@@ -292,6 +550,11 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
     elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
         for item in data:
             input_list.append(item["input"])
+    elif task_type == "coding":
+        for item in data:
+            # Support various field names for the problem description
+            problem = item.get("input", item.get("question", item.get("prompt", "")))
+            input_list.append(problem)
     else:
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
@@ -382,6 +645,15 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
         # no need to eval
         parsed_outputs = outputs
         scores = [0] * len(outputs)
+    
+    if task_type == "coding":
+        for item, output in zip(data, outputs):
+            test_code = item.get("test", item.get("test_code", ""))
+            language = item.get("language", "python")
+            code = extract_code_block(output, language)
+            score = evaluate_code_solution(code, test_code, CODE_EXECUTION_TIMEOUT, language)
+            scores.append(score)
+            parsed_outputs.append(code)
 
     if task == "culturebench":
         # TODO: this part seems buggy?
