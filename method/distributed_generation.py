@@ -70,6 +70,12 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
             )
         decoded_outputs = tokenizer.batch_decode(outputs[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
         # decoded_outputs = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+
+        # thinking model compatibility
+        for idx in range(len(decoded_outputs)):
+            if "</think>" in decoded_outputs[idx]:
+                decoded_outputs[idx] = decoded_outputs[idx].split("</think>")[-1].strip()
+
         output_list.extend(decoded_outputs)
     del model
     del tokenizer
