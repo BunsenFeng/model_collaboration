@@ -98,7 +98,7 @@ If you are trying to run collaboration with one of the model being too large to 
     - [Self-Refine: Iterative Refinement with Self-Feedback](https://arxiv.org/abs/2303.17651)
     - [Improving Factuality and Reasoning in Language Models through Multiagent Debate](https://arxiv.org/abs/2305.14325)
 - method-specific hyperparameters:
-    - `round_num`, default 3: the number of refinement rounds.
+    - `round`, default 1: the number of refinement rounds.
 - note to tester: just try different LLMs you'd like.
 
 #### Text-level: Multiagent Feedback
@@ -107,7 +107,7 @@ If you are trying to run collaboration with one of the model being too large to 
 - related paper(s):
     - [Don't Hallucinate, Abstain: Identifying LLM Knowledge Gaps via Multi-LLM Collaboration](https://arxiv.org/abs/2402.00367)
 - method-specific hyperparameters:
-    - `round_num`, default 3: the number of feedback rounds.
+    - `round`, default 1: the number of feedback rounds.
     - `feedback_count`, default 3: how many other LLMs to provide feedback to each LLM in each round.
 - note to tester: just try different LLMs you'd like.
 
