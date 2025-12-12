@@ -170,6 +170,7 @@ def parse_model_response_mcq(response_text, options):
         tuple: A tuple containing (chosen_option_letter, chosen_option_text).
                Returns (None, None) if no valid option is found.
     """
+    # TODO: I highly doubt if the parsing is accurate here. For example, when the generation length is 256 and cut off almost every response, but still the parsing give an option every time.
     response_text_lower = response_text.lower().strip()
 
     # Try to find an option letter (e.g., "A", "B", "C")
@@ -252,7 +253,7 @@ def clear_reward_model():
     torch.cuda.empty_cache()
     _dynamo.reset_code_caches()
 
-def prepare_inputs(task, task_type, split, ratio=1.0):
+def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
 
     input_list = []
 
@@ -295,18 +296,26 @@ def prepare_inputs(task, task_type, split, ratio=1.0):
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
 
+    if return_id:
+        id_list = [item['id'] for item in data]
+        return input_list[:int(len(input_list)*ratio)], id_list[:int(len(input_list)*ratio)]
     return input_list[:int(len(input_list)*ratio)]
 
-def get_scores(task, task_type, split, outputs, ratio=1.0):
+def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, id_list=None):
 
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
         data = json.load(f)[split]
         data = data[:int(len(data)*ratio)]
+    if id_list is not None:
+        id_to_index = {d['id']: idx for idx, d in enumerate(data)}
+        data = [data[id_to_index[i]] for i in id_list]
 
     scores = []
+    parsed_outputs = []
 
     if task_type == "general_verifier":
-        return general_verifier_score(task, split, outputs, ratio)
+        parsed_outputs = outputs
+        scores = general_verifier_score(task, split, outputs, ratio, id_list)
 
     if task_type == "multiple_choice":
         assert "choices" in data[0], "Are you sure this is a multiple choice task?"
@@ -315,6 +324,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
             for option in item["choices"].keys():
                 options.append(item["choices"][option])
             chosen_letter, chosen_text = parse_model_response_mcq(output, options)
+            parsed_outputs.append(chosen_letter)
             if chosen_letter is None:
                 scores.append(0.0)
             else:
@@ -326,6 +336,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
         for item, output in zip(data, outputs):
             extracted_output = extract_answer_text(output)
             em_score = calculate_exact_match(extracted_output, item["output"])
+            parsed_outputs.append(extracted_output)
             scores.append(em_score)
     if task_type == "f1_match":
         if task == "popqa":
@@ -340,11 +351,13 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
                     f1_match = calculate_f1_score(extracted_output, option)
                     if f1_match > max_f1_match:
                         max_f1_match = f1_match
+                parsed_outputs.append(extracted_output)
                 scores.append(max_f1_match)
         else:
             for item, output in zip(data, outputs):
                 extracted_output = extract_answer_text(output)
                 f1_score = calculate_f1_score(extracted_output, item["output"])
+                parsed_outputs.append(extracted_output)
                 scores.append(f1_score)
     if task_type == "noncompliance":
         category_list = []
@@ -354,6 +367,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
                 category_list.append(item["category"])
         category_list = category_list[:len(outputs)]
         assert len(category_list) == len(outputs), "Length mismatch between categories and outputs."
+        parsed_outputs = outputs
         for category, output in zip(category_list, outputs):
             if is_noncompliance(output, category):
                 scores.append(1.0)
@@ -361,13 +375,17 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
                 scores.append(0.0)
     if task_type == "reward_model" or task_type == "text_generation" and split == "dev":
         load_reward_model()
+        parsed_outputs = outputs
         scores = reward_model_scores(prepare_inputs(task, task_type, split)[:len(outputs)], outputs)
         clear_reward_model()
     if task_type == "text_generation" and split != "dev":
         # no need to eval
-        return [0] * len(outputs)
+        parsed_outputs = outputs
+        scores = [0] * len(outputs)
 
     if task == "culturebench":
+        # TODO: this part seems buggy?
+        parsed_outputs = outputs
         question_to_indices = {}
         for idx, item in enumerate(data):
             qid = item.get("question_id")
@@ -382,12 +400,16 @@ def get_scores(task, task_type, split, outputs, ratio=1.0):
             group_value = 1.0 if all(score == 1.0 for score in group_scores) else 0.0
             for i in indices:
                 scores[i] = group_value
-    
+    if return_output:
+        return scores, parsed_outputs
     return scores
 
-def general_verifier_score(task, split, outputs, ratio=1.0):
+def general_verifier_score(task, split, outputs, ratio=1.0, id_list=None):
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
         dataset = json.load(f)[split]
+    if id_list is not None:
+        id_to_index = {d['id']: idx for idx, d in enumerate(dataset)}
+        dataset = [dataset[id_to_index[i]] for i in id_list]
 
     max_examples = min(len(outputs), int(len(dataset) * ratio))
     dataset = dataset[:max_examples]

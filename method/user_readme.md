@@ -281,3 +281,47 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
         - `output_log_path`, default `model_collaboration/logs/<task>_<num_experts>_<score>_phatgoose.json`: path to save inference results.
 - warning: **All LoRA experts must be adapters of the same base model.** LoRA target modules must be `nn.Linear` layers. Currently only supports causal language models (AutoModelForCausalLM). len(gpu_ids) can be 1; the method does not require multi-GPU.
 - note to tester: recommended `model_names`: `["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]` (LoRA adapters of Qwen2.5-7B-Instruct). These will be automatically downloaded from HuggingFace Hub. Use `mode: train_and_infer` for simplest testing.
+
+markdown#### Solution-level: AggLM
+- file: `agglm.py`
+- description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.
+- related paper(s):
+    - [The Majority is not always right: RL training for solution aggregation](https://arxiv.org/pdf/2509.06870)
+- method-specific hyperparameters:
+    - `agg_model`, default auto-detect from `model_names[-1]`: the base model to initialize the aggregator. Should ideally have the largest vocabulary size among the solution models. Can be a HuggingFace Hub ID or local path.
+    - `agglm_log_path`, default `logs/agglm`: directory to save training checkpoints, intermediate generation results, and trained LoRA adapters.
+    - **Training hyperparameters:**
+        - `learning_rate`, default 1e-4: learning rate for GRPO optimization.
+        - `weight_decay`, default 1e-5: weight decay for regularization.
+        - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
+        - `max_epoches`, default 10: number of training epochs.
+        - `batch_size`, default 8: batch size for both GRPO training (per_device_train_batch_size and num_generations).
+        - `simple_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
+    - **Generation hyperparameters:**
+        - `max_response_length`, default 512: maximum number of tokens for aggregator output during training and inference.
+        - `temperature`, default 1.0: sampling temperature for both solution generation (during training data preparation) and aggregator generation.
+    - **LoRA configuration (fixed in code):**
+        - rank: 64
+        - lora_alpha: 16
+        - lora_dropout: 0.1
+        - target_modules: `["q_proj", "k_proj", "v_proj", "o_proj"]`
+    - **GRPO-specific settings (fixed in code):**
+        - group size: 8 (number of generations per GRPO update)
+        - KL coefficient: 0.001
+        - max_prompt_length: 4096
+        - warmup_ratio: 0.1
+- workflow:
+    1. **Training data generation**: For each problem in the dev set, sample `simple_size * m` solutions from the `model_names` solution models (m = number of models). Group them into `simple_size` sets of m solutions each.
+    2. **Hard/easy classification**: Evaluate each solution set. A set is "hard" if the majority answer (most frequent) is incorrect; otherwise it's "easy".
+    3. **Balanced mixing**: Keep all hard examples and randomly sample an equal number of easy examples (50% by default) to create the final training dataset. This prevents overfitting to either always trusting majority vote or always ignoring it.
+    4. **RL training**: Train the aggregator using GRPO with binary rewards (1 if aggregated answer matches ground truth, 0 otherwise) and the aggregation prompt template.
+    5. **Inference**: Generate solutions from all solution models on the test set, aggregate them using the trained AggLM, and evaluate performance.
+- warning: 
+    - Training requires caching all dev set generations (can be large). Cached results are saved in `agglm_log_path` and reused across runs.
+    - Multi-GPU training uses only `gpu_ids[0]` for the aggregator; other GPUs can be used for parallel solution generation.
+- note to tester: 
+    - Recommended `model_names` for quick testing: `["Qwen/Qwen3-1.7B", "Qwen/Qwen3-1.7B", "Qwen/Qwen3-1.7B"]` (single model, can aggregate solutions from itself).
+    - Outputs: 
+      - Trained LoRA adapter: `{agglm_log_path}/{model_filename}/adapter_model.safetensors`
+      - Cached generations: `{agglm_log_path}/{model_filename}.json`
+      - Final results: `logs/{task}_{num_models}_{score}_agglm.json`
