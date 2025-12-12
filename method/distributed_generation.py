@@ -1,3 +1,4 @@
+import os
 import torch
 import random
 from tqdm import tqdm
@@ -10,17 +11,28 @@ MAX_RESPONSE_LENGTH = None
 TEMPERATURE = None
 TOP_P = None
 BATCH_SIZE = None
+BIG_MODEL_MODE = None
 
-def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size):
-    global MAX_RESPONSE_LENGTH, TEMPERATURE, TOP_P, BATCH_SIZE
+def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size, big_model_mode):
+    global MAX_RESPONSE_LENGTH, TEMPERATURE, TOP_P, BATCH_SIZE, BIG_MODEL_MODE
     MAX_RESPONSE_LENGTH = max_response_length
     TEMPERATURE = temperature
     TOP_P = top_p
     BATCH_SIZE = batch_size
+    BIG_MODEL_MODE = big_model_mode
 
 def batch_generate_text(model_name, gpu_id, input_list, max_response_length, temperature, top_p, batch_size):
     # Load model and tokenizer
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
+    if not BIG_MODEL_MODE:
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
+    else:
+        # ensure that gpu_id is a list
+        if not isinstance(gpu_id, list):
+            raise ValueError("In BIG_MODEL_MODE, gpu_id should be a list of GPU ids.")
+        # set CUDA_VISIBLE_DEVICES
+        gpu_id_str = ",".join([str(i) for i in gpu_id])
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True)
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         tokenizer.pad_token = tokenizer.eos_token
@@ -80,32 +92,54 @@ def distributed_generation(list_of_model_name, list_of_input_list, list_of_gpu_i
     for i in range(len(list_of_model_name)):
         assert isinstance(list_of_input_list[i], list), "Each element in input lists must be a list"
         # assert len(list_of_input_list[i]) > 0, "Each input list must contain at least one input"
+    
+    if not BIG_MODEL_MODE:
 
-    list_of_output_list = []
+        list_of_output_list = []
 
-    for i in range(0, len(list_of_model_name), len(list_of_gpu_id)):
+        for i in range(0, len(list_of_model_name), len(list_of_gpu_id)):
 
-        generation_args = []
+            generation_args = []
 
-        for j in range(len(list_of_gpu_id)):
-            if i + j < len(list_of_model_name):
-                generation_args.append((
-                    list_of_model_name[i + j],
-                    list_of_gpu_id[j],
-                    list_of_input_list[i + j],
-                    MAX_RESPONSE_LENGTH if max_response_length is None else max_response_length,
-                    TEMPERATURE,
-                    TOP_P,
-                    BATCH_SIZE
-                ))
+            for j in range(len(list_of_gpu_id)):
+                if i + j < len(list_of_model_name):
+                    generation_args.append((
+                        list_of_model_name[i + j],
+                        list_of_gpu_id[j],
+                        list_of_input_list[i + j],
+                        MAX_RESPONSE_LENGTH if max_response_length is None else max_response_length,
+                        TEMPERATURE,
+                        TOP_P,
+                        BATCH_SIZE
+                    ))
+            
+            pool = Pool(len(generation_args))
+            output = pool.starmap(batch_generate_text, generation_args) # size len(generation_args) * any
+            pool.close()
+            pool.join()
+
+            for out in output:
+                list_of_output_list.append(out)
+
+    else:
         
-        pool = Pool(len(generation_args))
-        output = pool.starmap(batch_generate_text, generation_args) # size len(generation_args) * any
-        pool.close()
-        pool.join()
+        list_of_output_list = []
 
-        for out in output:
-            list_of_output_list.append(out)
+        for i in range(len(list_of_model_name)):
+
+            gpu_id = list_of_gpu_id
+
+            output = batch_generate_text(
+                list_of_model_name[i],
+                gpu_id,
+                list_of_input_list[i],
+                MAX_RESPONSE_LENGTH if max_response_length is None else max_response_length,
+                TEMPERATURE,
+                TOP_P,
+                BATCH_SIZE
+            )
+
+            list_of_output_list.append(output)
     
     assert len(list_of_output_list) == len(list_of_model_name), "Output list length mismatch"
     for i in range(len(list_of_output_list)):
@@ -116,7 +150,16 @@ def distributed_generation(list_of_model_name, list_of_input_list, list_of_gpu_i
 def batch_generate_text_with_score(model_name, gpu_id, input_list, max_response_length, temperature, top_p, batch_size):
 
     # Load model and tokenizer
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
+    if not BIG_MODEL_MODE:
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
+    else:
+        # ensure that gpu_id is a list
+        if not isinstance(gpu_id, list):
+            raise ValueError("In BIG_MODEL_MODE, gpu_id should be a list of GPU ids.")
+        # set CUDA_VISIBLE_DEVICES
+        gpu_id_str = ",".join([str(i) for i in gpu_id])
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True)
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         tokenizer.pad_token = tokenizer.eos_token

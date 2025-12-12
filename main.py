@@ -35,7 +35,8 @@ if __name__ == "__main__":
         hyperparameters.get("max_response_length", 512),
         hyperparameters.get("temperature", 0.7),
         hyperparameters.get("top_p", 0.9),
-        hyperparameters.get("batch_size", 32)
+        hyperparameters.get("batch_size", 32),
+        hyperparameters.get("big_model_mode", False)
     )
 
     # execute the method

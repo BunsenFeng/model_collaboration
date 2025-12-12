@@ -25,6 +25,8 @@ Config files look like:
 
 len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, try to use multiple GPUs and ideally len(gpu_ids) == len(model_names). The code will automatically assign models to GPUs in a round-robin manner. Use <10B LMs. These are vibe implementations (and your future implementations will be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 
+If you are trying to run collaboration with one of the model being too large to fit onto a single GPU: add `"big_model_mode": true` to `"hyperparameters"`: it will use all provided GPUs for a single model in rotation. This will only work for some approaches.
+
 #### API-level: Prompt Routing
 - file: `api_prompt_routing.py`
 - description: prompt an LLM to route among the candidate LLMs based on their descriptions. First, evaluate models on the dev set to determine who is best and use it for the routing. Then, given (model descriptions, query), this LLM decides which candidate model (including itself) should be selected. Finally, generation with the selected LLM for each query.
