@@ -198,6 +198,18 @@ If you are trying to run collaboration with one of the model being too large to 
     - Currently supports `task_type` in `["multiple_choice", "exact_match", "f1_match"]`, using the existing `data/eval.py` extraction logic for voting and scoring.
     - Use moderate-sized models and small `iterations` / `rounds` if compute is limited; each iteration runs a full multi-model debate plus SFT.
 
+#### Text-level: Blackboard Multi-Agent System (BBMAS)
+- file: `text_bbmas.py`
+- description: multiple LLMs collaborate through a shared blackboard to solve problems iteratively. Agents take turns contributing to the blackboard by selecting from five action types: (1) propose a solving strategy, (2) execute a solution step, (3) verify existing content, (4) critique and refine existing work, or (5) terminate and finalize the solution. Each agent independently decides which action to take based on the current blackboard state through a two-step process: first selecting an action, then executing it. Agents are scheduled with cooldown periods and idle thresholds to ensure balanced participation. After collaboration concludes (when enough agents vote to terminate or max iterations is reached), all agents vote on the best final conclusion from the termination entries.
+- method-specific hyperparameters:
+    - `max_num_agents_to_act`, default 1: maximum number of agents that can act in each iteration.
+    - `min_num_agents_to_stop`, default 1: minimum number of agents that must request termination to stop the collaboration.
+    - `action_cooldown`, default 3: minimum number of iterations an agent must wait after acting before it can act again.
+    - `agent_idle_threshold`, default 6: if an agent hasn't acted for this many iterations, it is forced to act (overrides cooldown).
+    - `max_iterations`, default 50: maximum number of collaboration iterations before forced termination.
+    - `max_num_retries`, default 3: number of retry attempts when action selection or vote parsing fails.
+- note to tester: try with 2-3 diverse models. Reduce `max_iterations` (e.g., to 20) for faster testing. This method generates many LLM calls per test example (2 calls per agent action + voting calls), so it can be slow. Increase `max_num_agents_to_act` to 2-3 for more parallel collaboration.
+
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
