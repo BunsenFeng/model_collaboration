@@ -17,32 +17,34 @@ TASK_TYPES = [
 ]
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
-    generator = hyperparameters.get("generator")
-    mentor = hyperparameters.get("mentor")
-    generator_devices = hyperparameters.get("generator_devices")
-    mentor_devices = hyperparameters.get("mentor_devices")
+    if len(model_names) != 2 or len(gpu_ids) != 2:
+        raise ValueError("MentorCollab requires exactly 2 models.")
+    generator = model_names[0]
+    mentor = model_names[1]
+    generator_devices = f"cuda:{gpu_ids[0]}"
+    mentor_devices = f"cuda:{gpu_ids[1]}"
     decision_proportion = hyperparameters.get("decision_proportion", 0.25)
     patch_size = hyperparameters.get("patch_size", 16)
     max_new_tokens = hyperparameters.get("max_response_length")
-    task = hyperparameters.get("task", "General")
+    mlp_task = hyperparameters.get("task", "General")  # Task type for MLP model (Math or General)
     mode = hyperparameters.get("mode", "free")
     mlp_threshold = hyperparameters.get("mlp_threshold", 0.5)
 
     if mode == "train":
         if generator not in MENTOR_COLLAB_TRAIN_SUPPORT_MODELS:
             raise NotImplementedError("Generator model {} is not supported for training-based mode.".format(generator))
-    if task not in TASK_TYPES:
-        raise NotImplementedError("Task type {} is not supported.".format(task))
-    
+    if mlp_task not in TASK_TYPES:
+        raise NotImplementedError("MLP task type {} is not supported.".format(mlp_task))
+
     mentor_collab = MentorCollab(
-        generator=generator, 
-        mentor=mentor, 
-        generator_devices=generator_devices, 
-        mentor_devices=mentor_devices, 
+        generator=generator,
+        mentor=mentor,
+        generator_devices=generator_devices,
+        mentor_devices=mentor_devices,
         mode=mode,
-        decision_proportion=decision_proportion, 
+        decision_proportion=decision_proportion,
         patch_size=patch_size,
-        task=task,
+        task=mlp_task,
         mlp_threshold=mlp_threshold
     )
     test_input_list = eval.prepare_inputs(task, task_type, "test")
