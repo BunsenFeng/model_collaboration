@@ -235,11 +235,12 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - [Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch](https://arxiv.org/abs/2311.03099)
     - [TIES-Merging: Resolving Interference When Merging Models](https://arxiv.org/abs/2306.01708)
 - method-specific hyperparameters:
+    - `base_model_name`: the common base that these finetuned models share. For example, `Qwen/Qwen2.5-7B-Instruct` for ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].
     - `mode`, default `average`: `average` or `optimized`.
     - `population`, default 5: the population size for particle swarm optimization (only used in `optimized` mode).
     - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization (only used in `optimized` mode).
     - There are more hyperparameters in `optimized` mode for particle swarm optimization, please refer to `weight_dare_ties.py`. Only change them if you know what you are doing.
-- note to tester: one recommended `model_names`: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "allenai/Llama-3.1-Tulu-3-8B"]. Try another set of your own choices.
+- note to tester: one recommended `model_names`: base_model_name `Qwen/Qwen2.5-7B-Instruct` for ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]. Try another set of your own choices.
 
 #### Weight-level: Model Swarms
 - file: `weight_model_swarms.py`
