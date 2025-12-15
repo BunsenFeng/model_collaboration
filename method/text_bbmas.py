@@ -297,13 +297,11 @@ class Agent:
         self,
         agent_id: int,
         model_name: str,
-        action_cooldown: int = 3,
         agent_idle_threshold: int = 6,
         max_num_retries: int = 3,
     ):
         self.agent_id = agent_id
         self.model_name = model_name
-        self.action_cooldown = action_cooldown
         self.agent_idle_threshold = agent_idle_threshold
         self.max_num_retries = max_num_retries
         self.last_action_step = 0
@@ -314,8 +312,6 @@ class Agent:
     def should_take_action(self, current_iteration: int, blackboard: Blackboard) -> bool:
         if blackboard.get_num_entries() == 0:
             return True
-        if current_iteration - self.last_action_step < self.action_cooldown:
-            return False
         if current_iteration - self.last_action_step > self.agent_idle_threshold:
             return True
         return True
@@ -334,7 +330,6 @@ class MultiAgentSystem:
         gpu_ids: List[int],
         max_num_agents_to_act: int = 1,
         min_num_agents_to_stop: int = 1,
-        action_cooldown: int = 3,
         agent_idle_threshold: int = 6,
         max_iterations: int = 50,
         max_num_retries: int = 3,
@@ -343,7 +338,6 @@ class MultiAgentSystem:
         self.gpu_ids = gpu_ids
         self.max_num_agents_to_act = max_num_agents_to_act
         self.min_num_agents_to_stop = min_num_agents_to_stop
-        self.action_cooldown = action_cooldown
         self.agent_idle_threshold = agent_idle_threshold
         self.max_iterations = max_iterations
         self.max_num_retries = max_num_retries
@@ -359,7 +353,6 @@ class MultiAgentSystem:
             Agent(
                 agent_id=agent_id,
                 model_name=model_name,
-                action_cooldown=self.action_cooldown,
                 agent_idle_threshold=self.agent_idle_threshold,
                 max_num_retries=self.max_num_retries,
             ) for agent_id, model_name in enumerate(self.model_names)
@@ -551,7 +544,7 @@ class MultiAgentSystem:
             agenda = [agent for agent in self.agents if agent.should_take_action(self.current_iteration, self.blackboard)]
             
             if len(agenda) == 0:
-                print("  ℹ No agents in agenda (cooldown active for all agents), stopping...")
+                print("  ℹ No agents in agenda, stopping...")
                 break
             
             # Select acting agents
@@ -682,7 +675,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # Extract method-specific hyperparameters
     max_num_agents_to_act = hyperparameters.get("max_num_agents_to_act", 1)
     min_num_agents_to_stop = hyperparameters.get("min_num_agents_to_stop", 1)
-    action_cooldown = hyperparameters.get("action_cooldown", 0)
     agent_idle_threshold = hyperparameters.get("agent_idle_threshold", 6)
     max_iterations = hyperparameters.get("max_iterations", 10)
     max_num_retries = hyperparameters.get("max_num_retries", 3)
@@ -697,7 +689,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print(f"\n⚙️  Hyperparameters:")
     print(f"   • max_num_agents_to_act: {max_num_agents_to_act}")
     print(f"   • min_num_agents_to_stop: {min_num_agents_to_stop}")
-    print(f"   • action_cooldown: {action_cooldown}")
     print(f"   • agent_idle_threshold: {agent_idle_threshold}")
     print(f"   • max_iterations: {max_iterations}")
     print(f"   • max_num_retries: {max_num_retries}")
@@ -724,7 +715,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             gpu_ids=gpu_ids,
             max_num_agents_to_act=max_num_agents_to_act,
             min_num_agents_to_stop=min_num_agents_to_stop,
-            action_cooldown=action_cooldown,
             agent_idle_threshold=agent_idle_threshold,
             max_iterations=max_iterations,
             max_num_retries=max_num_retries,
