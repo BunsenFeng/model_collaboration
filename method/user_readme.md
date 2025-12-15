@@ -25,6 +25,19 @@ Config files look like:
 
 len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, try to use multiple GPUs and ideally len(gpu_ids) == len(model_names). The code will automatically assign models to GPUs in a round-robin manner. Use <10B LMs. These are vibe implementations (and your future implementations will be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 
+#### API-level: Nudging
+- file: `api_nudging.py`
+- description: training-free guided decoding: when generating every token, if the base model is uncertain (top-1 prob < `gamma`), a small nudging model inserts nudging token(s) (often stylistic/discourse markers) that are used to guide the base model’s generation. Implementation: accepts a full nudging word split on spaces; stop generation when either base or nudging model emits EOS.
+- related paper(s):
+    - [Nudging: Inference-time Alignment of LLMs via Guided Decoding](https://arxiv.org/abs/2410.09300)
+- method-specific hyperparameters:
+    - `gamma` (default 0.4): the top-1 base model probability threshold for nudging.
+    - `base_model_id` (default 0): the index of the base model in `model_names`.
+    - `nudging_model_id` (default 1): the index of the nudging model in `model_names`.
+    - `search_gamma` (default False): whether to search over `gamma` in [0.2, 0.3, 0.4, 0.5] using the dev set.
+    - `search_nudging` (default False): whether to search over `nudging_model_id` in all available nudging model ids (excluding `base_model_id`) using the dev set.
+- Note to tester: support models from different families (tested on `Llama-3.1-Tulu-3-8B` + `Gemma-2-2b-it` / `Llama-3.1-Tulu-3-8B-DPO`) and batch size > 1.
+
 #### API-level: Prompt Routing
 - file: `api_prompt_routing.py`
 - description: prompt an LLM to route among the candidate LLMs based on their descriptions. First, evaluate models on the dev set to determine who is best and use it for the routing. Then, given (model descriptions, query), this LLM decides which candidate model (including itself) should be selected. Finally, generation with the selected LLM for each query.
