@@ -8,11 +8,24 @@ import json
 import os
 import random
 from typing import List, Optional
+import torch
 from dataclasses import dataclass
 from collections import defaultdict
-
+# from method import distributed_generation
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from data import eval
-from method import distributed_generation
+
+
+def hf_gen(model, tokenizer, prompt):
+    chat = [
+        {"role": "user", "content": prompt}
+    ]
+    chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+    inputs = tokenizer([chat_input], return_tensors="pt", padding=True, truncation=True).to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=8192, temperature=1.0)
+    decoded_outputs = tokenizer.batch_decode(outputs[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
+    return decoded_outputs[0]
 
 
 # ============================================================================
@@ -327,6 +340,8 @@ class MultiAgentSystem:
     def __init__(
         self,
         model_names: List[str],
+        shared_model: AutoModelForCausalLM,
+        shared_tokenizer: AutoTokenizer,
         gpu_ids: List[int],
         max_num_agents_to_act: int = 1,
         min_num_agents_to_stop: int = 1,
@@ -335,6 +350,8 @@ class MultiAgentSystem:
         max_num_retries: int = 3,
     ):
         self.model_names = model_names
+        self.shared_model = shared_model
+        self.shared_tokenizer = shared_tokenizer
         self.gpu_ids = gpu_ids
         self.max_num_agents_to_act = max_num_agents_to_act
         self.min_num_agents_to_stop = min_num_agents_to_stop
@@ -397,11 +414,10 @@ class MultiAgentSystem:
     def _extract_action_symbol(self, select_action_response: str) -> Optional[str]:
         """Extract the selected action symbol from the response"""
         for symbol in EXECUTE_ACTION_PROMPTS.keys():
-            choice_phrase = f"I choose to {symbol}."
-            if choice_phrase in select_action_response:
+            if symbol in select_action_response:
                 # Check no other actions are present
                 other_symbols = [s for s in EXECUTE_ACTION_PROMPTS.keys() if s != symbol]
-                if not any(f"I choose to {other_symbol}." in select_action_response for other_symbol in other_symbols):
+                if not any(other_symbol in select_action_response for other_symbol in other_symbols):
                     return symbol
         return None
 
@@ -409,18 +425,18 @@ class MultiAgentSystem:
         """Execute agent action using distributed generation with retry logic"""
         print(f"    → {agent.get_name()} is now selecting and executing an action...")
         select_action_prompt = self._format_select_action_prompt(user_query, context)
-        gpu_id = self.gpu_ids[agent.agent_id % len(self.gpu_ids)]
         
         ret = None
         for retry_idx in range(agent.max_num_retries):
             # LLM call 1: Select action
             print(f"      [Step 1/2] Calling LLM to select action (attempt {retry_idx + 1}/{agent.max_num_retries})...")
-            select_action_responses = distributed_generation.distributed_generation(
-                [agent.model_name],
-                [[select_action_prompt]],
-                [gpu_id]
-            )
-            select_action_response = select_action_responses[0][0]
+            # select_action_responses = distributed_generation.distributed_generation(
+            #     [agent.model_name],
+            #     [[select_action_prompt]],
+            #     [gpu_id]
+            # )
+            # select_action_response = select_action_responses[0][0]
+            select_action_response = hf_gen(self.shared_model, self.shared_tokenizer, select_action_prompt)
             self.total_llm_calls += 1
             
             # Extract action symbol
@@ -441,12 +457,13 @@ class MultiAgentSystem:
             
             # LLM call 2: Execute action
             print(f"      [Step 2/2] Calling LLM to execute the selected action...")
-            action_responses = distributed_generation.distributed_generation(
-                [agent.model_name],
-                [[execute_action_prompt]],
-                [gpu_id]
-            )
-            action_response = action_responses[0][0]
+            # action_responses = distributed_generation.distributed_generation(
+            #     [agent.model_name],
+            #     [[execute_action_prompt]],
+            #     [gpu_id]
+            # )
+            # action_response = action_responses[0][0]
+            action_response = hf_gen(self.shared_model, self.shared_tokenizer, execute_action_prompt)
             self.total_llm_calls += 1
             
             ret = select_action_response + "\n\n---\n\n" + "To execute the action I just selected, I now generate the following content:" + "\n\n" + action_response
@@ -481,12 +498,13 @@ class MultiAgentSystem:
         ret = None
         for retry_idx in range(agent.max_num_retries):
             print(f"      Calling LLM to vote (attempt {retry_idx + 1}/{agent.max_num_retries})...")
-            vote_responses = distributed_generation.distributed_generation(
-                [agent.model_name],
-                [[vote_prompt]],
-                [gpu_id]
-            )
-            vote_response = vote_responses[0][0]
+            # vote_responses = distributed_generation.distributed_generation(
+            #     [agent.model_name],
+            #     [[vote_prompt]],
+            #     [gpu_id]
+            # )
+            # vote_response = vote_responses[0][0]
+            vote_response = hf_gen(self.shared_model, self.shared_tokenizer, vote_prompt)
             self.total_llm_calls += 1
             
             # Try to extract conclusion ID from vote
@@ -693,6 +711,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print(f"   • max_iterations: {max_iterations}")
     print(f"   • max_num_retries: {max_num_retries}")
     print("="*80)
+
+    # Load HF model
+    assert all(model_name == model_names[0] for model_name in model_names), "All model names must be identical"
+    model_name = model_names[0]
+    print(f"Loading model {model_name}...")
+    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
     
     # Get test set inputs
     print(f"\n📥 Loading test set...")
@@ -712,6 +739,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         # Create multi-agent system
         mas = MultiAgentSystem(
             model_names=model_names,
+            shared_model=model,
+            shared_tokenizer=tokenizer,
             gpu_ids=gpu_ids,
             max_num_agents_to_act=max_num_agents_to_act,
             min_num_agents_to_stop=min_num_agents_to_stop,
