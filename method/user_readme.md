@@ -25,6 +25,10 @@ Config files look like:
 
 len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, try to use multiple GPUs and ideally len(gpu_ids) == len(model_names). The code will automatically assign models to GPUs in a round-robin manner. Use <10B LMs. These are vibe implementations (and your future implementations will be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 
+If you are trying to run collaboration with one of the model being too large to fit onto a single GPU: add `"big_model_mode": true` to `"hyperparameters"`: it will use all provided GPUs for a single model in rotation. This will only work for some approaches.
+
+Reasoning LMs are supported! Please use much larger `"max_response_length"` to account for them: we will parse the text after `</think>` as the actual model output.
+
 #### API-level: Nudging
 - file: `api_nudging.py`
 - description: training-free guided decoding: when generating every token, if the base model is uncertain (top-1 prob < `gamma`), a small nudging model inserts nudging token(s) (often stylistic/discourse markers) that are used to guide the base model’s generation. Implementation: accepts a full nudging word split on spaces; stop generation when either base or nudging model emits EOS.
@@ -109,7 +113,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - [Self-Refine: Iterative Refinement with Self-Feedback](https://arxiv.org/abs/2303.17651)
     - [Improving Factuality and Reasoning in Language Models through Multiagent Debate](https://arxiv.org/abs/2305.14325)
 - method-specific hyperparameters:
-    - `round_num`, default 3: the number of refinement rounds.
+    - `round`, default 3: the number of refinement rounds.
 - note to tester: just try different LLMs you'd like.
 
 #### Text-level: Multiagent Feedback
@@ -118,7 +122,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - related paper(s):
     - [Don't Hallucinate, Abstain: Identifying LLM Knowledge Gaps via Multi-LLM Collaboration](https://arxiv.org/abs/2402.00367)
 - method-specific hyperparameters:
-    - `round_num`, default 3: the number of feedback rounds.
+    - `round`, default 3: the number of feedback rounds.
     - `feedback_count`, default 3: how many other LLMs to provide feedback to each LLM in each round.
 - note to tester: just try different LLMs you'd like.
 
@@ -244,11 +248,12 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - [Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch](https://arxiv.org/abs/2311.03099)
     - [TIES-Merging: Resolving Interference When Merging Models](https://arxiv.org/abs/2306.01708)
 - method-specific hyperparameters:
+    - `base_model_name`: the common base that these finetuned models share. For example, `Qwen/Qwen2.5-7B-Instruct` for ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].
     - `mode`, default `average`: `average` or `optimized`.
     - `population`, default 5: the population size for particle swarm optimization (only used in `optimized` mode).
     - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization (only used in `optimized` mode).
     - There are more hyperparameters in `optimized` mode for particle swarm optimization, please refer to `weight_dare_ties.py`. Only change them if you know what you are doing.
-- note to tester: one recommended `model_names`: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "allenai/Llama-3.1-Tulu-3-8B"]. Try another set of your own choices.
+- note to tester: one recommended `model_names`: base_model_name `Qwen/Qwen2.5-7B-Instruct` for ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]. Try another set of your own choices.
 
 #### Weight-level: Model Swarms
 - file: `weight_model_swarms.py`

@@ -13,6 +13,8 @@ boxed.py
 gpt_rejudge.py
 config.slurm
 log.txt
+*.txt
+moco/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
