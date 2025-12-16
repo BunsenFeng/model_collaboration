@@ -323,3 +323,16 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
       - Trained LoRA adapter: `{agglm_log_path}/{model_filename}/adapter_model.safetensors`
       - Cached generations: `{agglm_log_path}/{model_filename}.json`
       - Final results: `logs/{task}_{num_models}_{score}_agglm.json`
+
+#### Weight-level: LoraHub
+- file: `weight_lorahub.py`
+- description: Uses gradient-free optimization (Nevergrad) to learn the best scalar weights to linearly compose multiple LoRA adapters. The optimization minimizes the error (maximizes accuracy) on a few-shot development set using direct generation. **All LoRA adapters must share the same base model architecture.**
+- related paper(s):
+    - [LoRAHub: Efficient Cross-Task Generalization via Dynamic LoRA Composition](https://arxiv.org/abs/2307.13269)
+- method-specific hyperparameters:
+    - `lorahub_dev_samples`, default 5: the number of few-shot examples from the dev set used to calculate the score during the optimization loop.
+    - `max_inference_step`, default 20: the maximum number of iterations (budget) for the optimizer. Since generation is performed at every step, keep this number reasonable.
+    - `lora_weight_bound`, default 1.5: the boundary for the search space of the adapter weights (e.g., search within [-1.5, 1.5]).
+    - `regular_coef`, default 0.05: the coefficient for L1 regularization to prevent weights from becoming too large.
+- warning: **All LoRA adapters must share the same base model architecture.** This implementation optimizes based on **generation accuracy**, not likelihood loss. This ensures the metric aligns with the final goal.
+- note to tester: recommended set of `model_names`: ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].
