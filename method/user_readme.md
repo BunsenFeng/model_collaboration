@@ -282,7 +282,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - warning: **All LoRA experts must be adapters of the same base model.** LoRA target modules must be `nn.Linear` layers. Currently only supports causal language models (AutoModelForCausalLM). len(gpu_ids) can be 1; the method does not require multi-GPU.
 - note to tester: recommended `model_names`: `["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"]` (LoRA adapters of Qwen2.5-7B-Instruct). These will be automatically downloaded from HuggingFace Hub. Use `mode: train_and_infer` for simplest testing.
 
-markdown#### Solution-level: AggLM
+#### Text-level: AggLM
 - file: `agglm.py`
 - description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.
 - related paper(s):
@@ -295,16 +295,14 @@ markdown#### Solution-level: AggLM
         - `weight_decay`, default 1e-5: weight decay for regularization.
         - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
         - `max_epoches`, default 10: number of training epochs.
-        - `batch_size`, default 8: batch size for both GRPO training (per_device_train_batch_size and num_generations).
+        - `train_batch_size`, default 8: batch size for both GRPO training (per_device_train_batch_size and num_generations).
         - `simple_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
-    - **Generation hyperparameters:**
-        - `max_response_length`, default 512: maximum number of tokens for aggregator output during training and inference.
-        - `temperature`, default 1.0: sampling temperature for both solution generation (during training data preparation) and aggregator generation.
+        - `max_response_length`, default 512. If you are using a thinking model, have a large max_response_length of at least 1024.
     - **LoRA configuration (fixed in code):**
-        - rank: 64
-        - lora_alpha: 16
-        - lora_dropout: 0.1
-        - target_modules: `["q_proj", "k_proj", "v_proj", "o_proj"]`
+      - rank: 64
+      - lora_alpha: 16
+      - lora_dropout: 0.1
+      - target_modules: `["q_proj", "k_proj", "v_proj", "o_proj"]`
     - **GRPO-specific settings (fixed in code):**
         - group size: 8 (number of generations per GRPO update)
         - KL coefficient: 0.001

@@ -9,8 +9,8 @@ from transformers import AutoModelForCausalLM
 
 from data import eval
 from datasets import Dataset
-from utils import swarm
 from method import distributed_generation
+from torch import _dynamo
 
 
 def form_aggregator_instruction(_input, generation_list):
@@ -27,7 +27,6 @@ It is possible that any, all, or none of these solutions are correct or complete
 
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
-    # TODO: no validation set, is this an expected behaviour?
     print("The model you are using are:")
     for model_name in model_names:
         print(model_name)
@@ -49,7 +48,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     max_epoches = hyperparameters.get("max_epoches", 10)
     max_response_length = hyperparameters.get("max_response_length", 512)
     temperature = hyperparameters.get("temperature", 1.0)
-    batch_size = hyperparameters.get("batch_size", 8)
+    batch_size = hyperparameters.get("train_batch_size", 8)
     s = hyperparameters.get("simple_size", 2)
     m = len(model_names)
 
@@ -165,7 +164,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             peft_config=peft_config
         )
         trainer.train()
-        trainer.save_model(agglm_log_path + '/' + file_name[:-5])
+        if trainer.accelerator.is_main_process:
+            trainer.save_model(agglm_log_path + '/' + file_name[:-5])
+        trainer.accelerator.wait_for_everyone()
+
+        del trainer
+        del agg_model
+        torch.cuda.empty_cache()
+        _dynamo.reset_code_caches()
 
     test_input_list = eval.prepare_inputs(task, task_type, 'test')
     list_of_test_output_list = distributed_generation.distributed_generation(
@@ -185,6 +191,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     test_scores = eval.get_scores(task, task_type, "test", agg_output_list[0])
 
     avg_test_score = sum(test_scores) / len(test_scores)
+    print('Average test score:', avg_test_score)
 
     # save the logs
     experiment_logs = {

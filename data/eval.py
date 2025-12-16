@@ -170,7 +170,6 @@ def parse_model_response_mcq(response_text, options):
         tuple: A tuple containing (chosen_option_letter, chosen_option_text).
                Returns (None, None) if no valid option is found.
     """
-    # TODO: I highly doubt if the parsing is accurate here. For example, when the generation length is 256 and cut off almost every response, but still the parsing give an option every time.
     response_text_lower = response_text.lower().strip()
 
     # Try to find an option letter (e.g., "A", "B", "C")
@@ -384,8 +383,6 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
         scores = [0] * len(outputs)
 
     if task == "culturebench":
-        # TODO: this part seems buggy?
-        parsed_outputs = outputs
         question_to_indices = {}
         for idx, item in enumerate(data):
             qid = item.get("question_id")
