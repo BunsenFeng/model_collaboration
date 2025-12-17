@@ -62,7 +62,6 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=1,
-        max_seq_length=4096
     )
 
     trainer = DPOTrainer(
