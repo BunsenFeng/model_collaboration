@@ -1,17 +1,53 @@
 {
-    "method": "text_multiagent_refine",
-    "task": "agieval_tiny",
-    "task_type": "multiple_choice",
-    "gpu_ids": [0,1,2],
+    "method": "text_sparta",
+    "task": "gsm8k",
+    "task_type": "exact_match",
+    "gpu_ids": [0],
     "model_names": [
-        "allenai/Llama-3.1-Tulu-3-8B-SFT",
-        "allenai/Llama-3.1-Tulu-3-8B-DPO",
-        "allenai/Llama-3.1-Tulu-3-8B"
+      "llama_sft",
+      "qwen_instruct",
+      "llama_base"
     ],
     "hyperparameters": {
-        "max_response_length": 256,
-        "temperature": 0.7,
-        "top_p": 0.9,
-        "batch_size": 1
+      "max_response_length": 256,
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "batch_size": 1,
+  
+      "iteration": 0,
+      "sparta_iterations": 2,
+      "base_dir": "logs/text_sparta",
+  
+      "num_instructions": 50,
+      "random_match_prob": 0.2,
+      "num_opponents": 2,
+  
+      "initial_k": 10.0,
+      "min_k": 5.0,
+      "window_size": 10,
+      "min_deviation": 0.1,
+      "epsilon": 0.01,
+      "decay_rate": 0.9,
+      "decay_steps": 10,
+      "scaling_factor": 20.0,
+      "score_type": "normal",
+      "freeze_ratings": false,
+  
+      "judge_models": ["llama_sft", "qwen_instruct", "llama_base"],
+      "judge_batch_size": 8,
+      "judge_rounds": 1,
+  
+      "model_name_mapping": {
+        "llama_sft": "allenai/Llama-3.1-Tulu-3-8B-SFT",
+        "qwen_instruct": "Qwen/Qwen2.5-7B-Instruct",
+        "llama_base": "allenai/Llama-3.1-Tulu-3-8B"
+      },
+  
+      "enable_dpo": false,
+      "dpo_model_names": ["llama_sft", "qwen_instruct", "llama_base"],
+      "dpo_batch_size": 1,
+      "dpo_gradient_accumulation_steps": 16,
+      "dpo_learning_rate": 1e-5,
+      "dpo_epoch": 3
     }
-}
+  }
