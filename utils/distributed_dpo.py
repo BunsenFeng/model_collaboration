@@ -14,7 +14,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
 
 def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
-               learning_rate=1e-5, epoch=3):
+               learning_rate=1e-6, epoch=1):
     """
     SFT of a single model on a single GPU.
     model_name: the name of the model you want to DPO.
@@ -26,6 +26,10 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
     torch.cuda.set_device(0)
 
     dataset = load_dataset("json", data_files=dpo_data_path, split="train")
+    # Sparta exports use "instruction" as the prompt field; DPOTrainer expects "prompt" by default.
+    # Rename here so existing preference_pairs.json can be used directly.
+    if "instruction" in dataset.column_names and "prompt" not in dataset.column_names:
+        dataset = dataset.rename_column("instruction", "prompt")
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
@@ -80,7 +84,7 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
     torch.cuda.empty_cache()
 
 def distributed_dpo(list_of_model_names, list_of_dpo_data_paths, list_of_gpu_ids, list_of_output_model_paths,
-                    batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-5, epoch=3):
+                    batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-6, epoch=1):
     """
     Distributed DPO of multiple models on multiple GPUs.
     list_of_model_names: the list of model names you want to DPO.
