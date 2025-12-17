@@ -6,6 +6,7 @@ from collections import Counter
 from peft import LoraConfig
 from trl import GRPOTrainer, GRPOConfig
 from transformers import AutoModelForCausalLM
+import torch.distributed as dist
 
 from data import eval
 from datasets import Dataset
@@ -110,6 +111,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         overall_dataset = hard_dataset + easy_dataset
         overall_dataset = Dataset.from_list(overall_dataset)
 
+        gpu_id_str = ",".join([str(i) for i in gpu_ids])
+        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
+
         training_args = GRPOConfig(
             num_generations=batch_size,
             gradient_accumulation_steps=1,
@@ -148,7 +152,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         agg_model = AutoModelForCausalLM.from_pretrained(
             agg_model,
             torch_dtype=torch.bfloat16,
-            device_map=f"cuda:{gpu_ids[0]}",
             trust_remote_code=True
         )
 
@@ -172,6 +175,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         del agg_model
         torch.cuda.empty_cache()
         _dynamo.reset_code_caches()
+        if dist.is_initialized():
+            dist.barrier()
+            dist.destroy_process_group()
 
     test_input_list = eval.prepare_inputs(task, task_type, 'test')
     list_of_test_output_list = distributed_generation.distributed_generation(
@@ -186,12 +192,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     agg_output_list = distributed_generation.distributed_generation(
         [agglm_log_path + '/' + file_name[:-5]],
         [agg_input_list],
-        [gpu_ids[0]],
+        [gpu_ids[0]]
     )
     test_scores = eval.get_scores(task, task_type, "test", agg_output_list[0])
 
     avg_test_score = sum(test_scores) / len(test_scores)
-    print('Average test score:', avg_test_score)
+    print("Agglm test {} score: {}".format(task, avg_test_score))
 
     # save the logs
     experiment_logs = {

@@ -296,7 +296,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
         - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
         - `max_epoches`, default 10: number of training epochs.
         - `train_batch_size`, default 8: batch size for both GRPO training (per_device_train_batch_size and num_generations).
-        - `simple_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
+        - `sample_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
         - `max_response_length`, default 512. If you are using a thinking model, have a large max_response_length of at least 1024.
     - **LoRA configuration (fixed in code):**
       - rank: 64
