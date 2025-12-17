@@ -1,56 +1,56 @@
 {
-    "method": "text_sparta",
-    "task": "gsm8k",
-    "task_type": "exact_match",
-    "gpu_ids": [0],
-    "model_names": [
-      "qwen_small",
-      "gemma_small",
-      "phi_small"
-    ],
-    "hyperparameters": {
-      "max_response_length": 256,
-      "temperature": 0.7,
-      "top_p": 0.9,
-      "batch_size": 1,
-  
-      "iteration": 0,
-      "sparta_iterations": 2,
-      "base_dir": "logs/text_sparta",
-  
-      "num_instructions": 50,
-      "random_match_prob": 0.2,
-      "num_opponents": 2,
-  
-      "initial_k": 10.0,
-      "min_k": 5.0,
-      "window_size": 10,
-      "min_deviation": 0.1,
-      "epsilon": 0.01,
-      "decay_rate": 0.9,
-      "decay_steps": 10,
-      "scaling_factor": 20.0,
-      "score_type": "normal",
-      "freeze_ratings": false,
-  
-      "judge_models": ["qwen_small", "gemma_small", "phi_small"],
-      "judge_batch_size": 8,
-      "judge_rounds": 1,
-      "judge_max_response_length": 256,
-      "judge_temperature": 1e-5,
-      "judge_top_p": 1.0,
-  
-      "model_name_mapping": {
-        "qwen_small": "Qwen/Qwen2.5-1.5B-Instruct",
-        "gemma_small": "google/gemma-2-2b-it",
-        "phi_small": "microsoft/Phi-3-mini-4k-instruct"
-      },
-  
-      "enable_dpo": true,
-      "dpo_model_names": ["qwen_small", "gemma_small", "phi_small"],
-      "dpo_batch_size": 1,
-      "dpo_gradient_accumulation_steps": 16,
-      "dpo_learning_rate": 1e-5,
-      "dpo_epoch": 3
-    }
+  "method": "text_sparta",
+  "task": "gsm8k",
+  "task_type": "exact_match",
+  "gpu_ids": [0],
+  "model_names": [
+    "llama_sft",
+    "qwen_instruct",
+    "llama_base"
+  ],
+  "hyperparameters": {
+    "max_response_length": 256,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "batch_size": 1,
+
+    "iteration": 0,
+    "sparta_iterations": 2,
+    "base_dir": "logs/text_sparta",
+
+    "num_instructions": 50,
+    "random_match_prob": 0.2,
+    "num_opponents": 2,
+
+    "initial_k": 10.0,
+    "min_k": 5.0,
+    "window_size": 10,
+    "min_deviation": 0.1,
+    "epsilon": 0.01,
+    "decay_rate": 0.9,
+    "decay_steps": 10,
+    "scaling_factor": 20.0,
+    "score_type": "normal",
+    "freeze_ratings": false,
+
+    "judge_models": ["llama_sft", "qwen_instruct", "llama_base"],
+    "judge_batch_size": 8,
+    "judge_rounds": 1,
+    "judge_max_response_length": 256,
+    "judge_temperature": 1e-5,
+    "judge_top_p": 1.0,
+
+    "model_name_mapping": {
+      "llama_sft": "allenai/Llama-3.1-Tulu-3-8B-SFT",
+      "qwen_instruct": "Qwen/Qwen2.5-7B-Instruct",
+      "llama_base": "allenai/Llama-3.1-Tulu-3-8B"
+    },
+
+    "enable_dpo": true,
+    "dpo_model_names": ["llama_sft", "qwen_instruct", "llama_base"],
+    "dpo_batch_size": 1,
+    "dpo_gradient_accumulation_steps": 16,
+    "dpo_learning_rate": 1e-6,
+    "dpo_epoch": 1
   }
+}

@@ -607,7 +607,7 @@ class RatingSystem:
         weighted_score_b = 0.0
 
         for judge_name, judge_info in judges.items():
-            # 若 judge 也是参赛模型，则可按原脚本跳过
+            
             if judge_name in [model_a, model_b]:
                 continue
             if judge_name not in self.model_ratings:
