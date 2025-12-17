@@ -6,7 +6,7 @@ import torch
 import shutil
 import random
 from tqdm import tqdm
-from peft import LoraConfig
+from peft import LoraConfig, AutoPeftModelForCausalLM, PeftConfig
 from multiprocessing import Pool
 from datasets import load_dataset
 from method import distributed_generation
@@ -16,7 +16,7 @@ from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
 def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
                learning_rate=1e-6, epoch=1):
     """
-    SFT of a single model on a single GPU.
+    DPO training of a single model on a single GPU.
     model_name: the name of the model you want to DPO.
     dpo_data_path: the path of the DPO data, should be JSONL with each line {"prompt":..., "chosen":..., "rejected":...}
     gpu_id: the GPU id you want to use.
@@ -32,7 +32,27 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         dataset = dataset.rename_column("instruction", "prompt")
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
     tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
+    
+    # Check if model_name is a LoRA adapter. If so, merge it into base model first.
+    # This ensures we train a new adapter on top of the merged model, rather than
+    # stacking multiple adapters (which can cause issues).
+    try:
+        peft_config_check = PeftConfig.from_pretrained(model_name)
+        is_adapter = True
+    except Exception:
+        is_adapter = False
+    
+    if is_adapter:
+        # Load adapter and merge into base model
+        print(f"[DPO] Detected adapter at {model_name}, merging into base model first...")
+        peft_model = AutoPeftModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
+        model = peft_model.merge_and_unload()
+        del peft_model
+        torch.cuda.empty_cache()
+        print(f"[DPO] Adapter merged successfully.")
+    else:
+        # Load base model directly
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 
     if os.path.exists(output_model_path):
         print(f"Model path {output_model_path} exists. Deleting it to avoid conflicts.")

@@ -1225,6 +1225,16 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     base_start_iter = int(hyperparameters.get("iteration", 0))
     base_dir = hyperparameters.get("base_dir", os.path.join("logs", "text_sparta"))
 
+    # Track current model paths (for adapter handling across iterations)
+    # Initially, use model_name_mapping if provided, otherwise use model_names directly
+    initial_model_name_mapping: Optional[Dict[str, str]] = hyperparameters.get("model_name_mapping")
+    current_model_paths: Dict[str, str] = {}
+    for m in model_names:
+        if initial_model_name_mapping and m in initial_model_name_mapping:
+            current_model_paths[m] = initial_model_name_mapping[m]
+        else:
+            current_model_paths[m] = m
+
     for it in range(sparta_iterations):
         iteration = base_start_iter + it  # the global iteration number of the current iteration
 
@@ -1260,9 +1270,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         scaling_factor = float(hyperparameters.get("scaling_factor", 20.0))
 
         judge_models: List[str] = hyperparameters.get("judge_models", model_names)
-        # Optional mapping from logical model names (e.g., "code_alpaca") to
-        # actual HF/local identifiers used for loading (e.g., "bunsenfeng/code_alpaca").
-        model_name_mapping: Optional[Dict[str, str]] = hyperparameters.get("model_name_mapping")
+        # Use current_model_paths as the model_name_mapping for this iteration
+        # This allows us to use DPO-trained adapters from previous iterations
+        model_name_mapping: Optional[Dict[str, str]] = current_model_paths.copy() if current_model_paths else None
         judge_batch_size = int(hyperparameters.get("judge_batch_size", 8))
         judge_rounds = int(hyperparameters.get("judge_rounds", 1))
 
@@ -1483,14 +1493,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 os.path.join(iter_dir, f"dpo_{m}") for m in dpo_model_names
             ]
 
-            # If model_name_mapping is provided, resolve logical names (e.g. "llama_sft")
-            # to actual HF/local identifiers for DPO training.
-            if model_name_mapping:
-                dpo_hf_model_names = [
-                    model_name_mapping.get(m, m) for m in dpo_model_names
-                ]
-            else:
-                dpo_hf_model_names = dpo_model_names
+            # Use current_model_paths to resolve logical names to actual paths for DPO training.
+            # This allows DPO to be applied on top of previously trained adapters.
+            dpo_hf_model_names = [
+                current_model_paths.get(m, m) for m in dpo_model_names
+            ]
 
             dpo_batch_size = int(hyperparameters.get("dpo_batch_size", 1))
             dpo_grad_acc = int(
@@ -1511,6 +1518,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 epoch=dpo_epoch,
             )
             print(f"[Sparta] Iter {iteration}: DPO finished.")
+            
+            # Update current_model_paths to use DPO-trained adapter paths for next iteration
+            # This mirrors the approach in text_multiagent_finetuning.py where
+            # finetuned model paths replace the base model paths.
+            for idx, m in enumerate(dpo_model_names):
+                if m in current_model_paths:
+                    current_model_paths[m] = dpo_output_model_paths[idx]
+                    print(f"[Sparta] Iter {iteration}: Updated model path for {m} -> {dpo_output_model_paths[idx]}")
 
     return 0
 
