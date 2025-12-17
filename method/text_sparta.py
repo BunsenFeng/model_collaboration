@@ -23,6 +23,10 @@ def _pairwise_competition(
     random_match_prob: float = 0.2,
     num_opponents: int = 3,
     model_reputation: Optional[Dict[str, float]] = None,
+    max_response_length: int = 256,
+    temperature: float = 0.7,
+    top_p: float = 0.9,
+    batch_size: int = 1,
 ) -> List[Dict[str, Any]]:
     """
     Build pairwise competitions between models on a list of instructions.
@@ -122,12 +126,14 @@ def _pairwise_competition(
     else:
         inference_model_names = logical_model_names
 
-    # Configure generation hyperparameters via the shared helper
+    # Configure generation hyperparameters via the shared helper.
+    # These values are passed in from the method's config (hyperparameters)
+    # so that generation here is consistent with config.json.
     distributed_generation.update_generation_hyperparameters(
-        max_response_length=512,
-        temperature=0.7,
-        top_p=0.9,
-        batch_size=16,
+        max_response_length=max_response_length,
+        temperature=temperature,
+        top_p=top_p,
+        batch_size=batch_size,
     )
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -173,6 +179,9 @@ def _judge_batch_with_model(
     batch_size: int,
     base_dir: Optional[str] = None,
     num_rounds: int = 1,
+    max_response_length: int = 256,
+    temperature: float = 1e-5,
+    top_p: float = 1.0,
 ) -> None:
     """
     Single-judge scoring for a batch of pairs.
@@ -195,11 +204,13 @@ def _judge_batch_with_model(
     pair_chunks = [pairs[i : i + chunk_size] for i in range(0, len(pairs), chunk_size)]
 
     # Configure generation hyperparameters for the judge model
+    # These can be controlled via config.json (hyperparameters),
+    # and are passed in from run_method -> run_judges_sparta.
     distributed_generation.update_generation_hyperparameters(
-        max_response_length=256,
+        max_response_length=max_response_length,
         # temperature must be > 0 for transformers; use a very small value to approximate greedy
-        temperature=1e-5,
-        top_p=1.0,
+        temperature=temperature,
+        top_p=top_p,
         batch_size=batch_size,
     )
 
@@ -239,7 +250,7 @@ Your output should be like this:
                 [judge_model],
                 [instructions],
                 [gpu_id],
-                max_response_length=256,
+                max_response_length=max_response_length,
             )
             judge_outputs = judge_outputs_lists[0]
 
@@ -407,6 +418,9 @@ def run_judges_sparta(
     batch_size: int = 8,
     num_rounds: int = 1,
     base_dir: Optional[str] = None,
+    max_response_length: int = 256,
+    temperature: float = 1e-5,
+    top_p: float = 1.0,
 ) -> List[Dict[str, Any]]:
     """
     Multi-judge wrapper similar to the original run_judges.
@@ -442,6 +456,9 @@ def run_judges_sparta(
             batch_size=batch_size,
             base_dir=base_dir,
             num_rounds=num_rounds,
+            max_response_length=max_response_length,
+            temperature=temperature,
+            top_p=top_p,
         )
 
     # 计算每个 judge 的 ave_scores
@@ -1212,6 +1229,23 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         iteration = base_start_iter + it  # the global iteration number of the current iteration
 
         # ------------------------- 1. Read hyperparameters -------------------------
+        # General generation hyperparameters (kept in sync with config.json)
+        max_response_length = int(hyperparameters.get("max_response_length", 256))
+        temperature = float(hyperparameters.get("temperature", 0.7))
+        top_p = float(hyperparameters.get("top_p", 0.9))
+        batch_size = int(hyperparameters.get("batch_size", 1))
+
+        # Judge generation hyperparameters (also configurable via config.json)
+        judge_max_response_length = int(
+            hyperparameters.get("judge_max_response_length", max_response_length)
+        )
+        judge_temperature = float(
+            hyperparameters.get("judge_temperature", 1e-5)
+        )
+        judge_top_p = float(
+            hyperparameters.get("judge_top_p", 1.0)
+        )
+
         num_instructions = int(hyperparameters.get("num_instructions", 500))
         random_match_prob = float(hyperparameters.get("random_match_prob", 0.2))
         num_opponents = int(hyperparameters.get("num_opponents", 3))
@@ -1282,6 +1316,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             random_match_prob=random_match_prob,
             num_opponents=num_opponents,
             model_reputation=model_reputation,
+            max_response_length=max_response_length,
+            temperature=temperature,
+            top_p=top_p,
+            batch_size=batch_size,
         )
         print(f"[Sparta] Iter {iteration}: Generated {len(raw_pairs)} raw pairs.")
         if not raw_pairs:
@@ -1296,6 +1334,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             batch_size=judge_batch_size,
             num_rounds=judge_rounds,
             base_dir=base_dir,
+            max_response_length=judge_max_response_length,
+            temperature=judge_temperature,
+            top_p=judge_top_p,
         )
 
         for pair in judged_pairs:
@@ -1455,8 +1496,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dpo_grad_acc = int(
                 hyperparameters.get("dpo_gradient_accumulation_steps", 16)
             )
-            dpo_lr = float(hyperparameters.get("dpo_learning_rate", 1e-5))
-            dpo_epoch = int(hyperparameters.get("dpo_epoch", 3))
+            dpo_lr = float(hyperparameters.get("dpo_learning_rate", 1e-6))
+            dpo_epoch = int(hyperparameters.get("dpo_epoch", 1))
 
             print(f"[Sparta] Iter {iteration}: Starting DPO for {dpo_model_names}")
             distributed_dpo.distributed_dpo(

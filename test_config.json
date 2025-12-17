@@ -36,6 +36,9 @@
       "judge_models": ["llama_sft", "qwen_instruct", "llama_base"],
       "judge_batch_size": 8,
       "judge_rounds": 1,
+      "judge_max_response_length": 256,
+      "judge_temperature": 1e-5,
+      "judge_top_p": 1.0,
   
       "model_name_mapping": {
         "llama_sft": "allenai/Llama-3.1-Tulu-3-8B-SFT",
