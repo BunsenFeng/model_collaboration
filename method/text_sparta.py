@@ -200,7 +200,6 @@ def _judge_batch_with_model(
     # and are passed in from run_method -> run_judges_sparta.
     distributed_generation.update_generation_hyperparameters(
         max_response_length=max_response_length,
-        # temperature must be > 0 for transformers; use a very small value to approximate greedy
         temperature=temperature,
         top_p=top_p,
         batch_size=batch_size,
@@ -447,7 +446,6 @@ def run_judges_sparta(
             top_p=top_p,
         )
 
-    # 计算每个 judge 的 ave_scores
     pairs = calculate_judge_averages_sparta(pairs)
     return pairs
 
@@ -1243,12 +1241,17 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             continue
 
         # ------------------------- 5. Multiple judges scoring + ave_scores -------------------------
+        # Optimize: Group pairs by judge models to avoid loading models multiple times
         # For each pair, judges are models from the pool that didn't participate in that specific competition
         # pair["models"] contains model paths (from current_model_paths), need to map back to original names
         # Build reverse mapping: model_path -> original_model_name
         path_to_name = {current_model_paths.get(m, m): m for m in model_names}
         
-        judged_pairs = []
+        # Step 1: Collect all pairs that need judging and group them by judge model
+        # judge_model_path -> list of pairs that need this judge
+        judge_groups: Dict[str, List[Dict[str, Any]]] = {}
+        pairs_without_judges: List[Dict[str, Any]] = []
+        
         for pair in raw_pairs:
             # Get the two model paths that competed in this pair
             competing_model_paths = pair.get("models", [])
@@ -1259,28 +1262,59 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             
             if not pair_judge_models:
                 # If all models competed, skip judging (shouldn't happen with >2 models)
-                judged_pairs.append(pair)
+                pairs_without_judges.append(pair)
                 continue
             
-            # Get judge model paths (supports adapters from previous iterations)
-            pair_judge_model_paths = [current_model_paths.get(jm, jm) for jm in pair_judge_models]
+            # Group pairs by judge model path
+            for judge_model_name in pair_judge_models:
+                judge_model_path = current_model_paths.get(judge_model_name, judge_model_name)
+                if judge_model_path not in judge_groups:
+                    judge_groups[judge_model_path] = []
+                # Use the same pair object reference so modifications are in-place
+                judge_groups[judge_model_path].append(pair)
+        
+        # Step 2: Judge all pairs for each judge model in one batch (avoids reloading models)
+        judge_paths_list = list(judge_groups.keys())
+        
+        for idx, judge_model_path in enumerate(judge_paths_list):
+            # Get the original judge model name for judge_name
+            judge_model_name = None
+            for m in model_names:
+                if current_model_paths.get(m, m) == judge_model_path:
+                    judge_model_name = m
+                    break
+            if judge_model_name is None:
+                judge_model_name = judge_model_path
             
-            # Judge this single pair with its specific judges
-            pair_judged = run_judges_sparta(
-                judge_models=pair_judge_model_paths,
-                pairs=[pair],  # Single pair
-                gpu_ids=gpu_ids,
+            # Assign GPU for this judge model (round-robin)
+            gpu_id = gpu_ids[idx % len(gpu_ids)]
+            
+            pairs_to_judge = judge_groups[judge_model_path]
+            print(f"[Sparta] Iter {iteration}: Judging {len(pairs_to_judge)} pairs with judge {judge_model_name} on GPU {gpu_id}")
+            
+            # Judge all pairs for this judge model in one batch
+            # Note: _judge_batch_with_model modifies pairs in-place, so raw_pairs will be updated
+            _judge_batch_with_model(
+                judge_name=judge_model_name,
+                judge_model=judge_model_path,
+                pairs=pairs_to_judge,
+                gpu_id=gpu_id,
                 batch_size=judge_batch_size,
-                num_rounds=judge_rounds,
                 base_dir=base_dir,
+                num_rounds=judge_rounds,
                 max_response_length=max_response_length,
                 temperature=temperature,
                 top_p=top_p,
             )
-            if pair_judged:
-                judged_pairs.extend(pair_judged)
-            else:
-                judged_pairs.append(pair)
+        
+        # Step 3: Collect all judged pairs and calculate averages
+        # raw_pairs already contains the judged results since we passed references to _judge_batch_with_model
+        # Add pairs that didn't need judging
+        judged_pairs = raw_pairs.copy()
+        judged_pairs.extend(pairs_without_judges)
+        
+        # Calculate judge averages (required before computing weighted scores)
+        judged_pairs = calculate_judge_averages_sparta(judged_pairs)
 
         for pair in judged_pairs:
             judges = pair.get("judges", {})
