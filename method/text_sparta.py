@@ -1386,7 +1386,18 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
         rating_history: List[Dict[str, Any]] = []
         for idx_pair, pair in enumerate(judged_pairs):
-            rating_system.update_ratings_from_judges(pair)
+            # Map adapter paths in pair["models"] back to original model names for rating system
+            # Create a copy to avoid modifying the original pair
+            pair_for_rating = pair.copy()
+            if "models" in pair_for_rating:
+                original_models = []
+                for model_path in pair_for_rating["models"]:
+                    # Map adapter path back to original model name
+                    original_name = path_to_name.get(model_path, model_path)
+                    original_models.append(original_name)
+                pair_for_rating["models"] = original_models
+            
+            rating_system.update_ratings_from_judges(pair_for_rating)
             current_ratings = rating_system.get_all_ratings()
             rating_history.append(
                 {
@@ -1435,7 +1446,18 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         # ------------------------- 8. Generate preference_pairs (using select_preference_response + filter_tie) -------------------------
         preference_pairs: List[Dict[str, Any]] = []
         for pair in judged_pairs:
-            pref = rating_system.select_preference_response(pair)
+            # Map adapter paths in pair["models"] back to original model names for rating system
+            # Create a copy to avoid modifying the original pair
+            pair_for_pref = pair.copy()
+            if "models" in pair_for_pref:
+                original_models = []
+                for model_path in pair_for_pref["models"]:
+                    # Map adapter path back to original model name
+                    original_name = path_to_name.get(model_path, model_path)
+                    original_models.append(original_name)
+                pair_for_pref["models"] = original_models
+            
+            pref = rating_system.select_preference_response(pair_for_pref)
             if pref is not None:
                 preference_pairs.append(pref)
 
