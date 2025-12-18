@@ -50,6 +50,17 @@ Usage: `distributed_sft.distributed_sft(list_of_model_names, list_of_sft_data_pa
 - `list_of_output_model_paths`: a list of paths (strings) to save the fine-tuned models, each corresponding to a model in `list_of_model_names`. Please save them in `logs/<your_method_name>/` folder to avoid conflict.
 - `batch_size`, `gradient_accumulation_steps`, `learning_rate`, `epoch`: standard SFT hyperparameters, you can set them as you like. `batch_size * gradient_accumulation_steps` is the effective batch size.
 
+`utils/distributed_dpo.py`
+
+Import: `from utils import distributed_dpo`
+Usage: `distributed_dpo.distributed_dpo(list_of_model_names, list_of_dpo_data_paths, list_of_gpu_ids, list_of_output_model_paths, batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-6, epoch=1)`
+- `list_of_model_names`: a list of model names (strings) that are compatible with `transformers.AutoModelForCausalLM.from_pretrained()`, that you are going to fine-tune with DPO. Can be HuggingFace Hub identifiers or local paths. If a model path is a LoRA adapter, it will be automatically merged into the base model before training a new adapter.
+- `list_of_dpo_data_paths`: a list of paths to DPO data files (strings), each corresponding to a model in `list_of_model_names`. The data files should be JSONL with each line {"prompt":..., "chosen":..., "rejected":...}. Alternatively, if the data uses "instruction" as the prompt field, it will be automatically renamed to "prompt" for compatibility.
+- `list_of_gpu_ids`: a list of GPU ids (integers) to use for DPO. The length of this list could be anything: smaller, equal, larger than len(model_names). Larger is a waste. Smaller means models are assigned to GPUs in a round-robin fashion. Equal is perhaps best for parallelism. Users provide `gpu_ids` in config files, you should pass in it or a subset of it.
+- `list_of_output_model_paths`: a list of paths (strings) to save the DPO-trained models (as LoRA adapters), each corresponding to a model in `list_of_model_names`. Please save them in `logs/<your_method_name>/` folder to avoid conflict.
+- `batch_size`, `gradient_accumulation_steps`, `learning_rate`, `epoch`: standard DPO hyperparameters, you can set them as you like. `batch_size * gradient_accumulation_steps` is the effective batch size. The default learning rate is 1e-6 (typically lower than SFT).
+
+
 `utils/numeric_swarm.py`
 
 Use case: Particle Swarm Optimization (PSO) for optimizing a set of numeric parameters. For example in model merging `x = \sum_{i=1}^n w_i * x_i`, you may want to optimize the weights `w_i` using PSO.

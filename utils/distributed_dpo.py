@@ -6,12 +6,13 @@ import torch
 import shutil
 import random
 from tqdm import tqdm
-from peft import LoraConfig, AutoPeftModelForCausalLM, PeftConfig
+from peft import LoraConfig, AutoPeftModelForCausalLM
 from multiprocessing import Pool
 from datasets import load_dataset
 from method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
+from utils import lora_check
 
 def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
                learning_rate=1e-6, epoch=1):
@@ -36,11 +37,7 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
     # Check if model_name is a LoRA adapter. If so, merge it into base model first.
     # This ensures we train a new adapter on top of the merged model, rather than
     # stacking multiple adapters (which can cause issues).
-    try:
-        peft_config_check = PeftConfig.from_pretrained(model_name)
-        is_adapter = True
-    except Exception:
-        is_adapter = False
+    is_adapter = lora_check.is_lora_adapter_peft(model_name)
     
     if is_adapter:
         # Load adapter and merge into base model

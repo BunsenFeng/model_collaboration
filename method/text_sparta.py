@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 def _pairwise_competition(
     gpu_ids: List[int],
     model_names: List[str],
-    model_name_mapping: Optional[Dict[str, str]],
     instructions: List[str],
     random_match_prob: float = 0.2,
     num_opponents: int = 3,
@@ -107,24 +106,16 @@ def _pairwise_competition(
         model_tasks[opponent_model].append(instr)
 
     # 3) Use distributed_generation to generate all (model, instruction) responses
-    logical_model_names: List[str] = []
+    # model_names are already HuggingFace identifiers, use them directly
+    active_model_names: List[str] = []
     list_of_input_list: List[List[str]] = []
     for m in model_names:
         if model_tasks[m]:
-            logical_model_names.append(m)
+            active_model_names.append(m)
             list_of_input_list.append(model_tasks[m])
 
-    if not logical_model_names:
+    if not active_model_names:
         return []
-
-    # Map logical model names to actual HF/local paths if a mapping is provided.
-    # If no mapping is given, fall back to using the logical name directly.
-    inference_model_names: List[str] = []
-    if model_name_mapping:
-        for m in logical_model_names:
-            inference_model_names.append(model_name_mapping.get(m, m))
-    else:
-        inference_model_names = logical_model_names
 
     # Configure generation hyperparameters via the shared helper.
     # These values are passed in from the method's config (hyperparameters)
@@ -136,8 +127,9 @@ def _pairwise_competition(
         batch_size=batch_size,
     )
 
+    # Use model_names directly as HuggingFace identifiers
     list_of_output_list = distributed_generation.distributed_generation(
-        inference_model_names,
+        active_model_names,
         list_of_input_list,
         gpu_ids,
     )
@@ -145,7 +137,7 @@ def _pairwise_competition(
     # Build an index: {model_name: {instruction: response}}
     model_responses: Dict[str, Dict[str, str]] = {}
     for m, ins_list, out_list in zip(
-        logical_model_names, list_of_input_list, list_of_output_list
+        active_model_names, list_of_input_list, list_of_output_list
     ):
         model_responses[m] = {ins: resp for ins, resp in zip(ins_list, out_list)}
 
@@ -390,7 +382,6 @@ def _aggregate_scores(
     aggregated_pairs = scored_pairs
     for pair in aggregated_pairs:
         scores = pair.get("scores")
-        # 规范化为长度 2 的列表
         if not isinstance(scores, list):
             scores = []
         scores = [float(s) for s in scores[:2]]
@@ -414,7 +405,6 @@ def run_judges_sparta(
     judge_models: List[str],
     pairs: List[Dict[str, Any]],
     gpu_ids: List[int],
-    model_name_mapping: Optional[Dict[str, str]] = None,
     batch_size: int = 8,
     num_rounds: int = 1,
     base_dir: Optional[str] = None,
@@ -438,16 +428,12 @@ def run_judges_sparta(
     for idx, judge_model in enumerate(judge_models):
         gpu_id = gpu_ids[idx % len(gpu_ids)]
 
-        # judge_name is the logical name used in rating and logging;
-        # judge_model_path is the actual HF/local identifier used for loading.
+        # judge_models are already HuggingFace identifiers, use them directly
+        judge_model_path = judge_model
+        # Use the full path as judge_name to match with model_ratings keys
         judge_name = judge_model
-        judge_model_path = (
-            model_name_mapping.get(judge_model, judge_model)
-            if model_name_mapping is not None
-            else judge_model
-        )
 
-        print(f"[Sparta] Running judge {judge_name} (model: {judge_model_path}) on GPU {gpu_id}")
+        print(f"[Sparta] Running judge {judge_model_path} on GPU {gpu_id}")
         _judge_batch_with_model(
             judge_name=judge_name,
             judge_model=judge_model_path,
@@ -1148,133 +1134,55 @@ class RatingSystemStaticWeighted(RatingSystem):
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     """
-    Implement your approach here.
-    Args:
-        task: str, the name of the task
-        task_type: str, the type of the task (e.g., "multiple_choice", "exact_match", etc.)
-        gpu_ids: list of int, the GPU ids to use for distributed generation
-        model_names: list of str, the names of the models to use
-        hyperparameters: dict, method-specific hyperparameters
-        You get these arguments from the config file that users pass in.
-    """
-
-    # 1. optionally, extract the general hyperparameters from the hyperparameters dict
-    # these four are included in any config file by default
-    # this is useful if you are handling generation/finetuning without the (amazing) helper functions provided
-    # these generation args will be auto-configured for the helper functions
-
-    # max_response_length = hyperparameters.get("max_response_length")
-    # temperature = hyperparameters.get("temperature")
-    # top_p = hyperparameters.get("top_p")
-    # batch_size = hyperparameters.get("batch_size")
-
-    # 2. optionally, extract the method-specific hyperparameters from the hyperparameters dict
-    # users would pass this in via the config file, through the "hyperparameters" dict
-    # you need to tell users to set them in the readme
-    # you should also provide a default value (in most cases)
-
-    # method_specific_hyperparameter_a = hyperparameters.get("method_specific_hyperparameter_a", default_value_a)
-    # method_specific_hyperparameter_b = hyperparameters.get("method_specific_hyperparameter_b", default_value_b)
-    # no default value, will throw an error if the user doesn't provide it in the config file
-    # method_specific_hyperparameter_c = hyperparameters.get("method_specific_hyperparameter_c")
-
-    # 3. optionally, do something based on the dev set of the dataset
-    # could be: selecting a model as the summarizer/evaluator/... based on dev performance
-    # could be: finetuning the models somehow on the dev set
-    # could be: setting some sort of hyperparameter/threshold based on the dev set
-    # it's ok that your approach doesn't have this step, e.g. multiagent debate
-    # if you ever saves anything during this step, make sure to save it in `logs/<your_method_name>/`!
-
-    # a most simple example, select the best model based on dev set performance
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
-
-    # evaluate every model on it through distributed generation
-    list_of_input_list = [dev_input_list for _ in model_names] # replicate the dev inputs for each model
-    list_of_output_list = distributed_generation.distributed_generation(
-        model_names,
-        list_of_input_list,
-        gpu_ids
-    ) # will be size len(model_names) x len(dev_input_list)
-
-    list_of_dev_scores = []
-    for i in range(len(model_names)):
-        dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs) # send the outputs to the eval module to get a list of per-input scores
-        avg_dev_score = sum(dev_score) / len(dev_score)
-        list_of_dev_scores.append(avg_dev_score)
-        print("Model: {}, dev {} score: {}".format(model_names[i], task, avg_dev_score))
-
-    best_model_index = list_of_dev_scores.index(max(list_of_dev_scores))
-    best_model_name = model_names[best_model_index]
-    print("Best model selected for final generation: {}".format(best_model_name))
-    # you can then use best_model_name somehow in the next step
-
-    # 4. evaluate the approach on the test set
-    # based on the stuff you did in the dev set, you arrived at some final approach
-    # generate responses with it, evaluate it, do logging
-
-    test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
-
-def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
-    """
     Sparta competition + multi-judge + reputation + DPO preference generation.
+    
+    Args:
+        model_names: List of model identifiers. Can be:
+            - HuggingFace Hub identifiers (e.g., "allenai/Llama-3.1-Tulu-3-8B-SFT")
+            - Local paths (absolute or relative, e.g., "/path/to/model" or "./models/my_model")
+            - Any mix of the above
+        The code supports any number of any models without requiring pre-defined mappings.
     """
 
-    # ------------------------- 0. The number of iterations（Sparta's own iterations） -------------------------
-    sparta_iterations = int(hyperparameters.get("sparta_iterations", 1))
-    base_start_iter = int(hyperparameters.get("iteration", 0))
+    # ------------------------- 0. Load all hyperparameters in one place -------------------------
+    # Iteration control
+    num_iterations = int(hyperparameters.get("num_iterations", 1))  # Number of iterations to run
+    start_iteration = int(hyperparameters.get("current_iteration", 0))  # Starting iteration number (for resuming)
     base_dir = hyperparameters.get("base_dir", os.path.join("logs", "text_sparta"))
+    
+    # General generation hyperparameters (used for both competition and judging)
+    max_response_length = int(hyperparameters.get("max_response_length", 256))
+    temperature = float(hyperparameters.get("temperature", 0.7))
+    top_p = float(hyperparameters.get("top_p", 0.9))
+    batch_size = int(hyperparameters.get("batch_size", 1))
+    
+    # Judge operational parameters (judges are dynamically selected from model_names pool for each pair)
+    judge_batch_size = int(hyperparameters.get("judge_batch_size", 8))
+    judge_rounds = int(hyperparameters.get("judge_rounds", 1))
+    
+    # Competition and instruction parameters
+    num_instructions = int(hyperparameters.get("num_instructions", 500))
+    random_match_prob = float(hyperparameters.get("random_match_prob", 0.2))
+    num_opponents = int(hyperparameters.get("num_opponents", 3))
+    
+    # Rating system parameters
+    initial_K = float(hyperparameters.get("initial_k", 10.0))
+    min_K = float(hyperparameters.get("min_k", 5.0))
+    window_size = int(hyperparameters.get("window_size", 10))
+    min_deviation = float(hyperparameters.get("min_deviation", 0.1))
+    epsilon = float(hyperparameters.get("epsilon", 0.01))
+    decay_rate = float(hyperparameters.get("decay_rate", 0.9))
+    decay_steps = int(hyperparameters.get("decay_steps", 10))
+    scaling_factor = float(hyperparameters.get("scaling_factor", 20.0))
+    score_type = hyperparameters.get("score_type", "normal")  # normal / dynamic / static
+    freeze_ratings = bool(hyperparameters.get("freeze_ratings", False))
 
     # Track current model paths (for adapter handling across iterations)
-    # Initially, use model_name_mapping if provided, otherwise use model_names directly
-    initial_model_name_mapping: Optional[Dict[str, str]] = hyperparameters.get("model_name_mapping")
-    current_model_paths: Dict[str, str] = {}
-    for m in model_names:
-        if initial_model_name_mapping and m in initial_model_name_mapping:
-            current_model_paths[m] = initial_model_name_mapping[m]
-        else:
-            current_model_paths[m] = m
+    # model_names are already HuggingFace identifiers, use them directly
+    current_model_paths: Dict[str, str] = {m: m for m in model_names}
 
-    for it in range(sparta_iterations):
-        iteration = base_start_iter + it  # the global iteration number of the current iteration
-
-        # ------------------------- 1. Read hyperparameters -------------------------
-        # General generation hyperparameters (kept in sync with config.json)
-        max_response_length = int(hyperparameters.get("max_response_length", 256))
-        temperature = float(hyperparameters.get("temperature", 0.7))
-        top_p = float(hyperparameters.get("top_p", 0.9))
-        batch_size = int(hyperparameters.get("batch_size", 1))
-
-        # Judge generation hyperparameters (also configurable via config.json)
-        judge_max_response_length = int(
-            hyperparameters.get("judge_max_response_length", max_response_length)
-        )
-        judge_temperature = float(
-            hyperparameters.get("judge_temperature", 1e-5)
-        )
-        judge_top_p = float(
-            hyperparameters.get("judge_top_p", 1.0)
-        )
-
-        num_instructions = int(hyperparameters.get("num_instructions", 500))
-        random_match_prob = float(hyperparameters.get("random_match_prob", 0.2))
-        num_opponents = int(hyperparameters.get("num_opponents", 3))
-
-        initial_K = float(hyperparameters.get("initial_k", 10.0))
-        min_K = float(hyperparameters.get("min_k", 5.0))
-        window_size = int(hyperparameters.get("window_size", 10))
-        min_deviation = float(hyperparameters.get("min_deviation", 0.1))
-        epsilon = float(hyperparameters.get("epsilon", 0.01))
-        decay_rate = float(hyperparameters.get("decay_rate", 0.9))
-        decay_steps = int(hyperparameters.get("decay_steps", 10))
-        scaling_factor = float(hyperparameters.get("scaling_factor", 20.0))
-
-        judge_models: List[str] = hyperparameters.get("judge_models", model_names)
-        # Use current_model_paths as the model_name_mapping for this iteration
-        # This allows us to use DPO-trained adapters from previous iterations
-        model_name_mapping: Optional[Dict[str, str]] = current_model_paths.copy() if current_model_paths else None
-        judge_batch_size = int(hyperparameters.get("judge_batch_size", 8))
-        judge_rounds = int(hyperparameters.get("judge_rounds", 1))
+    for it in range(num_iterations):
+        iteration = start_iteration + it  # the global iteration number of the current iteration
 
         # ------------------------- 2. Initialize / Read the previous iteration's model_ratings + delta_history -------------------------
         iter_dir_prev = os.path.join(base_dir, f"iteration_{iteration-1}")
@@ -1320,8 +1228,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         model_reputation = {m: model_ratings[m]["score"] for m in model_ratings}
         raw_pairs = _pairwise_competition(
             gpu_ids=gpu_ids,
-            model_names=model_names,
-            model_name_mapping=model_name_mapping,
+            model_names=[current_model_paths[m] for m in model_names],
             instructions=instructions,
             random_match_prob=random_match_prob,
             num_opponents=num_opponents,
@@ -1336,18 +1243,44 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             continue
 
         # ------------------------- 5. Multiple judges scoring + ave_scores -------------------------
-        judged_pairs = run_judges_sparta(
-            judge_models=judge_models,
-            pairs=raw_pairs,
-            gpu_ids=gpu_ids,
-            model_name_mapping=model_name_mapping,
-            batch_size=judge_batch_size,
-            num_rounds=judge_rounds,
-            base_dir=base_dir,
-            max_response_length=judge_max_response_length,
-            temperature=judge_temperature,
-            top_p=judge_top_p,
-        )
+        # For each pair, judges are models from the pool that didn't participate in that specific competition
+        # pair["models"] contains model paths (from current_model_paths), need to map back to original names
+        # Build reverse mapping: model_path -> original_model_name
+        path_to_name = {current_model_paths.get(m, m): m for m in model_names}
+        
+        judged_pairs = []
+        for pair in raw_pairs:
+            # Get the two model paths that competed in this pair
+            competing_model_paths = pair.get("models", [])
+            # Map back to original model names
+            competing_model_names = {path_to_name.get(path, path) for path in competing_model_paths}
+            # Judges are all models in the pool except the two that competed
+            pair_judge_models = [m for m in model_names if m not in competing_model_names]
+            
+            if not pair_judge_models:
+                # If all models competed, skip judging (shouldn't happen with >2 models)
+                judged_pairs.append(pair)
+                continue
+            
+            # Get judge model paths (supports adapters from previous iterations)
+            pair_judge_model_paths = [current_model_paths.get(jm, jm) for jm in pair_judge_models]
+            
+            # Judge this single pair with its specific judges
+            pair_judged = run_judges_sparta(
+                judge_models=pair_judge_model_paths,
+                pairs=[pair],  # Single pair
+                gpu_ids=gpu_ids,
+                batch_size=judge_batch_size,
+                num_rounds=judge_rounds,
+                base_dir=base_dir,
+                max_response_length=max_response_length,
+                temperature=temperature,
+                top_p=top_p,
+            )
+            if pair_judged:
+                judged_pairs.extend(pair_judged)
+            else:
+                judged_pairs.append(pair)
 
         for pair in judged_pairs:
             judges = pair.get("judges", {})
@@ -1370,8 +1303,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         aggregated_pairs = _aggregate_scores(judged_pairs)
 
         # ------------------------- 6. RatingSystem update (normal / dynamic / static) -------------------------
-        score_type = hyperparameters.get("score_type", "normal")  # normal / dynamic / static
-
         if score_type == "dynamic":
             rating_system = RatingSystemDynamicWeighted(
                 model_scores=model_ratings,
@@ -1386,7 +1317,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 decay_rate=decay_rate,
                 decay_steps=decay_steps,
                 scaling_factor=scaling_factor,
-                freeze_ratings=bool(hyperparameters.get("freeze_ratings", False)),
+                freeze_ratings=freeze_ratings,
             )
         elif score_type == "static":
             rating_system = RatingSystemStaticWeighted(
@@ -1402,7 +1333,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 decay_rate=decay_rate,
                 decay_steps=decay_steps,
                 scaling_factor=scaling_factor,
-                freeze_ratings=bool(hyperparameters.get("freeze_ratings", False)),
+                freeze_ratings=freeze_ratings,
             )
         else:
             rating_system = RatingSystem(
@@ -1416,7 +1347,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 decay_rate=decay_rate,
                 decay_steps=decay_steps,
                 scaling_factor=scaling_factor,
-                freeze_ratings=bool(hyperparameters.get("freeze_ratings", False)),
+                freeze_ratings=freeze_ratings,
             )
 
         rating_history: List[Dict[str, Any]] = []
@@ -1483,49 +1414,120 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         dataset_dir = os.path.join(iter_dir, "dataset")
         pref_path = save_preference_pairs_to_json_sparta(preference_pairs, dataset_dir)
 
-        # ------------------------- 9. Optional DPO -------------------------
-        enable_dpo = bool(hyperparameters.get("enable_dpo", False))
-        if enable_dpo and preference_pairs and pref_path:
-            dpo_model_names = hyperparameters.get("dpo_model_names", model_names)
-            dpo_data_paths = [pref_path for _ in dpo_model_names]
-            dpo_gpu_ids = gpu_ids[: len(dpo_model_names)] or [0]
+        # ------------------------- 9. DPO training -------------------------
+        # DPO is performed to update models based on preference pairs
+        if preference_pairs and pref_path:
+            dpo_data_paths = [pref_path for _ in model_names]
+            dpo_gpu_ids = gpu_ids[: len(model_names)] or [0]
+            
+            # Generate unique directory names for adapters based on model paths
+            # Use a hash or the last part of the path to create a safe directory name
+            def _get_model_dir_name(model_path: str) -> str:
+                # Use the last part of the path, replacing / with _
+                safe_name = model_path.replace("/", "_").replace("\\", "_")
+                # Limit length to avoid filesystem issues
+                if len(safe_name) > 100:
+                    import hashlib
+                    safe_name = hashlib.md5(model_path.encode()).hexdigest()[:16]
+                return safe_name
+            
             dpo_output_model_paths = [
-                os.path.join(iter_dir, f"dpo_{m}") for m in dpo_model_names
+                os.path.join(iter_dir, f"dpo_{_get_model_dir_name(current_model_paths.get(m, m))}")
+                for m in model_names
             ]
 
-            # Use current_model_paths to resolve logical names to actual paths for DPO training.
+            # Use current_model_paths to get actual model paths (supports adapters from previous iterations)
             # This allows DPO to be applied on top of previously trained adapters.
             dpo_hf_model_names = [
-                current_model_paths.get(m, m) for m in dpo_model_names
+                current_model_paths.get(m, m) for m in model_names
             ]
 
-            dpo_batch_size = int(hyperparameters.get("dpo_batch_size", 1))
-            dpo_grad_acc = int(
-                hyperparameters.get("dpo_gradient_accumulation_steps", 16)
-            )
-            dpo_lr = float(hyperparameters.get("dpo_learning_rate", 1e-6))
-            dpo_epoch = int(hyperparameters.get("dpo_epoch", 1))
-
-            print(f"[Sparta] Iter {iteration}: Starting DPO for {dpo_model_names}")
+            print(f"[Sparta] Iter {iteration}: Starting DPO for {model_names}")
+            # Use default DPO hyperparameters: batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-6, epoch=1
             distributed_dpo.distributed_dpo(
                 list_of_model_names=dpo_hf_model_names,
                 list_of_dpo_data_paths=dpo_data_paths,
                 list_of_gpu_ids=dpo_gpu_ids,
                 list_of_output_model_paths=dpo_output_model_paths,
-                batch_size=dpo_batch_size,
-                gradient_accumulation_steps=dpo_grad_acc,
-                learning_rate=dpo_lr,
-                epoch=dpo_epoch,
             )
             print(f"[Sparta] Iter {iteration}: DPO finished.")
             
             # Update current_model_paths to use DPO-trained adapter paths for next iteration
             # This mirrors the approach in text_multiagent_finetuning.py where
             # finetuned model paths replace the base model paths.
-            for idx, m in enumerate(dpo_model_names):
-                if m in current_model_paths:
-                    current_model_paths[m] = dpo_output_model_paths[idx]
-                    print(f"[Sparta] Iter {iteration}: Updated model path for {m} -> {dpo_output_model_paths[idx]}")
+            for idx, m in enumerate(model_names):
+                current_model_paths[m] = dpo_output_model_paths[idx]
+                print(f"[Sparta] Iter {iteration}: Updated model path for {m} -> {dpo_output_model_paths[idx]}")
+
+    # ------------------------- 10. Final evaluation: test final models on dev set, select best, evaluate on test set -------------------------
+    print(f"[Sparta] All iterations completed. Evaluating final models on dev set...")
+    
+    # 1) Test all final models on dev set
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    list_of_input_list = [dev_input_list for _ in model_names]
+    # Use current_model_paths to get final model paths (may include DPO adapters)
+    final_model_paths = [current_model_paths.get(m, m) for m in model_names]
+    list_of_output_list = distributed_generation.distributed_generation(
+        final_model_paths,
+        list_of_input_list,
+        gpu_ids
+    )
+    
+    list_of_dev_scores = []
+    for i in range(len(model_names)):
+        dev_outputs = list_of_output_list[i]
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        avg_dev_score = sum(dev_score) / len(dev_score)
+        list_of_dev_scores.append(avg_dev_score)
+        print(f"[Sparta] Final model {model_names[i]}: dev {task} score: {avg_dev_score}")
+    
+    # 2) Select the best model
+    best_model_index = list_of_dev_scores.index(max(list_of_dev_scores))
+    best_model_name = model_names[best_model_index]
+    best_model_path = final_model_paths[best_model_index]
+    print(f"[Sparta] Best model selected for test evaluation: {best_model_name} (dev score: {list_of_dev_scores[best_model_index]})")
+    
+    # 3) Evaluate best model on test set
+    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_output_list = distributed_generation.distributed_generation(
+        [best_model_path],
+        [test_input_list],
+        gpu_ids
+    )
+    final_output_list = test_output_list[0]
+    
+    # Evaluate the final outputs
+    test_scores = eval.get_scores(task, task_type, "test", final_output_list)
+    avg_test_score = sum(test_scores) / len(test_scores)
+    print(f"[Sparta] Final test {task} score: {avg_test_score}")
+    
+    # 4) Save the logs
+    experiment_logs = {
+        "task": task,
+        "task_type": task_type,
+        "method": "text_sparta",
+        "model_names": model_names,
+        "best_model": best_model_name,
+        "best_model_path": best_model_path,
+        "hyperparameters": hyperparameters,
+        "avg_test_score": avg_test_score,
+        "dev_scores": {model_names[i]: list_of_dev_scores[i] for i in range(len(model_names))},
+        "logs": []
+    }
+    for i in range(len(test_input_list)):
+        log_entry = {
+            "input": test_input_list[i],
+            "output": final_output_list[i],
+            "score": test_scores[i]
+        }
+        experiment_logs["logs"].append(log_entry)
+    
+    # Save to a json file
+    log_filename = f"logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_text_sparta.json"
+    os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+    with open(log_filename, "w", encoding="utf-8") as f:
+        json.dump(experiment_logs, f, indent=4, ensure_ascii=False)
+    print(f"[Sparta] Saved experiment logs to {log_filename}")
 
     return 0
 
