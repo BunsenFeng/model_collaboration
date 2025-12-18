@@ -1515,35 +1515,93 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 current_model_paths[m] = dpo_output_model_paths[idx]
                 print(f"[Sparta] Iter {iteration}: Updated model path for {m} -> {dpo_output_model_paths[idx]}")
 
-    # ------------------------- 10. Final evaluation: test final models on dev set, select best, evaluate on test set -------------------------
-    print(f"[Sparta] All iterations completed. Evaluating final models on dev set...")
+    # ------------------------- 10. Final evaluation: evaluate ALL adapters from ALL iterations on dev, then pick best for test -------------------------
+    print(f"[Sparta] All iterations completed. Evaluating all adapters on dev set...")
+
+    # 1) Collect all adapter paths from every iteration for every model
+    #    We rely on the naming convention used in the DPO step:
+    #    logs/text_sparta/iteration_{k}/dpo_<safe_model_name>
+    all_adapter_entries: List[Tuple[int, str, str]] = []  # (iteration, model_name, adapter_path)
+    for it in range(start_iteration, start_iteration + num_iterations):
+        iter_dir_eval = os.path.join(base_dir, f"iteration_{it}")
+        if not os.path.isdir(iter_dir_eval):
+            continue
+        for m in model_names:
+            safe_name = current_model_paths.get(m, m).replace("/", "_").replace("\\", "_")
+            candidate_path = os.path.join(iter_dir_eval, f"dpo_{safe_name}")
+            if os.path.isdir(candidate_path):
+                all_adapter_entries.append((it, m, candidate_path))
+
+    # If no adapters were found (e.g., no preference_pairs), fall back to using the final current_model_paths
+    if not all_adapter_entries:
+        print("[Sparta] No DPO adapters found across iterations; falling back to final models only.")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        list_of_input_list = [dev_input_list for _ in model_names]
+        final_model_paths = [current_model_paths.get(m, m) for m in model_names]
+        list_of_output_list = distributed_generation.distributed_generation(
+            final_model_paths,
+            list_of_input_list,
+            gpu_ids,
+        )
+
+        list_of_dev_scores = []
+        for i in range(len(model_names)):
+            dev_outputs = list_of_output_list[i]
+            dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+            avg_dev_score = sum(dev_score) / len(dev_score)
+            list_of_dev_scores.append(avg_dev_score)
+            print(f"[Sparta] Final model {model_names[i]}: dev {task} score: {avg_dev_score}")
+
+        best_model_index = list_of_dev_scores.index(max(list_of_dev_scores))
+        best_model_name = model_names[best_model_index]
+        best_model_path = final_model_paths[best_model_index]
+        best_model_iteration = start_iteration + num_iterations - 1
+        print(
+            f"[Sparta] Best model (no adapters case) selected for test evaluation: "
+            f"{best_model_name} from iteration {best_model_iteration} "
+            f"(dev score: {list_of_dev_scores[best_model_index]})"
+        )
+        per_model_dev_scores = {
+            model_names[i]: list_of_dev_scores[i] for i in range(len(model_names))
+        }
+    else:
+        # 2) Evaluate every (iteration, model, adapter_path) on dev set
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        list_of_input_list = [dev_input_list for _ in all_adapter_entries]
+        adapter_paths = [entry[2] for entry in all_adapter_entries]
+
+        list_of_output_list = distributed_generation.distributed_generation(
+            adapter_paths,
+            list_of_input_list,
+            gpu_ids,
+        )
+
+        adapter_dev_scores: List[float] = []
+        adapter_keys: List[str] = []
+        per_model_dev_scores = {}
+
+        for idx, ((it, m, path), outputs) in enumerate(
+            zip(all_adapter_entries, list_of_output_list)
+        ):
+            dev_score = eval.get_scores(task, task_type, "dev", outputs)
+            avg_dev_score = sum(dev_score) / len(dev_score)
+            adapter_dev_scores.append(avg_dev_score)
+            key = f"{m}_iter{it}"
+            adapter_keys.append(key)
+            per_model_dev_scores[key] = avg_dev_score
+            print(
+                f"[Sparta] Adapter {key} ({path}): dev {task} score: {avg_dev_score}"
+            )
+
+        # 3) Select the best adapter across all iterations and models
+        best_idx = adapter_dev_scores.index(max(adapter_dev_scores))
+        best_iter, best_model_name, best_model_path = all_adapter_entries[best_idx]
+        print(
+            f"[Sparta] Best adapter selected for test evaluation: {best_model_name} "
+            f"from iteration {best_iter} (dev score: {adapter_dev_scores[best_idx]})"
+        )
     
-    # 1) Test all final models on dev set
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
-    list_of_input_list = [dev_input_list for _ in model_names]
-    # Use current_model_paths to get final model paths (may include DPO adapters)
-    final_model_paths = [current_model_paths.get(m, m) for m in model_names]
-    list_of_output_list = distributed_generation.distributed_generation(
-        final_model_paths,
-        list_of_input_list,
-        gpu_ids
-    )
-    
-    list_of_dev_scores = []
-    for i in range(len(model_names)):
-        dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
-        avg_dev_score = sum(dev_score) / len(dev_score)
-        list_of_dev_scores.append(avg_dev_score)
-        print(f"[Sparta] Final model {model_names[i]}: dev {task} score: {avg_dev_score}")
-    
-    # 2) Select the best model
-    best_model_index = list_of_dev_scores.index(max(list_of_dev_scores))
-    best_model_name = model_names[best_model_index]
-    best_model_path = final_model_paths[best_model_index]
-    print(f"[Sparta] Best model selected for test evaluation: {best_model_name} (dev score: {list_of_dev_scores[best_model_index]})")
-    
-    # 3) Evaluate best model on test set
+    # 4) Evaluate best model on test set
     test_input_list = eval.prepare_inputs(task, task_type, "test")
     test_output_list = distributed_generation.distributed_generation(
         [best_model_path],
@@ -1557,17 +1615,18 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     avg_test_score = sum(test_scores) / len(test_scores)
     print(f"[Sparta] Final test {task} score: {avg_test_score}")
     
-    # 4) Save the logs
+    # 5) Save the logs
     experiment_logs = {
         "task": task,
         "task_type": task_type,
         "method": "text_sparta",
         "model_names": model_names,
         "best_model": best_model_name,
+        "best_model_iteration": int(best_iter) if 'best_iter' in locals() else int(start_iteration + num_iterations - 1),
         "best_model_path": best_model_path,
         "hyperparameters": hyperparameters,
         "avg_test_score": avg_test_score,
-        "dev_scores": {model_names[i]: list_of_dev_scores[i] for i in range(len(model_names))},
+        "dev_scores": per_model_dev_scores,
         "logs": []
     }
     for i in range(len(test_input_list)):
