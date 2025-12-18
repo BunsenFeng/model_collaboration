@@ -179,11 +179,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dist.barrier()
             dist.destroy_process_group()
 
+    new_gpu_ids = [i for i in range(len(model_names))]
     test_input_list = eval.prepare_inputs(task, task_type, 'test')
     list_of_test_output_list = distributed_generation.distributed_generation(
         model_names,
         [test_input_list for _ in model_names],
-        gpu_ids,
+        new_gpu_ids,
     )
     agg_input_list = []
     for i in range(len(test_input_list)):
@@ -192,7 +193,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     agg_output_list = distributed_generation.distributed_generation(
         [agglm_log_path + '/' + file_name[:-5]],
         [agg_input_list],
-        [gpu_ids[0]]
+        [new_gpu_ids[0]]
     )
     test_scores = eval.get_scores(task, task_type, "test", agg_output_list[0])
 
