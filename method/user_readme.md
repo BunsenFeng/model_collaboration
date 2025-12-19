@@ -200,6 +200,43 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - Currently supports `task_type` in `["multiple_choice", "exact_match", "f1_match"]`, using the existing `data/eval.py` extraction logic for voting and scoring.
     - Use moderate-sized models and small `iterations` / `rounds` if compute is limited; each iteration runs a full multi-model debate plus SFT.
 
+#### Text-level: SPARTA
+- file: `text_sparta.py`
+- description: implement SPARTA (Self-Play with Adaptive Rating and Training Algorithm), an iterative competition-based training approach. In each iteration: (1) models compete pairwise on instructions, with opponents selected based on reputation scores or randomly; (2) other models (judges) dynamically score the competition responses (judges are models that didn't participate in each specific pair); (3) model ratings are updated based on judge scores using an Elo-like rating system; (4) preference pairs are generated from competitions; (5) DPO training is applied to improve models using the preference pairs. After all iterations, all adapters from all iterations are evaluated on the dev set, and the best one is selected for test evaluation. LoRA adapters are automatically detected and merged before training new adapters, ensuring iterative improvement.
+- method-specific hyperparameters:
+    - **Iteration Control:**
+        - `num_iterations`, default 1: number of Sparta iterations to run.
+        - `current_iteration`, default 0: starting iteration number (for resuming from a previous run).
+        - `base_dir`, default "logs/text_sparta": base directory for saving logs and models.
+    - **Generation Hyperparameters (used for both competition and judging):**
+        - `max_response_length`, default 256: maximum number of tokens to generate.
+        - `temperature`, default 0.7: sampling temperature for generation.
+        - `top_p`, default 0.9: nucleus sampling parameter.
+        - `batch_size`, default 1: batch size for generation.
+    - **Competition Parameters:**
+        - `num_instructions`, default 500: number of instructions to use for competition.
+        - `random_match_prob`, default 0.2: probability of random opponent selection (vs. reputation-based selection).
+        - `num_opponents`, default 3: number of top-K opponents to consider for matching based on reputation scores.
+    - **Rating System Parameters:**
+        - `initial_k`, default 10.0: initial K value for rating updates.
+        - `min_k`, default 5.0: minimum K value (after decay).
+        - `window_size`, default 10: window size for deviation calculation.
+        - `min_deviation`, default 0.1: minimum deviation value.
+        - `epsilon`, default 0.01: small epsilon for numerical stability.
+        - `decay_rate`, default 0.9: decay rate for K value.
+        - `decay_steps`, default 10: steps for K decay.
+        - `scaling_factor`, default 20.0: scaling factor for rating updates.
+        - `score_type`, default "normal": rating system type. Options: "normal", "dynamic" (dynamic-weighted), or "static" (static-weighted).
+        - `freeze_ratings`, default false: if true, ratings are not updated.
+    - **Debug:**
+        - `debug`, default false: if true, prints detailed rating update information (update count, K value, deviation changes).
+- notes:
+    - `model_names` can be HuggingFace Hub identifiers or local paths (any mix is supported).
+    - DPO training uses default hyperparameters (batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-6, epoch=1).
+    - Judges are dynamically selected from the model pool for each pair (models that didn't compete in that specific pair).
+    - All adapters from all iterations are evaluated on dev set, and the best one is selected for test evaluation.
+    - LoRA adapters are automatically detected and merged before training new adapters, ensuring iterative improvement without adapter stacking.
+
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
