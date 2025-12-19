@@ -83,6 +83,8 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=1,
+        # Suppress label_names warning for PEFT models
+        label_names=[],
     )
 
     trainer = DPOTrainer(
