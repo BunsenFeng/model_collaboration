@@ -203,6 +203,8 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
 #### Text-level: SPARTA
 - file: `text_sparta.py`
 - description: implement SPARTA alignment algorithm, an iterative competition-based training approach. In each iteration: (1) models compete pairwise on instructions, with opponents selected based on reputation scores or randomly; (2) other models (judges) dynamically score the competition responses (judges are models that didn't participate in each specific pair); (3) model ratings are updated based on judge scores using an Elo-like rating system; (4) preference pairs are generated from competitions; (5) DPO training is applied to improve models using the preference pairs. After all iterations, all adapters from all iterations are evaluated on the dev set, and the best one is selected for test evaluation.
+- related paper(s):
+    - [SPARTA ALIGNMENT: Collectively Aligning Multiple Language Models through Combat](https://arxiv.org/abs/2506.04721)
 - method-specific hyperparameters:
     - `num_iterations`, default 3: number of Sparta iterations to run. Each iteration includes competition, judging, rating updates, and DPO training.
     - `current_iteration`, default 0: starting iteration number (for resuming from a previous run).
