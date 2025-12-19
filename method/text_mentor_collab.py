@@ -1,4 +1,5 @@
 import json
+from tqdm import tqdm
 from data import eval
 from utils.mentor_collab import MentorCollab
 
@@ -49,7 +50,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
     test_input_list = eval.prepare_inputs(task, task_type, "test")
     outputs = []
-    for input in test_input_list:
+    for input in tqdm(test_input_list, desc="Generating outputs"):
         output = mentor_collab.generate(input, max_new_tokens)
         outputs.append(output)
     
