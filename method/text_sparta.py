@@ -546,6 +546,7 @@ class RatingSystem:
         decay_steps: int = 10,
         scaling_factor: float = 20.0,
         freeze_ratings: bool = False,
+        debug: bool = False,
     ):
         self.initial_K = initial_K
         self.min_K = min_K
@@ -558,6 +559,7 @@ class RatingSystem:
         self.decay_steps = decay_steps
         self.scaling_factor = scaling_factor
         self.freeze_ratings = freeze_ratings
+        self.debug = debug
 
         if delta_history is None:
             self.delta_history = {model: [] for model in model_scores}
@@ -733,13 +735,14 @@ class RatingSystem:
                     new_dev, self.min_deviation
                 )
 
-        print(f"\nUpdate count: {self.update_count}")
-        print(f"Current K value: {self.K:.2f}")
-        print("\nDeviation changes:")
-        for model in self.model_ratings:
-            print(
-                f"{model}: {old_deviations[model]:.4f} -> {self.model_ratings[model]['deviation']:.4f}"
-            )
+        if self.debug:
+            print(f"\nUpdate count: {self.update_count}")
+            print(f"Current K value: {self.K:.2f}")
+            print("\nDeviation changes:")
+            for model in self.model_ratings:
+                print(
+                    f"{model}: {old_deviations[model]:.4f} -> {self.model_ratings[model]['deviation']:.4f}"
+                )
 
     def get_all_ratings(self) -> Dict[str, Dict[str, float]]:
         return self.model_ratings
@@ -766,6 +769,7 @@ class RatingSystemDynamicWeighted(RatingSystem):
         decay_steps: int = 10,
         scaling_factor: float = 10.0,
         freeze_ratings: bool = False,
+        debug: bool = False,
     ):
         super().__init__(
             model_scores=model_scores,
@@ -779,6 +783,7 @@ class RatingSystemDynamicWeighted(RatingSystem):
             decay_steps=decay_steps,
             scaling_factor=scaling_factor,
             freeze_ratings=freeze_ratings,
+            debug=debug,
         )
         self.base_dir = base_dir
         self.current_iteration = current_iteration
@@ -924,13 +929,14 @@ class RatingSystemDynamicWeighted(RatingSystem):
                     new_dev, self.min_deviation
                 )
 
-        print(f"\nUpdate count: {self.update_count}")
-        print(f"Current K value: {self.K:.2f}")
-        print("\nDeviation changes:")
-        for model in self.model_ratings:
-            print(
-                f"{model}: {old_deviations[model]:.4f} -> {self.model_ratings[model]['deviation']:.4f}"
-            )
+        if self.debug:
+            print(f"\nUpdate count: {self.update_count}")
+            print(f"Current K value: {self.K:.2f}")
+            print("\nDeviation changes:")
+            for model in self.model_ratings:
+                print(
+                    f"{model}: {old_deviations[model]:.4f} -> {self.model_ratings[model]['deviation']:.4f}"
+                )
 
     def get_weights(self) -> Dict[str, float]:
         return self.weights
@@ -956,6 +962,7 @@ class RatingSystemStaticWeighted(RatingSystem):
         decay_steps: int = 10,
         scaling_factor: float = 20.0,
         freeze_ratings: bool = False,
+        debug: bool = False,
     ):
         super().__init__(
             model_scores=model_scores,
@@ -969,6 +976,7 @@ class RatingSystemStaticWeighted(RatingSystem):
             decay_steps=decay_steps,
             scaling_factor=scaling_factor,
             freeze_ratings=freeze_ratings,
+            debug=debug,
         )
         self.base_dir = base_dir
         self.current_iteration = current_iteration
@@ -1119,13 +1127,14 @@ class RatingSystemStaticWeighted(RatingSystem):
                     new_dev, self.min_deviation
                 )
 
-        print(f"\nUpdate count: {self.update_count}")
-        print(f"Current K value: {self.K:.2f}")
-        print("\nDeviation changes:")
-        for model in self.model_ratings:
-            print(
-                f"{model}: {old_deviations[model]:.4f} -> {self.model_ratings[model]['deviation']:.4f}"
-            )
+        if self.debug:
+            print(f"\nUpdate count: {self.update_count}")
+            print(f"Current K value: {self.K:.2f}")
+            print("\nDeviation changes:")
+            for model in self.model_ratings:
+                print(
+                    f"{model}: {old_deviations[model]:.4f} -> {self.model_ratings[model]['deviation']:.4f}"
+                )
 
     def get_weights(self) -> Dict[str, float]:
         return self.weights
@@ -1134,12 +1143,69 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     """
     Sparta competition + multi-judge + reputation + DPO preference generation.
     
+    This method implements an iterative competition-based training approach where:
+    1. Models compete pairwise on instructions
+    2. Other models (judges) score the competition responses
+    3. Model ratings are updated based on judge scores
+    4. Preference pairs are generated from competitions
+    5. DPO training is applied to improve models
+    6. The best adapter across all iterations is selected via dev set evaluation
+    
     Args:
+        task: Task name (e.g., "gsm8k", "mmlu")
+        task_type: Task type (e.g., "exact_match", "multiple_choice")
+        gpu_ids: List of GPU IDs to use for distributed processing
         model_names: List of model identifiers. Can be:
             - HuggingFace Hub identifiers (e.g., "allenai/Llama-3.1-Tulu-3-8B-SFT")
             - Local paths (absolute or relative, e.g., "/path/to/model" or "./models/my_model")
             - Any mix of the above
-        The code supports any number of any models without requiring pre-defined mappings.
+            The code supports any number of any models without requiring pre-defined mappings.
+        hyperparameters: Dictionary containing hyperparameters. Supported keys:
+            
+            **Iteration Control:**
+            - num_iterations (int, default=1): Number of Sparta iterations to run
+            - current_iteration (int, default=0): Starting iteration number (for resuming)
+            - base_dir (str, default="logs/text_sparta"): Base directory for saving logs and models
+            
+            **Generation Hyperparameters (used for both competition and judging):**
+            - max_response_length (int, default=256): Maximum number of tokens to generate
+            - temperature (float, default=0.7): Sampling temperature for generation
+            - top_p (float, default=0.9): Nucleus sampling parameter
+            - batch_size (int, default=1): Batch size for generation
+            
+            **Judge Parameters:**
+            - judge_batch_size (int, default=8): Batch size for judge model generation
+            - judge_rounds (int, default=1): Number of judging rounds per pair
+            
+            **Competition Parameters:**
+            - num_instructions (int, default=500): Number of instructions to use for competition
+            - random_match_prob (float, default=0.2): Probability of random opponent selection
+            - num_opponents (int, default=3): Number of top-K opponents to consider for matching
+            
+            **Rating System Parameters:**
+            - initial_k (float, default=10.0): Initial K value for rating updates
+            - min_k (float, default=5.0): Minimum K value (after decay)
+            - window_size (int, default=10): Window size for deviation calculation
+            - min_deviation (float, default=0.1): Minimum deviation value
+            - epsilon (float, default=0.01): Small epsilon for numerical stability
+            - decay_rate (float, default=0.9): Decay rate for K value
+            - decay_steps (int, default=10): Steps for K decay
+            - scaling_factor (float, default=20.0): Scaling factor for rating updates
+            - score_type (str, default="normal"): Rating system type: "normal", "dynamic", or "static"
+            - freeze_ratings (bool, default=False): If True, ratings are not updated
+            
+            **Debug:**
+            - debug (bool, default=False): If True, prints detailed rating update information
+            
+    Returns:
+        int: Always returns 0 on successful completion
+        
+    Note:
+        - Judges are dynamically selected from the model pool for each pair (models that didn't compete)
+        - DPO training uses default hyperparameters (batch_size=1, gradient_accumulation_steps=16, 
+          learning_rate=1e-6, epoch=1)
+        - All adapters from all iterations are evaluated on dev set, and the best one is selected
+        - LoRA adapters are automatically detected and merged before training new adapters
     """
 
     # ------------------------- 0. Load all hyperparameters in one place -------------------------
@@ -1174,6 +1240,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     scaling_factor = float(hyperparameters.get("scaling_factor", 20.0))
     score_type = hyperparameters.get("score_type", "normal")  # normal / dynamic / static
     freeze_ratings = bool(hyperparameters.get("freeze_ratings", False))
+    debug = bool(hyperparameters.get("debug", False))
 
     # Track current model paths (for adapter handling across iterations)
     # model_names are already HuggingFace identifiers, use them directly
@@ -1352,6 +1419,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 decay_steps=decay_steps,
                 scaling_factor=scaling_factor,
                 freeze_ratings=freeze_ratings,
+                debug=debug,
             )
         elif score_type == "static":
             rating_system = RatingSystemStaticWeighted(
@@ -1368,6 +1436,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 decay_steps=decay_steps,
                 scaling_factor=scaling_factor,
                 freeze_ratings=freeze_ratings,
+                debug=debug,
             )
         else:
             rating_system = RatingSystem(
@@ -1382,6 +1451,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 decay_steps=decay_steps,
                 scaling_factor=scaling_factor,
                 freeze_ratings=freeze_ratings,
+                debug=debug,
             )
 
         rating_history: List[Dict[str, Any]] = []

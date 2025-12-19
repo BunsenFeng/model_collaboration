@@ -98,3 +98,41 @@ Generating responses with logit arithmetic: `outputs = logit_operator.batch_gene
 - `tokenizer`: the tokenizer object used to encode the prompts and decode the outputs.
 - `batch_size`, `max_new_tokens`, `do_sample`, `temperature`: standard generation parameters.
 - `arithmetic_func`: a function that takes in a list of logits tensors (one per model) and returns a single logits tensor after performing the desired arithmetic operation. An example function `average_logits` is provided in `logit_arithmetic.py` that simply averages the logits from all models, and is the default. See how a custom logit arithmetic function can be defined in `method/logit_logit_contrastive.py` for reference.
+
+`method/text_sparta.py`
+
+Import: `from method import text_sparta`
+Usage: `text_sparta.run_method(task, task_type, gpu_ids, model_names, hyperparameters)`
+- `task`, `task_type`, `gpu_ids`, `model_names`: same as above.
+- `hyperparameters`: a dictionary containing hyperparameters for the SPARTA algorithm. Supported keys:
+  - Iteration Control:
+    - `num_iterations` (int, default=1): Number of Sparta iterations to run
+    - `current_iteration` (int, default=0): Starting iteration number (for resuming)
+    - `base_dir` (str, default="logs/text_sparta"): Base directory for saving logs and models
+  - Generation Hyperparameters (used for both competition and judging):
+    - `max_response_length` (int, default=256): Maximum number of tokens to generate
+    - `temperature` (float, default=0.7): Sampling temperature for generation
+    - `top_p` (float, default=0.9): Nucleus sampling parameter
+    - `batch_size` (int, default=1): Batch size for generation
+  - Competition Parameters:
+    - `num_instructions` (int, default=500): Number of instructions to use for competition
+    - `random_match_prob` (float, default=0.2): Probability of random opponent selection
+    - `num_opponents` (int, default=3): Number of top-K opponents to consider for matching
+  - Rating System Parameters:
+    - `initial_k` (float, default=10.0): Initial K value for rating updates
+    - `min_k` (float, default=5.0): Minimum K value (after decay)
+    - `window_size` (int, default=10): Window size for deviation calculation
+    - `min_deviation` (float, default=0.1): Minimum deviation value
+    - `epsilon` (float, default=0.01): Small epsilon for numerical stability
+    - `decay_rate` (float, default=0.9): Decay rate for K value
+    - `decay_steps` (int, default=10): Steps for K decay
+    - `scaling_factor` (float, default=20.0): Scaling factor for rating updates
+    - `score_type` (str, default="normal"): Rating system type: "normal", "dynamic", or "static"
+    - `freeze_ratings` (bool, default=False): If True, ratings are not updated
+  - Debug:
+    - `debug` (bool, default=False): If True, prints detailed rating update information
+- Returns: `int` (always 0 on successful completion)
+
+**Notes for text_sparta.py:** 
+- `model_names` can be HuggingFace Hub identifiers or local paths (any mix is supported)
+- LoRA adapters are automatically detected and merged before training new adapters
