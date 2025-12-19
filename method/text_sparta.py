@@ -1210,7 +1210,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # ------------------------- 0. Load all hyperparameters in one place -------------------------
     # Iteration control
-    num_iterations = int(hyperparameters.get("num_iterations", 1))  # Number of iterations to run
+    num_iterations = int(hyperparameters.get("num_iterations", 3))  # Number of iterations to run
     start_iteration = int(hyperparameters.get("current_iteration", 0))  # Starting iteration number (for resuming)
     base_dir = hyperparameters.get("base_dir", os.path.join("logs", "text_sparta"))
     
