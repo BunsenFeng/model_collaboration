@@ -2,6 +2,7 @@ import os
 import json
 import random
 import torch
+import shutil
 from collections import Counter
 from peft import LoraConfig
 from trl import GRPOTrainer, GRPOConfig
@@ -31,17 +32,19 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("The model you are using are:")
     for model_name in model_names:
         print(model_name)
-    print("Make sure they share the same model architecture, or expect errors.")
 
     # method-specific hyperparameters
     agg_model = hyperparameters.get("agg_model", None)
     if agg_model is None:
         print(
-            "Taking the first model as the base model. Hopefully it is the one with the largest vocabulary size and thus embedding/lm head matrices.")
-        print("Please specify the base_model in hyperparameters to avoid this warning.")
-        agg_model = model_names[-1]
+            "Taking Qwen/Qwen3-1.7B as the base model. Please specify the agg_model in hyperparameters to avoid this warning."
+        )
+        agg_model = 'Qwen/Qwen3-1.7B'
 
     agglm_log_path = hyperparameters.get("agglm_log_path", 'logs/agglm')
+    reuse_log = hyperparameters.get("reuse_log", True)
+    if os.path.exists(agglm_log_path) and not reuse_log:
+        shutil.rmtree(agglm_log_path)
     os.makedirs(agglm_log_path, exist_ok=True)
     learning_rate = hyperparameters.get("learning_rate", 1e-4)
     weight_decay = hyperparameters.get("weight_decay", 1e-5)
@@ -49,7 +52,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     max_epoches = hyperparameters.get("max_epoches", 10)
     max_response_length = hyperparameters.get("max_response_length", 512)
     temperature = hyperparameters.get("temperature", 1.0)
-    batch_size = hyperparameters.get("train_batch_size", 8)
+    batch_size = hyperparameters.get("train_batch_size", 4)
     s = hyperparameters.get("simple_size", 2)
     m = len(model_names)
 

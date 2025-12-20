@@ -290,6 +290,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - method-specific hyperparameters:
     - `agg_model`, default auto-detect from `model_names[-1]`: the base model to initialize the aggregator. Should ideally have the largest vocabulary size among the solution models. Can be a HuggingFace Hub ID or local path.
     - `agglm_log_path`, default `logs/agglm`: directory to save training checkpoints, intermediate generation results, and trained LoRA adapters.
+    - `reuse_log`, default `True`: whether to reuse existing generation and model weights. You might need to set this hyperparameter to `False` if error happens in the generation or training process
     - **Training hyperparameters:**
         - `learning_rate`, default 1e-4: learning rate for GRPO optimization.
         - `weight_decay`, default 1e-5: weight decay for regularization.
@@ -309,7 +310,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
         - max_prompt_length: 4096
         - warmup_ratio: 0.1
 - workflow:
-    1. **Training data generation**: For each problem in the dev set, sample `simple_size * m` solutions from the `model_names` solution models (m = number of models). Group them into `simple_size` sets of m solutions each.
+    1. **Training data generation**: For each problem in the dev set, sample `sample_size * m` solutions from the `model_names` solution models (m = number of models). Group them into `simple_size` sets of m solutions each.
     2. **Hard/easy classification**: Evaluate each solution set. A set is "hard" if the majority answer (most frequent) is incorrect; otherwise it's "easy".
     3. **Balanced mixing**: Keep all hard examples and randomly sample an equal number of easy examples (50% by default) to create the final training dataset. This prevents overfitting to either always trusting majority vote or always ignoring it.
     4. **RL training**: Train the aggregator using GRPO with binary rewards (1 if aggregated answer matches ground truth, 0 otherwise) and the aggregation prompt template.
