@@ -36,24 +36,27 @@ def extrapolate_models(sft_model_path, dpo_model_path, alpha, output_path, gpu_i
         dpo_model_path: Path to the DPO/RLHF model (aligned model)
         alpha: Extrapolation coefficient (typically 0.3 or 0.5)
         output_path: Path to save the extrapolated model
-        gpu_id: GPU to use for loading models
+        gpu_id: GPU to use for loading models (not used - loads on CPU for efficiency)
     """
-    device = f"cuda:{gpu_id}"
+    # Load models on CPU to avoid GPU memory issues during weight manipulation
+    # This is more memory efficient since we only need to manipulate weights, not run inference
     
-    print(f"Loading SFT model from: {sft_model_path}")
+    print(f"Loading SFT model from: {sft_model_path} (on CPU)")
     sft_model = AutoModelForCausalLM.from_pretrained(
         sft_model_path,
         torch_dtype=torch.bfloat16,
-        device_map=device,
+        device_map="cpu",
         trust_remote_code=True,
+        low_cpu_mem_usage=True,
     )
     
-    print(f"Loading DPO model from: {dpo_model_path}")
+    print(f"Loading DPO model from: {dpo_model_path} (on CPU)")
     dpo_model = AutoModelForCausalLM.from_pretrained(
         dpo_model_path,
         torch_dtype=torch.bfloat16,
-        device_map=device,
+        device_map="cpu",
         trust_remote_code=True,
+        low_cpu_mem_usage=True,
     )
     
     # Verify models have the same architecture
@@ -89,6 +92,10 @@ def extrapolate_models(sft_model_path, dpo_model_path, alpha, output_path, gpu_i
     # Clean up to free memory
     del sft_model
     del dpo_model
+    del sft_state_dict
+    del dpo_state_dict
+    import gc
+    gc.collect()
     torch.cuda.empty_cache()
     
     return output_path
@@ -319,12 +326,25 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Step 4: Evaluating on test set")
     print("=" * 60)
     
+    # Force garbage collection and clear CUDA cache before evaluation
+    import gc
+    gc.collect()
+    # Clear cache on all specified GPUs
+    for gid in gpu_ids:
+        try:
+            with torch.cuda.device(gid):
+                torch.cuda.empty_cache()
+                torch.cuda.reset_peak_memory_stats()
+        except:
+            pass
+    
     test_input_list = eval.prepare_inputs(task, task_type, "test")
     
+    # Use only the first GPU to avoid multiprocessing issues with single model
     list_of_output_list = distributed_generation.distributed_generation(
         [final_model_path],
         [test_input_list],
-        [gpu_id]
+        [gpu_ids[0]]  # Use single GPU for single model evaluation
     )
     
     test_outputs = list_of_output_list[0]
