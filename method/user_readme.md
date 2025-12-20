@@ -296,3 +296,30 @@ If you are trying to run collaboration with one of the model being too large to 
     - `regular_coef`, default 0.05: the coefficient for L1 regularization to prevent weights from becoming too large.
 - warning: **All LoRA adapters must share the same base model architecture.** This implementation optimizes based on **generation accuracy**, not likelihood loss. This ensures the metric aligns with the final goal.
 - note to tester: recommended set of `model_names`: ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].
+
+#### Weight-level: ExPO (Model Extrapolation)
+- file: `weight_expo.py`
+- description: Extrapolates model weights beyond the DPO/RLHF checkpoint in the direction away from the SFT checkpoint. This amplifies the alignment effect by pushing further along the "alignment direction". Supports multiple model pairs: evaluates all pairs on the dev set and selects the best pair before applying extrapolation. **Each pair must consist of an SFT model and its corresponding DPO model sharing the same architecture.**
+- related paper(s):
+    - [Model Extrapolation Expedites Alignment](https://arxiv.org/abs/2404.16792) (ACL 2025)
+- formula: `extrapolated_weight = dpo_weight + alpha * (dpo_weight - sft_weight)`
+    - Equivalently: `extrapolated_weight = (1 + alpha) * dpo_weight - alpha * sft_weight`
+- model specification: Two ways to specify model pairs:
+    1. **Alternating list** (default): `model_names: [sft1, dpo1, sft2, dpo2, ...]`
+    2. **Explicit lists** in hyperparameters: `sft_models: [sft1, sft2, ...]` and `dpo_models: [dpo1, dpo2, ...]`
+- method-specific hyperparameters:
+    - `alpha`, default 0.3: the extrapolation coefficient. Higher values push further from SFT towards the alignment direction. Typical values are 0.3 or 0.5.
+    - `mode`, default `fixed`: `fixed` uses the specified alpha directly, `optimized` searches for the best alpha on the dev set from a list of candidates.
+    - `alpha_candidates`, default `[0.1, 0.2, 0.3, 0.4, 0.5]`: candidate alpha values to search over when `mode` is `optimized`.
+    - `pair_selection`, default `dpo_score`: criterion for selecting the best model pair from dev set evaluation. Options:
+        - `dpo_score`: select pair with the best-performing DPO model
+        - `improvement`: select pair with largest improvement from SFT to DPO
+        - `sft_score`: select pair with the best-performing SFT model
+    - `sft_models`, default None: explicit list of SFT models (must match length of `dpo_models` if provided)
+    - `dpo_models`, default None: explicit list of DPO models (must match length of `sft_models` if provided)
+    - `expo_base_path`, default `logs/expo/`: directory to save intermediate and final extrapolated models.
+- warning: **Each SFT-DPO pair must share the same model architecture.** When using multiple pairs, all models are evaluated on the dev set first to select the best pair.
+- note to tester: 
+    - Single pair: `model_names: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO"]`
+    - Multiple pairs: `model_names: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "HuggingFaceH4/zephyr-7b-sft-full", "HuggingFaceH4/zephyr-7b-beta"]`
+    - Try both `mode: fixed` with different alpha values and `mode: optimized` to let the method search for the best alpha.
