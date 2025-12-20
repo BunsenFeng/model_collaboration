@@ -89,6 +89,20 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
     - (suggested) `model_names`: arrange model names from weak to strong, from cheap to expensive. For instance, `["Qwen/Qwen2.5-3B-Instruct","Qwen/Qwen2.5-7B-Instruct"]`
 - note to tester: try different LLMs you'd like.
 
+#### API-level: MentorCollab
+- file: `text_mentor_collab.py`
+- description: collaborative generation between a generator model (typically a small model) and a mentor model (typically a large reasoning model). During generation, both models operate in parallel. At each decision point, if the next predicted token differs between the two models, both generate a segment of text (patch). The method then decides which segment to follow either through: (1) "free" mode where the generator model itself judges which option is better, or (2) "train" mode where a trained MLP classifier predicts the better choice based on the generator's hidden states. This allows the base model to selectively incorporate guidance from the instruction-tuned mentor throughout generation.
+- method-specific hyperparameters:
+    - `decision_proportion`, default 25: percentage (0-100) of generation steps where the mentor is consulted. At other steps, the generator proceeds independently.
+    - `patch_size`, default 16: number of tokens to generate in each segment when both models' predictions diverge.
+    - `mode`, default "free": decision strategy. Options are "free" (generator self-judges) or "train" (use trained MLP classifier).
+    - `task`, default "General": task type for loading the trained MLP model. Options are "Math" or "General" (only used in "train" mode).
+    - `mlp_threshold`, default 0.5: decision threshold for the MLP classifier. Scores above this threshold choose the generator's segment, otherwise choose the mentor's (only used in "train" mode).
+- notes:
+    - requires exactly 2 models and 2 GPUs. The first model should be a base model (generator), and the second should be an instruction-tuned variant (mentor). In "train" mode, only specific model pairs are supported (see `MENTOR_COLLAB_TRAIN_SUPPORT_MODELS` in the code).
+    - try `["meta-llama/Llama-3.1-8B", "Qwen/Qwen3-14B"]` with `mode: "free"` first. For "train" mode, ensure the generator model is in the supported list. 
+    - supported generator list for "train" mode: `["Qwen/Qwen3-1.7B", "Qwen/Qwen3-8B-Base", "meta-llama/Llama-3.1-8B", "meta-llama/Llama-3.2-3B-Instruct", "google/gemma-3-4b-it", "google/gemma-3-4b-pt"]`
+
 #### Text-level: Multiagent Refine/Debate
 - file: `text_multiagent_refine.py`
 - description: multiple LLMs collaborate to refine the answers of each other. First, evaluate all models on the dev set to select a final summarizer. At each round, each LLM sees the answers of all LLMs from the previous round and refines its own answer. After several rounds, the final answers are aggregated by the summarizer LLM.
@@ -195,19 +209,6 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
 - notes:
     - Currently supports `task_type` in `["multiple_choice", "exact_match", "f1_match"]`, using the existing `data/eval.py` extraction logic for voting and scoring.
     - Use moderate-sized models and small `iterations` / `rounds` if compute is limited; each iteration runs a full multi-model debate plus SFT.
-
-#### Text-level: MentorCollab
-- file: `text_mentor_collab.py`
-- description: collaborative generation between a generator model (typically a small model) and a mentor model (typically a large reasoning model). During generation, both models operate in parallel. At each decision point, if the next predicted token differs between the two models, both generate a segment of text (patch). The method then decides which segment to follow either through: (1) "free" mode where the generator model itself judges which option is better, or (2) "train" mode where a trained MLP classifier predicts the better choice based on the generator's hidden states. This allows the base model to selectively incorporate guidance from the instruction-tuned mentor throughout generation.
-- method-specific hyperparameters:
-    - `decision_proportion`, default 25: percentage (0-100) of generation steps where the mentor is consulted. At other steps, the generator proceeds independently.
-    - `patch_size`, default 16: number of tokens to generate in each segment when both models' predictions diverge.
-    - `mode`, default "free": decision strategy. Options are "free" (generator self-judges) or "train" (use trained MLP classifier).
-    - `task`, default "General": task type for loading the trained MLP model. Options are "Math" or "General" (only used in "train" mode).
-    - `mlp_threshold`, default 0.5: decision threshold for the MLP classifier. Scores above this threshold choose the generator's segment, otherwise choose the mentor's (only used in "train" mode).
-- notes:
-    - requires exactly 2 models and 2 GPUs. The first model should be a base model (generator), and the second should be an instruction-tuned variant (mentor). In "train" mode, only specific model pairs are supported (see `MENTOR_COLLAB_TRAIN_SUPPORT_MODELS` in the code).
-    - try `["meta-llama/Llama-3.1-8B", "Qwen/Qwen3-14B"]` with `mode: "free"` first. For "train" mode, ensure the generator model is in the supported list. 
 
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
