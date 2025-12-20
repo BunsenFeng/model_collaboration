@@ -321,5 +321,5 @@ If you are trying to run collaboration with one of the model being too large to 
 - warning: **Each SFT-DPO pair must share the same model architecture.** When using multiple pairs, all models are evaluated on the dev set first to select the best pair.
 - note to tester: 
     - Single pair: `model_names: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO"]`
-    - Multiple pairs: `model_names: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "HuggingFaceH4/zephyr-7b-sft-full", "HuggingFaceH4/zephyr-7b-beta"]`
+    - Multiple pairs: `model_names: ["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "alignment-handbook/zephyr-7b-sft-full", "alignment-handbook/zephyr-7b-dpo-full"]`
     - Try both `mode: fixed` with different alpha values and `mode: optimized` to let the method search for the best alpha.
