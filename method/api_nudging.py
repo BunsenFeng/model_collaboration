@@ -19,6 +19,7 @@ class Nudging:
         system_prompt = None,
         model_kwargs = None
     ):
+        assert len(model_names) > 2, "len(model_names) should be larger than 2"
         self.models = [
             AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16).to(model_devices[i]) for i, model_name in enumerate(model_names)
         ]
@@ -103,6 +104,7 @@ class Nudging:
             outputs.append(model(**model_inputs, return_dict=return_dict))
         return outputs[0], outputs[1]
 
+    @torch.inference_mode()
     def generate(
         self,
         base_chat_prompts = None,
@@ -153,10 +155,21 @@ class Nudging:
             # Prepare inputs for both models
             base_full_prompts = [base_chat_prompts[i] + decoded_outputs[i] for i in range(batch_size)]
             nudging_full_prompts = [nudging_chat_prompts[i] + decoded_outputs[i] for i in range(batch_size)]
-            base_input_ids = base_tokenizer(base_full_prompts, return_tensors="pt", padding=True, truncation=True).input_ids
-            nudging_input_ids = nudging_tokenizer(nudging_full_prompts, return_tensors="pt", padding=True, truncation=True).input_ids
-            base_inputs = {'input_ids': base_input_ids}
-            nudging_inputs = {'input_ids': nudging_input_ids}
+
+            base_encodings = base_tokenizer(base_full_prompts, return_tensors="pt", padding=True, truncation=True)
+            nudging_encodings = nudging_tokenizer(nudging_full_prompts, return_tensors="pt", padding=True, truncation=True)
+            base_input_ids = base_encodings.input_ids
+            nudging_input_ids = nudging_encodings.input_ids
+
+            base_inputs = {
+                'input_ids': base_input_ids,
+                'attention_mask': base_encodings.attention_mask
+            }
+            nudging_inputs = {
+                'input_ids': nudging_input_ids,
+                'attention_mask': nudging_encodings.attention_mask
+            }
+
             inputs = [base_inputs, nudging_inputs]
             
             base_output, nudging_output = self.forward(inputs, return_dict=True) 
