@@ -29,6 +29,24 @@ If you are trying to run collaboration with one of the model being too large to 
 
 Reasoning LMs are supported! Please use much larger `"max_response_length"` to account for them: we will parse the text after `</think>` as the actual model output.
 
+#### API-level: Nudging
+- file: `api_nudging.py`
+- description: A training-free guided decoding method. During generation, if the base model is uncertain about the next token (top-1 prob < `gamma`), a (smaller) nudging model intervenes. The nudging model inserts nudging token(s) (often stylistic/discourse markers) to guide the base model’s generation. 
+    - Implementation Details: The method ensures complete words are inserted (by splitting on spaces) to maintain coherence and support collaboration of models with different tokenizers. Generation stops when either the base or nudging model emits an EOS token.
+- related paper(s):
+    - [Nudging: Inference-time Alignment of LLMs via Guided Decoding](https://arxiv.org/abs/2410.09300)
+- method-specific hyperparameters:
+    - `gamma` (float, default 0.4): The uncertainty threshold. If the base model's top-1 probability is below this value, the nudging model takes over.
+    - `base_model_id` (int, default 0): the index of the base model in `model_names`.
+    - `nudging_model_id` (int, default 1): the index of the nudging model in `model_names`. (Requires `len(model_names) >= 2`). All the models that are not the base model are potential nudging models and will be used for searching if `search_nudging` is True.
+    - `search_gamma` (bool, default False): If `True`, performs a grid search over gamma values `[0.2, 0.3, 0.4, 0.5]` using the dev set to find the optimal threshold.
+    - `search_nudging` (bool, default False): If `True`, search over all potential nudging models (all the models in `model_names` excluding `base_model_id`) using the dev set to find the best nudging model.
+- performance & usage note: 
+    - Model support: Supports models from different families (tested on `Llama-3.1-Tulu-3-8B` + `Gemma-2-2b-it` / `Llama-3.1-Tulu-3-8B-DPO`). 
+    - Inference speed: This method is currently implemented without KV-caching (stateless inference). Consequently, batched inference is compute-bound rather than memory-bound.
+        - Expectation: Speed scales linearly with batch size. A batch of size $N$ will take roughly $N$ times longer than the longest sample in the batch.
+        - For minimizing the inference time, one should consider setting `batch_size` to be small or group samples by length.
+
 #### API-level: Prompt Routing
 - file: `api_prompt_routing.py`
 - description: prompt an LLM to route among the candidate LLMs based on their descriptions. First, evaluate models on the dev set to determine who is best and use it for the routing. Then, given (model descriptions, query), this LLM decides which candidate model (including itself) should be selected. Finally, generation with the selected LLM for each query.
