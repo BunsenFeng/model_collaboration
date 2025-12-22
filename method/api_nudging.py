@@ -149,18 +149,29 @@ class Nudging:
         accepted_nudging_tokens = [0 for _ in range(batch_size)]
         
         for step in tqdm(range(max_new_tokens)):
-            assert len(base_chat_prompts) == len(nudging_chat_prompts), "base_chat_prompts and nudging_chat_prompts must have the same length"
-            assert len(base_chat_prompts) == batch_size, "base_chat_prompts and nudging_chat_prompts must have the same length as batch_size"
+            # --- OPTIMIZATION START: Get active indices ---
+            # We only process sequences that are NOT finished (unfinished_sequences == 1)
+            active_indices = torch.nonzero(unfinished_sequences).squeeze(-1).tolist()
             
-            # Prepare inputs for both models
-            base_full_prompts = [base_chat_prompts[i] + decoded_outputs[i] for i in range(batch_size)]
-            nudging_full_prompts = [nudging_chat_prompts[i] + decoded_outputs[i] for i in range(batch_size)]
+            # If all sequences are finished, stop immediately
+            if not active_indices:
+                break
+                
+            current_batch_size = len(active_indices)
+            
+            # Prepare inputs ONLY for active indices
+            # Note: We map back to the original lists using 'idx'
+            active_base_prompts = [base_chat_prompts[idx] + decoded_outputs[idx] for idx in active_indices]
+            active_nudging_prompts = [nudging_chat_prompts[idx] + decoded_outputs[idx] for idx in active_indices]
 
-            base_encodings = base_tokenizer(base_full_prompts, return_tensors="pt", padding=True, truncation=True)
-            nudging_encodings = nudging_tokenizer(nudging_full_prompts, return_tensors="pt", padding=True, truncation=True)
+            # Tokenize the smaller batch
+            base_encodings = base_tokenizer(active_base_prompts, return_tensors="pt", padding=True, truncation=True)
+            nudging_encodings = nudging_tokenizer(active_nudging_prompts, return_tensors="pt", padding=True, truncation=True)
+            
             base_input_ids = base_encodings.input_ids
             nudging_input_ids = nudging_encodings.input_ids
 
+            # Include attention masks!
             base_inputs = {
                 'input_ids': base_input_ids,
                 'attention_mask': base_encodings.attention_mask
@@ -172,6 +183,7 @@ class Nudging:
 
             inputs = [base_inputs, nudging_inputs]
             
+            # Forward pass on smaller batch
             base_output, nudging_output = self.forward(inputs, return_dict=True) 
             base_logits = base_output.logits[..., -1, :]
             nudging_logits = nudging_output.logits[..., -1, :]
@@ -184,54 +196,62 @@ class Nudging:
             base_next_token_ids = self.get_next_token_ids(base_logits, temperature, do_sample)
             nudging_next_token_ids = self.get_next_token_ids(nudging_logits, temperature, do_sample)
             
-            # decoded next tokens
-            base_next_tokens = [self.decode_token(base_tokenizer, base_input_ids[i], base_next_token_ids[i]) for i in range(batch_size)]
-            nudging_next_tokens = [self.decode_token(nudging_tokenizer, nudging_input_ids[i], nudging_next_token_ids[i]) for i in range(batch_size)]
+            # Decode tokens (batched decoding for the active set)
+            # note: base_input_ids[k] corresponds to active_indices[k]
+            base_next_tokens = [self.decode_token(base_tokenizer, base_input_ids[k], base_next_token_ids[k]) for k in range(current_batch_size)]
+            nudging_next_tokens = [self.decode_token(nudging_tokenizer, nudging_input_ids[k], nudging_next_token_ids[k]) for k in range(current_batch_size)]
             
-            # update unfinished sequences
-            # if the next base or nudging token is EOS, stop generating for this sequence
-            unfinished_sequences = unfinished_sequences.mul(
-                base_next_token_ids.ne(base_eos_token_id_tensor).long() *
-                nudging_next_token_ids.ne(nudging_eos_token_id_tensor).long()
-            )
-            
-            # nudging update
-            for i in range(batch_size):
-                if unfinished_sequences[i] == 0:    # skip if the sequence is finished
-                    continue
+            # --- Update Loop: Iterate over the ACTIVE batch ---
+            for k, original_idx in enumerate(active_indices):
+                # Check EOS for this specific sequence
+                # Note: We check if EITHER model produced an EOS
+                is_base_eos = (base_next_token_ids[k] == base_eos_token_id_tensor).item()
+                is_nudge_eos = (nudging_next_token_ids[k] == nudging_eos_token_id_tensor).item()
                 
-                nudging = do_nudging[i]
-                top_1_base_prob = base_probs_top_1[i].item()
-                accepted_nudging_token = accepted_nudging_tokens[i]
-                base_next_token = base_next_tokens[i]
-                nudging_next_token = nudging_next_tokens[i]
+                if is_base_eos or is_nudge_eos:
+                    unfinished_sequences[original_idx] = 0
+                    # Don't append the token if it's EOS (optional, but cleaner)
+                    continue 
+
+                # Retrieve state for the original index
+                nudging = do_nudging[original_idx]
+                top_1_base_prob = base_probs_top_1[k].item()
+                accepted_nudging_token = accepted_nudging_tokens[original_idx]
+                
+                base_next_token = base_next_tokens[k]
+                nudging_next_token = nudging_next_tokens[k]
                 space_in_nudging_next_token = nudging_next_token.count(" ")
                 
+                next_token = ""
+                
+                # Nudging logic
                 if nudging and (accepted_nudging_token == 0 or space_in_nudging_next_token == 0 or top_1_base_prob < gamma):
                     # Three conditions to keep nudging when in nudging mode:
                     # 1. No accepted nudging token yet (always nudge the first token)
                     # 2. No space in the next token (haven't reached a word boundary), we keep nudging until we accept a full nudging word
                     # 3. Top-1 base model probability is less than gamma (the next token is still uncertain)
-                    accepted_nudging_tokens[i] += 1
+                    accepted_nudging_tokens[original_idx] += 1
                     next_token = nudging_next_token
                 elif top_1_base_prob >= gamma:
                     # Switch back to the base model
-                    do_nudging[i] = False
-                    accepted_nudging_tokens[i] = 0
+                    do_nudging[original_idx] = False
+                    accepted_nudging_tokens[original_idx] = 0
                     next_token = base_next_token
                 elif not nudging and top_1_base_prob < gamma:
                     # Switch to the nudging model
-                    do_nudging[i] = True
-                    accepted_nudging_tokens[i] = 1
+                    do_nudging[original_idx] = True
+                    accepted_nudging_tokens[original_idx] = 1
                     next_token = nudging_next_token
                 else:
                     raise ValueError("Invalid nudging condition: nudging={}, top_1_base_prob={}, accepted_nudging_token={}, space_in_nudging_next_token={}".format(nudging, top_1_base_prob, accepted_nudging_token, space_in_nudging_next_token))
                 
-                decoded_outputs[i] += next_token
+                decoded_outputs[original_idx] += next_token
+                
                 if debug:
+                    print("Step {}, active indices: {}".format(step, active_indices))
                     print("Step {}: base_next_token={}, nudging_next_token={}, next_token={}".format(step, base_next_token, nudging_next_token, next_token))
                     print("Nudging: {}, Top-1 base prob: {}, Accepted nudging token: {}, Space in nudging next token: {}".format(nudging, top_1_base_prob, accepted_nudging_token, space_in_nudging_next_token))
-                    print("Decoded output: {}".format(decoded_outputs[i]))
+                    print("Decoded output: {}".format(decoded_outputs[original_idx]))
                     print("--------------------------------")
 
             # if all sequences are finished, stop
@@ -415,7 +435,7 @@ if __name__ == "__main__":
         outputs = instance.batch_generate(
             prompts,
             batch_size=2,
-            max_new_tokens=50,
+            max_new_tokens=100,
             do_sample=False,
             temperature=1.0,
             gamma=0.4,
