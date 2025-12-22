@@ -49,12 +49,22 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
         try:
             chat_inputs = []
             for input in batch_inputs:
-                chat = [
-                    # {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": input}
-                ]
-                chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-                chat_inputs.append(chat_input)
+                if "<begin>" in input:
+                    question, partial_response = input.split("<begin>", 1)
+                    chat = [
+                        # {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "user", "content": question},
+                    ]
+                    chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+                    chat_input += partial_response
+                    chat_inputs.append(chat_input)
+                else:
+                    chat = [
+                        # {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "user", "content": input}
+                    ]
+                    chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+                    chat_inputs.append(chat_input)
         except:
             chat_inputs = batch_inputs
         
