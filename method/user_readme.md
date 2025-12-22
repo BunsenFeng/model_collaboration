@@ -48,7 +48,7 @@ If you are trying to run collaboration with one of the model being too large to 
     - `rollout_per_instance`, default 16: the number of rollouts to generate for each training instance.
     - `reward_model_gpu_id`, default gpu_ids[0]: the GPU ID to load the reward model.
     - `reward_model_name`, default `Skywork/Skywork-Reward-Llama-3.1-8B-v0.2`: the reward model to evaluate the rollouts.
-    - `wait_flag`, default False: whether to add a "Wait" to patches with fewer than 20 characters (to avoid ending so soon), in an s1 TTS fashion. If not, generation will end at any model's EOS.
+    - `wait_flag`, default False: whether to add a "Wait" to patches shorter than expected (to avoid ending so soon), in an s1 TTS fashion. If not, generation will end at any model's EOS.
 - warning: cost could be high with `selector_model_name` not provided and a large `training_instance_num` and `rollout_per_instance`. Use a selector model or reduce the number of training instances and rollouts to save cost.
 - note to tester: try one `selector_model_name` among `bunsenfeng/PFA_switcher_1`, `bunsenfeng/PFA_switcher_2`, or any instruction following model. Then try another one with `selector_model_name` none to train a new switcher LM on the task.
 
