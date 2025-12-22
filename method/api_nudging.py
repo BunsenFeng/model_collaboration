@@ -19,7 +19,7 @@ class Nudging:
         system_prompt = None,
         model_kwargs = None
     ):
-        assert len(model_names) > 2, "len(model_names) should be larger than 2"
+        assert len(model_names) >= 2, "len(model_names) should be equal to or larger than 2"
         self.models = [
             AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16).to(model_devices[i]) for i, model_name in enumerate(model_names)
         ]
