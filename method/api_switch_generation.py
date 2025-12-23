@@ -62,8 +62,8 @@ def switch_generation(prompts, model_names, selector_model_name, gpu_ids, patch_
             if round_id == max_response_length // patch_size - 1 and objective_flag:
                 generation_logs[i]["generated_segments"][-1] += " The final answer is"
                 generation_logs[i]["generated_sequence"] += " The final answer is"
-            # the s1 inference-time scaling recipe, if the last patch is shorter than 3 * patch_size characters (the average character-per-token is about 4)
-            if round_id != max_response_length // patch_size - 1 and round_id > 0 and len(generation_logs[i]["generated_segments"][-1]) < 3 * patch_size:
+            # the s1 inference-time scaling recipe, if the last patch is shorter than patch_size characters (the average character-per-token is about 4, less for math)
+            if round_id != max_response_length // patch_size - 1 and round_id > 0 and len(generation_logs[i]["generated_segments"][-1]) < patch_size:
                 if wait_flag: # force to continue generation
                     generation_logs[i]["generated_segments"][-1] += " Wait,"
                     generation_logs[i]["generated_sequence"] += " Wait,"
