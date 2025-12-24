@@ -94,7 +94,7 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         args=training_args,
         train_dataset=dataset,
         eval_dataset=dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         peft_config=peft_config
     )
 
