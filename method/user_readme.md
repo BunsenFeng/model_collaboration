@@ -232,6 +232,47 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - Currently supports `task_type` in `["multiple_choice", "exact_match", "f1_match"]`, using the existing `data/eval.py` extraction logic for voting and scoring.
     - Use moderate-sized models and small `iterations` / `rounds` if compute is limited; each iteration runs a full multi-model debate plus SFT.
 
+#### Text-level: AggLM
+- file: `agglm.py`
+- description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.
+- related paper(s):
+    - [The Majority is not always right: RL training for solution aggregation](https://arxiv.org/pdf/2509.06870)
+- method-specific hyperparameters:
+    - `agg_model`, default `Qwen/Qwen3-1.7B`: the base model to initialize the aggregator. Should ideally have the largest vocabulary size among the solution models. Can be a HuggingFace Hub ID or local path.
+    - `agglm_log_path`, default `logs/agglm`: directory to save training checkpoints, intermediate generation results, and trained LoRA adapters.
+    - `reuse_log`, default `True`: whether to reuse existing generation and model weights. You might need to set this hyperparameter to `False` if error happens in the generation or training process
+    - **Training hyperparameters:**
+        - `learning_rate`, default 1e-4: learning rate for GRPO optimization.
+        - `weight_decay`, default 1e-5: weight decay for regularization.
+        - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
+        - `max_epoches`, default 10: number of training epochs.
+        - `train_batch_size`, default 4: batch size for both GRPO training (per_device_train_batch_size and num_generations).
+        - `sample_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
+        - `max_response_length`, default 512. If you are using a thinking model, have a large max_response_length of at least 1024.
+    - **LoRA configuration (fixed in code):**
+      - rank: 64
+      - lora_alpha: 16
+      - lora_dropout: 0.1
+      - target_modules: `["q_proj", "k_proj", "v_proj", "o_proj"]`
+    - **GRPO-specific settings (fixed in code):**
+        - group size, default 4: number of generations per GRPO update, same to `train_batch_size`
+        - max_prompt_length: 4096
+        - warmup_ratio: 0.1
+- workflow:
+    1. **Training data generation**: For each problem in the dev set, sample `sample_size * m` solutions from the `model_names` solution models (m = number of models). Group them into `simple_size` sets of m solutions each.
+    2. **Hard/easy classification**: Evaluate each solution set. A set is "hard" if the majority answer (most frequent) is incorrect; otherwise it's "easy".
+    3. **Balanced mixing**: Keep all hard examples and randomly sample an equal number of easy examples (50% by default) to create the final training dataset. This prevents overfitting to either always trusting majority vote or always ignoring it.
+    4. **RL training**: Train the aggregator using GRPO with binary rewards (1 if aggregated answer matches ground truth, 0 otherwise) and the aggregation prompt template.
+    5. **Inference**: Generate solutions from all solution models on the test set, aggregate them using the trained AggLM, and evaluate performance.
+- warning: 
+    - Training requires caching all dev set generations (can be large). Cached results are saved in `agglm_log_path` and reused across runs.
+- note to tester: 
+    - Recommended `model_names` for quick testing: `["Qwen/Qwen3-1.7B", "Qwen/Qwen3-1.7B", "Qwen/Qwen3-1.7B"]` (single model, can aggregate solutions from itself).
+    - Outputs: 
+      - Trained LoRA adapter: `{agglm_log_path}/{model_filename}/adapter_model.safetensors`
+      - Cached generations: `{agglm_log_path}/{model_filename}.json`
+      - Final results: `logs/{task}_{num_models}_{score}_agglm.json`
+
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
 - description: fuse the output logits of multiple LLMs and decode from the joint distribution. **All LLMs must share the same architecture and vocabulary.**
