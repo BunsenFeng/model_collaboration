@@ -32,7 +32,9 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
     if "instruction" in dataset.column_names and "prompt" not in dataset.column_names:
         dataset = dataset.rename_column("instruction", "prompt")
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-    tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.eos_token_id
     
     # Check if model_name is a LoRA adapter. If so, merge it into base model first.
     # This ensures we train a new adapter on top of the merged model, rather than
@@ -92,6 +94,7 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         args=training_args,
         train_dataset=dataset,
         eval_dataset=dataset,
+        tokenizer=tokenizer,
         peft_config=peft_config
     )
 
