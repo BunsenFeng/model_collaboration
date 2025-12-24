@@ -1,19 +1,20 @@
 """
 Weight-level: ExPO (Model Extrapolation)
 
-Implementation of "Model Extrapolation Expedites Alignment" (ACL 2025)
+Inspired by "Model Extrapolation Expedites Alignment" (ACL 2025)
 Paper: https://arxiv.org/abs/2404.16792
 
-ExPO extrapolates model weights beyond the DPO/RLHF checkpoint in the direction
-away from the SFT checkpoint. This amplifies the alignment effect.
+This method extrapolates model weights as a collaboration strategy.
+Given n models with the same architecture, it evaluates them on the dev set
+and extrapolates from lower-performing to higher-performing models.
 
-Formula: extrapolated_weight = dpo_weight + alpha * (dpo_weight - sft_weight)
-       = (1 + alpha) * dpo_weight - alpha * sft_weight
+Formula: extrapolated_weight = target_weight + alpha * (target_weight - source_weight)
+       = (1 + alpha) * target_weight - alpha * source_weight
 
-Supports multiple model pairs: evaluates on dev set and selects the best pair.
-Models can be specified as:
-  - Alternating list: [sft1, dpo1, sft2, dpo2, ...] (default)
-  - Or via hyperparameters: sft_models=[...], dpo_models=[...]
+Modes:
+- worst_to_best: Extrapolate from worst model to best model
+- topk_bottomk: Merge top-k models, merge bottom-k models, extrapolate from bottom-k to top-k
+- pairs (legacy): Specify explicit SFT-DPO pairs for extrapolation
 """
 import os
 import json
@@ -23,36 +24,37 @@ import torch
 from tqdm import tqdm
 from data import eval
 from utils import lora_check
+from utils.swarm import lora_merge
 from method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-def extrapolate_models(sft_model_path, dpo_model_path, alpha, output_path, gpu_id):
+def extrapolate_models(source_model_path, target_model_path, alpha, output_path, gpu_id):
     """
-    Perform model extrapolation: new_weight = dpo_weight + alpha * (dpo_weight - sft_weight)
+    Perform model extrapolation: new_weight = target_weight + alpha * (target_weight - source_weight)
+    
+    This pushes the weights further in the direction from source to target.
     
     Args:
-        sft_model_path: Path to the SFT model (base/reference model)
-        dpo_model_path: Path to the DPO/RLHF model (aligned model)
+        source_model_path: Path to the source model (lower performance / base)
+        target_model_path: Path to the target model (higher performance / aligned)
         alpha: Extrapolation coefficient (typically 0.3 or 0.5)
         output_path: Path to save the extrapolated model
-        gpu_id: GPU to use for loading models (not used - loads on CPU for efficiency)
+        gpu_id: GPU to use (not used - loads on CPU for efficiency)
     """
     # Load models on CPU to avoid GPU memory issues during weight manipulation
-    # This is more memory efficient since we only need to manipulate weights, not run inference
-    
-    print(f"Loading SFT model from: {sft_model_path} (on CPU)")
-    sft_model = AutoModelForCausalLM.from_pretrained(
-        sft_model_path,
+    print(f"Loading source model from: {source_model_path} (on CPU)")
+    source_model = AutoModelForCausalLM.from_pretrained(
+        source_model_path,
         torch_dtype=torch.bfloat16,
         device_map="cpu",
         trust_remote_code=True,
         low_cpu_mem_usage=True,
     )
     
-    print(f"Loading DPO model from: {dpo_model_path} (on CPU)")
-    dpo_model = AutoModelForCausalLM.from_pretrained(
-        dpo_model_path,
+    print(f"Loading target model from: {target_model_path} (on CPU)")
+    target_model = AutoModelForCausalLM.from_pretrained(
+        target_model_path,
         torch_dtype=torch.bfloat16,
         device_map="cpu",
         trust_remote_code=True,
@@ -60,22 +62,22 @@ def extrapolate_models(sft_model_path, dpo_model_path, alpha, output_path, gpu_i
     )
     
     # Verify models have the same architecture
-    sft_state_dict = sft_model.state_dict()
-    dpo_state_dict = dpo_model.state_dict()
+    source_state_dict = source_model.state_dict()
+    target_state_dict = target_model.state_dict()
     
-    if len(sft_state_dict) != len(dpo_state_dict):
+    if len(source_state_dict) != len(target_state_dict):
         raise ValueError(
-            f"Model architecture mismatch: SFT has {len(sft_state_dict)} parameters, "
-            f"DPO has {len(dpo_state_dict)} parameters"
+            f"Model architecture mismatch: source has {len(source_state_dict)} parameters, "
+            f"target has {len(target_state_dict)} parameters"
         )
     
     print(f"Extrapolating with alpha={alpha}...")
-    # Perform extrapolation: new = dpo + alpha * (dpo - sft)
-    total = len(dpo_state_dict)
-    for name, dpo_param in tqdm(dpo_model.named_parameters(), total=total, desc="Extrapolating"):
-        sft_param = sft_state_dict[name]
-        # new_weight = dpo_weight + alpha * (dpo_weight - sft_weight)
-        dpo_param.data = dpo_param.data + alpha * (dpo_param.data - sft_param.data)
+    # Perform extrapolation: new = target + alpha * (target - source)
+    total = len(target_state_dict)
+    for name, target_param in tqdm(target_model.named_parameters(), total=total, desc="Extrapolating"):
+        source_param = source_state_dict[name]
+        # new_weight = target_weight + alpha * (target_weight - source_weight)
+        target_param.data = target_param.data + alpha * (target_param.data - source_param.data)
     
     # Save the extrapolated model
     print(f"Saving extrapolated model to: {output_path}")
@@ -83,17 +85,17 @@ def extrapolate_models(sft_model_path, dpo_model_path, alpha, output_path, gpu_i
         shutil.rmtree(output_path)
     os.makedirs(output_path, exist_ok=True)
     
-    dpo_model.save_pretrained(output_path)
+    target_model.save_pretrained(output_path)
     
-    # Save tokenizer from the DPO model
-    tokenizer = AutoTokenizer.from_pretrained(dpo_model_path, trust_remote_code=True)
+    # Save tokenizer from the target model
+    tokenizer = AutoTokenizer.from_pretrained(target_model_path, trust_remote_code=True)
     tokenizer.save_pretrained(output_path)
     
     # Clean up to free memory
-    del sft_model
-    del dpo_model
-    del sft_state_dict
-    del dpo_state_dict
+    del source_model
+    del target_model
+    del source_state_dict
+    del target_state_dict
     import gc
     gc.collect()
     torch.cuda.empty_cache()
@@ -101,88 +103,44 @@ def extrapolate_models(sft_model_path, dpo_model_path, alpha, output_path, gpu_i
     return output_path
 
 
-def parse_model_pairs(model_names, hyperparameters):
-    """
-    Parse model names into SFT-DPO pairs.
-    
-    Supports two formats:
-    1. Alternating list in model_names: [sft1, dpo1, sft2, dpo2, ...]
-    2. Explicit lists in hyperparameters: sft_models=[...], dpo_models=[...]
-    
-    Returns:
-        List of tuples: [(sft1, dpo1), (sft2, dpo2), ...]
-    """
-    sft_models = hyperparameters.get("sft_models", None)
-    dpo_models = hyperparameters.get("dpo_models", None)
-    
-    if sft_models is not None and dpo_models is not None:
-        # Explicit specification via hyperparameters
-        if len(sft_models) != len(dpo_models):
-            raise ValueError(
-                f"sft_models and dpo_models must have the same length. "
-                f"Got {len(sft_models)} SFT models and {len(dpo_models)} DPO models."
-            )
-        pairs = list(zip(sft_models, dpo_models))
-    else:
-        # Alternating list: [sft1, dpo1, sft2, dpo2, ...]
-        if len(model_names) % 2 != 0:
-            raise ValueError(
-                f"model_names must have even length for alternating SFT-DPO pairs. "
-                f"Got {len(model_names)} models. "
-                f"Alternatively, specify sft_models and dpo_models in hyperparameters."
-            )
-        pairs = [(model_names[i], model_names[i + 1]) for i in range(0, len(model_names), 2)]
-    
-    return pairs
-
-
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     """
-    Run ExPO (Model Extrapolation) method with support for multiple model pairs.
+    Run ExPO (Model Extrapolation) method.
     
     Args:
         task: str, the name of the task
         task_type: str, the type of the task (e.g., "multiple_choice", "exact_match", etc.)
         gpu_ids: list of int, the GPU ids to use
-        model_names: list of str, models in alternating order [sft1, dpo1, sft2, dpo2, ...]
-                     OR any list if sft_models/dpo_models specified in hyperparameters
+        model_names: list of str, n models with the same architecture
         hyperparameters: dict, method-specific hyperparameters:
             - alpha: float, extrapolation coefficient (default: 0.3)
-            - mode: str, "fixed" or "optimized" (default: "fixed")
-            - alpha_candidates: list of float, candidates for optimization (default: [0.1, 0.2, 0.3, 0.4, 0.5])
-            - sft_models: list of str, explicit list of SFT models (optional)
-            - dpo_models: list of str, explicit list of DPO models (optional)
-            - pair_selection: str, criterion for selecting best pair: "dpo_score", "improvement", "sft_score" (default: "dpo_score")
+            - mode: str, extrapolation strategy (default: "worst_to_best")
+                - "worst_to_best": extrapolate from worst to best model
+                - "topk_bottomk": extrapolate from merged bottom-k to merged top-k
+                - "pairs": legacy mode with explicit SFT-DPO pairs
+            - k: int, number of models for top-k/bottom-k mode (default: 1)
+            - alpha_mode: str, "fixed" or "optimized" (default: "fixed")
+            - alpha_candidates: list of float, for optimization (default: [0.1, 0.2, 0.3, 0.4, 0.5])
     """
     
     print("=" * 60)
-    print("ExPO: Model Extrapolation Expedites Alignment")
+    print("ExPO: Model Extrapolation for Collaboration")
     print("=" * 60)
-    
-    # Parse model pairs
-    model_pairs = parse_model_pairs(model_names, hyperparameters)
-    num_pairs = len(model_pairs)
-    
-    print(f"Number of model pairs: {num_pairs}")
-    for i, (sft, dpo) in enumerate(model_pairs):
-        print(f"  Pair {i + 1}: SFT={sft}, DPO={dpo}")
-    print("Make sure each pair shares the same model architecture, or expect errors.")
+    print(f"Number of models: {len(model_names)}")
+    for i, name in enumerate(model_names):
+        print(f"  Model {i + 1}: {name}")
+    print("Make sure all models share the same architecture, or expect errors.")
     print("=" * 60)
     
     # Convert LoRA adapters to full models if necessary
-    all_models = []
-    for sft, dpo in model_pairs:
-        all_models.extend([sft, dpo])
-    all_models = lora_check.lora_to_full(all_models)
-    
-    # Reconstruct pairs after LoRA conversion
-    model_pairs = [(all_models[i], all_models[i + 1]) for i in range(0, len(all_models), 2)]
+    model_names = lora_check.lora_to_full(model_names)
     
     # Extract hyperparameters
-    mode = hyperparameters.get("mode", "fixed")
+    mode = hyperparameters.get("mode", "worst_to_best")
     alpha = hyperparameters.get("alpha", 0.3)
+    alpha_mode = hyperparameters.get("alpha_mode", "fixed")
     alpha_candidates = hyperparameters.get("alpha_candidates", [0.1, 0.2, 0.3, 0.4, 0.5])
-    pair_selection = hyperparameters.get("pair_selection", "dpo_score")
+    k = hyperparameters.get("k", 1)
     
     # Create output directory
     expo_base_path = hyperparameters.get("expo_base_path", "logs/expo/")
@@ -194,80 +152,102 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     gpu_id = gpu_ids[0]
     
-    # Step 1: Evaluate all models on the dev set to select the best pair
-    if num_pairs > 1:
-        print("\n" + "=" * 60)
-        print("Step 1: Evaluating all models on dev set to select best pair")
-        print("=" * 60)
-        
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
-        
-        # Flatten all models for evaluation
-        all_model_paths = []
-        for sft, dpo in model_pairs:
-            all_model_paths.extend([sft, dpo])
-        
-        # Evaluate all models
-        list_of_input_list = [dev_input_list for _ in all_model_paths]
-        list_of_output_list = distributed_generation.distributed_generation(
-            all_model_paths,
-            list_of_input_list,
-            gpu_ids
-        )
-        
-        # Calculate scores for each model
-        all_dev_scores = []
-        for i, model_path in enumerate(all_model_paths):
-            dev_outputs = list_of_output_list[i]
-            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
-            avg_dev_score = sum(dev_scores) / len(dev_scores)
-            all_dev_scores.append(avg_dev_score)
-            model_type = "SFT" if i % 2 == 0 else "DPO"
-            pair_idx = i // 2 + 1
-            print(f"Pair {pair_idx} {model_type} ({model_path}): dev {task} score = {avg_dev_score:.4f}")
-        
-        # Calculate pair scores based on selection criterion
-        pair_scores = []
-        for i in range(num_pairs):
-            sft_score = all_dev_scores[i * 2]
-            dpo_score = all_dev_scores[i * 2 + 1]
-            
-            if pair_selection == "dpo_score":
-                # Select pair with best DPO model
-                score = dpo_score
-            elif pair_selection == "improvement":
-                # Select pair with largest improvement from SFT to DPO
-                score = dpo_score - sft_score
-            elif pair_selection == "sft_score":
-                # Select pair with best SFT model
-                score = sft_score
-            else:
-                raise ValueError(f"Unknown pair_selection criterion: {pair_selection}")
-            
-            pair_scores.append(score)
-            print(f"Pair {i + 1} selection score ({pair_selection}): {score:.4f}")
-        
-        # Select the best pair
-        best_pair_idx = pair_scores.index(max(pair_scores))
-        best_sft, best_dpo = model_pairs[best_pair_idx]
-        
-        print(f"\nBest pair selected (by {pair_selection}): Pair {best_pair_idx + 1}")
-        print(f"  SFT: {best_sft}")
-        print(f"  DPO: {best_dpo}")
-    else:
-        # Only one pair, use it directly
-        best_sft, best_dpo = model_pairs[0]
-        print(f"\nUsing single model pair:")
-        print(f"  SFT: {best_sft}")
-        print(f"  DPO: {best_dpo}")
+    # Handle legacy pairs mode
+    if mode == "pairs":
+        return run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_base_path)
     
-    # Step 2: Optimize or fix alpha
-    if mode == "optimized":
-        print("\n" + "=" * 60)
-        print(f"Step 2: Optimizing alpha from candidates: {alpha_candidates}")
-        print("=" * 60)
+    # Step 1: Evaluate all models on the dev set
+    print("\n" + "=" * 60)
+    print("Step 1: Evaluating all models on dev set")
+    print("=" * 60)
+    
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    
+    list_of_input_list = [dev_input_list for _ in model_names]
+    list_of_output_list = distributed_generation.distributed_generation(
+        model_names,
+        list_of_input_list,
+        gpu_ids
+    )
+    
+    # Calculate scores for each model
+    model_scores = []
+    for i, model_name in enumerate(model_names):
+        dev_outputs = list_of_output_list[i]
+        dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
+        avg_dev_score = sum(dev_scores) / len(dev_scores)
+        model_scores.append(avg_dev_score)
+        print(f"Model {i + 1} ({model_name}): dev {task} score = {avg_dev_score:.4f}")
+    
+    # Rank models by score
+    ranked_indices = sorted(range(len(model_names)), key=lambda i: model_scores[i], reverse=True)
+    print(f"\nModel ranking (best to worst):")
+    for rank, idx in enumerate(ranked_indices):
+        print(f"  Rank {rank + 1}: {model_names[idx]} (score: {model_scores[idx]:.4f})")
+    
+    # Step 2: Determine source and target models based on mode
+    print("\n" + "=" * 60)
+    print(f"Step 2: Preparing models for extrapolation (mode: {mode})")
+    print("=" * 60)
+    
+    if mode == "worst_to_best":
+        # Extrapolate from worst to best
+        source_model_path = model_names[ranked_indices[-1]]  # worst
+        target_model_path = model_names[ranked_indices[0]]   # best
+        print(f"Source (worst): {source_model_path} (score: {model_scores[ranked_indices[-1]]:.4f})")
+        print(f"Target (best): {target_model_path} (score: {model_scores[ranked_indices[0]]:.4f})")
         
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    elif mode == "topk_bottomk":
+        # Merge top-k and bottom-k, then extrapolate
+        k = min(k, len(model_names) // 2)  # Ensure k is valid
+        if k < 1:
+            k = 1
+        
+        top_k_indices = ranked_indices[:k]
+        bottom_k_indices = ranked_indices[-k:]
+        
+        top_k_models = [model_names[i] for i in top_k_indices]
+        bottom_k_models = [model_names[i] for i in bottom_k_indices]
+        
+        print(f"Top-{k} models (to merge as target):")
+        for idx in top_k_indices:
+            print(f"  - {model_names[idx]} (score: {model_scores[idx]:.4f})")
+        print(f"Bottom-{k} models (to merge as source):")
+        for idx in bottom_k_indices:
+            print(f"  - {model_names[idx]} (score: {model_scores[idx]:.4f})")
+        
+        # Merge top-k models (uniform weights)
+        if k == 1:
+            target_model_path = top_k_models[0]
+            source_model_path = bottom_k_models[0]
+        else:
+            print(f"\nMerging top-{k} models...")
+            target_model_path = os.path.join(expo_base_path, "merged_topk")
+            top_k_weights = [1.0 / k] * k
+            lora_merge(
+                weights=top_k_weights,
+                lora_name_list=top_k_models,
+                output_path=target_model_path,
+                gpu_id=gpu_id
+            )
+            
+            print(f"Merging bottom-{k} models...")
+            source_model_path = os.path.join(expo_base_path, "merged_bottomk")
+            bottom_k_weights = [1.0 / k] * k
+            lora_merge(
+                weights=bottom_k_weights,
+                lora_name_list=bottom_k_models,
+                output_path=source_model_path,
+                gpu_id=gpu_id
+            )
+    else:
+        raise ValueError(f"Unknown mode: {mode}. Supported modes: 'worst_to_best', 'topk_bottomk', 'pairs'")
+    
+    # Step 3: Optimize or fix alpha
+    if alpha_mode == "optimized":
+        print("\n" + "=" * 60)
+        print(f"Step 3: Optimizing alpha from candidates: {alpha_candidates}")
+        print("=" * 60)
         
         best_alpha = alpha_candidates[0]
         best_dev_score = -float("inf")
@@ -275,11 +255,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         for candidate_alpha in alpha_candidates:
             print(f"\n--- Testing alpha = {candidate_alpha} ---")
             
-            # Create extrapolated model for this alpha
             extrapolated_model_path = os.path.join(expo_base_path, f"expo_alpha_{candidate_alpha}")
             extrapolate_models(
-                sft_model_path=best_sft,
-                dpo_model_path=best_dpo,
+                source_model_path=source_model_path,
+                target_model_path=target_model_path,
                 alpha=candidate_alpha,
                 output_path=extrapolated_model_path,
                 gpu_id=gpu_id
@@ -307,29 +286,28 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     else:
         print(f"\nUsing fixed alpha = {alpha}")
     
-    # Step 3: Create final extrapolated model with the chosen alpha
+    # Step 4: Create final extrapolated model
     print("\n" + "=" * 60)
-    print("Step 3: Creating final extrapolated model")
+    print("Step 4: Creating final extrapolated model")
     print("=" * 60)
     
     final_model_path = os.path.join(expo_base_path, "final_model")
     extrapolate_models(
-        sft_model_path=best_sft,
-        dpo_model_path=best_dpo,
+        source_model_path=source_model_path,
+        target_model_path=target_model_path,
         alpha=alpha,
         output_path=final_model_path,
         gpu_id=gpu_id
     )
     
-    # Step 4: Evaluate on test set
+    # Step 5: Evaluate on test set
     print("\n" + "=" * 60)
-    print("Step 4: Evaluating on test set")
+    print("Step 5: Evaluating on test set")
     print("=" * 60)
     
-    # Force garbage collection and clear CUDA cache before evaluation
+    # Force garbage collection before evaluation
     import gc
     gc.collect()
-    # Clear cache on all specified GPUs
     for gid in gpu_ids:
         try:
             with torch.cuda.device(gid):
@@ -340,34 +318,37 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     test_input_list = eval.prepare_inputs(task, task_type, "test")
     
-    # Use only the first GPU to avoid multiprocessing issues with single model
     list_of_output_list = distributed_generation.distributed_generation(
         [final_model_path],
         [test_input_list],
-        [gpu_ids[0]]  # Use single GPU for single model evaluation
+        [gpu_ids[0]]
     )
     
     test_outputs = list_of_output_list[0]
     test_scores = eval.get_scores(task, task_type, "test", test_outputs)
     avg_test_score = sum(test_scores) / len(test_scores)
     
-    print(f"\nExPO test {task} score: {avg_test_score:.4f}")
-    print(f"  Selected pair: SFT={best_sft}, DPO={best_dpo}")
+    print(f"\n{'=' * 60}")
+    print(f"ExPO test {task} score: {avg_test_score:.4f}")
+    print(f"  Mode: {mode}")
     print(f"  Alpha: {alpha}")
+    print(f"  Source: {source_model_path}")
+    print(f"  Target: {target_model_path}")
+    print(f"{'=' * 60}")
     
     # Save the logs
     experiment_logs = {
         "task": task,
         "task_type": task_type,
         "method": "expo",
+        "mode": mode,
         "model_names": model_names,
-        "model_pairs": [[sft, dpo] for sft, dpo in model_pairs],
-        "selected_sft_model": best_sft,
-        "selected_dpo_model": best_dpo,
+        "model_scores": {model_names[i]: model_scores[i] for i in range(len(model_names))},
+        "source_model": source_model_path,
+        "target_model": target_model_path,
         "hyperparameters": hyperparameters,
         "alpha": alpha,
-        "mode": mode,
-        "pair_selection": pair_selection,
+        "alpha_mode": alpha_mode,
         "avg_test_score": avg_test_score,
         "logs": []
     }
@@ -380,12 +361,175 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         }
         experiment_logs["logs"].append(log)
     
-    # Save to a json file
-    log_filename = f"logs/{task}_{len(model_pairs) * 2}_{round(avg_test_score, 4)}_expo.json"
+    log_filename = f"logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_expo.json"
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
     
     print(f"\nLogs saved to: {log_filename}")
+    print(f"Extrapolated model saved to: {final_model_path}")
+    
+    return 0
+
+
+def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_base_path):
+    """
+    Legacy mode: Handle explicit SFT-DPO pairs.
+    
+    Models should be in alternating order: [sft1, dpo1, sft2, dpo2, ...]
+    Or specified via sft_models and dpo_models in hyperparameters.
+    """
+    print(f"\nRunning in legacy 'pairs' mode")
+    
+    # Parse model pairs
+    sft_models = hyperparameters.get("sft_models", None)
+    dpo_models = hyperparameters.get("dpo_models", None)
+    
+    if sft_models is not None and dpo_models is not None:
+        if len(sft_models) != len(dpo_models):
+            raise ValueError("sft_models and dpo_models must have the same length.")
+        pairs = list(zip(sft_models, dpo_models))
+    else:
+        if len(model_names) % 2 != 0:
+            raise ValueError("For pairs mode, model_names must have even length: [sft1, dpo1, sft2, dpo2, ...]")
+        pairs = [(model_names[i], model_names[i + 1]) for i in range(0, len(model_names), 2)]
+    
+    print(f"Number of pairs: {len(pairs)}")
+    for i, (sft, dpo) in enumerate(pairs):
+        print(f"  Pair {i + 1}: source={sft}, target={dpo}")
+    
+    alpha = hyperparameters.get("alpha", 0.3)
+    alpha_mode = hyperparameters.get("alpha_mode", "fixed")
+    alpha_candidates = hyperparameters.get("alpha_candidates", [0.1, 0.2, 0.3, 0.4, 0.5])
+    pair_selection = hyperparameters.get("pair_selection", "dpo_score")
+    gpu_id = gpu_ids[0]
+    
+    # Evaluate all models if multiple pairs
+    if len(pairs) > 1:
+        print("\n" + "=" * 60)
+        print("Evaluating all models on dev set to select best pair")
+        print("=" * 60)
+        
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        
+        all_model_paths = []
+        for sft, dpo in pairs:
+            all_model_paths.extend([sft, dpo])
+        
+        list_of_input_list = [dev_input_list for _ in all_model_paths]
+        list_of_output_list = distributed_generation.distributed_generation(
+            all_model_paths,
+            list_of_input_list,
+            gpu_ids
+        )
+        
+        all_dev_scores = []
+        for i, model_path in enumerate(all_model_paths):
+            dev_outputs = list_of_output_list[i]
+            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
+            avg_dev_score = sum(dev_scores) / len(dev_scores)
+            all_dev_scores.append(avg_dev_score)
+            model_type = "source" if i % 2 == 0 else "target"
+            pair_idx = i // 2 + 1
+            print(f"Pair {pair_idx} {model_type} ({model_path}): dev score = {avg_dev_score:.4f}")
+        
+        # Select best pair
+        pair_scores = []
+        for i in range(len(pairs)):
+            sft_score = all_dev_scores[i * 2]
+            dpo_score = all_dev_scores[i * 2 + 1]
+            
+            if pair_selection == "dpo_score":
+                score = dpo_score
+            elif pair_selection == "improvement":
+                score = dpo_score - sft_score
+            elif pair_selection == "sft_score":
+                score = sft_score
+            else:
+                score = dpo_score
+            
+            pair_scores.append(score)
+        
+        best_pair_idx = pair_scores.index(max(pair_scores))
+        source_model_path, target_model_path = pairs[best_pair_idx]
+        print(f"\nBest pair selected: Pair {best_pair_idx + 1}")
+    else:
+        source_model_path, target_model_path = pairs[0]
+    
+    print(f"  Source: {source_model_path}")
+    print(f"  Target: {target_model_path}")
+    
+    # Optimize alpha if needed
+    if alpha_mode == "optimized":
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        best_alpha = alpha_candidates[0]
+        best_dev_score = -float("inf")
+        
+        for candidate_alpha in alpha_candidates:
+            extrapolated_model_path = os.path.join(expo_base_path, f"expo_alpha_{candidate_alpha}")
+            extrapolate_models(source_model_path, target_model_path, candidate_alpha, extrapolated_model_path, gpu_id)
+            
+            list_of_output_list = distributed_generation.distributed_generation(
+                [extrapolated_model_path], [dev_input_list], [gpu_id]
+            )
+            dev_outputs = list_of_output_list[0]
+            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
+            avg_dev_score = sum(dev_scores) / len(dev_scores)
+            
+            print(f"Alpha {candidate_alpha}: dev score = {avg_dev_score:.4f}")
+            if avg_dev_score > best_dev_score:
+                best_dev_score = avg_dev_score
+                best_alpha = candidate_alpha
+        
+        alpha = best_alpha
+        print(f"Best alpha: {alpha}")
+    
+    # Create final model
+    final_model_path = os.path.join(expo_base_path, "final_model")
+    extrapolate_models(source_model_path, target_model_path, alpha, final_model_path, gpu_id)
+    
+    # Evaluate on test set
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+    
+    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    list_of_output_list = distributed_generation.distributed_generation(
+        [final_model_path], [test_input_list], [gpu_ids[0]]
+    )
+    
+    test_outputs = list_of_output_list[0]
+    test_scores = eval.get_scores(task, task_type, "test", test_outputs)
+    avg_test_score = sum(test_scores) / len(test_scores)
+    
+    print(f"\nExPO test {task} score: {avg_test_score:.4f} (alpha={alpha})")
+    
+    # Save logs
+    experiment_logs = {
+        "task": task,
+        "task_type": task_type,
+        "method": "expo",
+        "mode": "pairs",
+        "model_names": model_names,
+        "source_model": source_model_path,
+        "target_model": target_model_path,
+        "hyperparameters": hyperparameters,
+        "alpha": alpha,
+        "avg_test_score": avg_test_score,
+        "logs": []
+    }
+    
+    for i in range(len(test_input_list)):
+        experiment_logs["logs"].append({
+            "input": test_input_list[i],
+            "output": test_outputs[i],
+            "score": test_scores[i]
+        })
+    
+    log_filename = f"logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_expo.json"
+    with open(log_filename, "w") as f:
+        json.dump(experiment_logs, f, indent=4)
+    
+    print(f"Logs saved to: {log_filename}")
     print(f"Extrapolated model saved to: {final_model_path}")
     
     return 0
