@@ -210,7 +210,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
         - `weight_decay`, default 1e-5: weight decay for regularization.
         - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
         - `max_epoches`, default 10: number of training epochs.
-        - `train_batch_size`, default 8: batch size for both GRPO training (per_device_train_batch_size and num_generations).
+        - `train_batch_size`, default 4: batch size for both GRPO training (per_device_train_batch_size and num_generations).
         - `sample_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
         - `max_response_length`, default 512. If you are using a thinking model, have a large max_response_length of at least 1024.
     - **LoRA configuration (fixed in code):**
@@ -219,7 +219,7 @@ len(gpu_ids) can be fewer than len(model_names) in most approaches. But please, 
       - lora_dropout: 0.1
       - target_modules: `["q_proj", "k_proj", "v_proj", "o_proj"]`
     - **GRPO-specific settings (fixed in code):**
-        - group size: 4 (number of generations per GRPO update, same to `train_batch_size`)
+        - group size, default 4: number of generations per GRPO update, same to `train_batch_size`
         - max_prompt_length: 4096
         - warmup_ratio: 0.1
 - workflow:
