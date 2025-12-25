@@ -11,7 +11,7 @@ from typing import List, Optional
 import torch
 from dataclasses import dataclass
 from collections import defaultdict
-# from method import distributed_generation
+from method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from data import eval
 
@@ -712,15 +712,36 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print(f"   • max_num_retries: {max_num_retries}")
     print("="*80)
 
+    # evaluate all given models on the dev set and select the best one to be the backbone
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
+
+    list_of_input_list = [dev_input_list for _ in model_names] # replicate the dev inputs for each model
+    list_of_output_list = distributed_generation.distributed_generation(
+        model_names,
+        list_of_input_list,
+        gpu_ids
+    ) # will be size len(model_names) x len(dev_input_list)
+
+    list_of_dev_scores = []
+    for i in range(len(model_names)):
+        dev_output_list = list_of_output_list[i]
+        dev_scores = eval.get_scores(task, task_type, "dev", dev_output_list)
+        avg_dev_score = sum(dev_scores) / len(dev_scores)
+        list_of_dev_scores.append(avg_dev_score)
+        print(f"   • Model: {model_names[i]} | Avg Dev Score: {avg_dev_score:.4f}")
+    
+    best_model_idx = list_of_dev_scores.index(max(list_of_dev_scores))
+    best_model_name = model_names[best_model_idx]
+    print(f"\n🏆 Best model on dev set: {best_model_name}\n")
+
     # Load HF model
-    assert all(model_name == model_names[0] for model_name in model_names), "All model names must be identical"
-    model_name = model_names[0]
+    # assert all(model_name == model_names[0] for model_name in model_names), "All model names must be identical"
+    model_name = best_model_name
     print(f"Loading model {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
-    
     # Get test set inputs
     print(f"\n📥 Loading test set...")
     test_input_list = eval.prepare_inputs(task, task_type, "test")
