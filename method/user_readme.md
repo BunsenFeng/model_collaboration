@@ -232,6 +232,30 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - Currently supports `task_type` in `["multiple_choice", "exact_match", "f1_match"]`, using the existing `data/eval.py` extraction logic for voting and scoring.
     - Use moderate-sized models and small `iterations` / `rounds` if compute is limited; each iteration runs a full multi-model debate plus SFT.
 
+#### Text-level: SPARTA
+- file: `text_sparta.py`
+- description: implement SPARTA alignment algorithm, an iterative competition-based training approach. In each iteration: (1) models compete pairwise on instructions, with opponents selected based on reputation scores or randomly; (2) other models (judges) dynamically score the competition responses (judges are models that didn't participate in each specific pair); (3) model ratings are updated based on judge scores using an Elo-like rating system; (4) preference pairs are generated from competitions; (5) DPO training is applied to improve models using the preference pairs. After all iterations, all adapters from all iterations are evaluated on the dev set, and the best one is selected for test evaluation.
+- related paper(s):
+    - [SPARTA ALIGNMENT: Collectively Aligning Multiple Language Models through Combat](https://arxiv.org/abs/2506.04721)
+- method-specific hyperparameters:
+    - `num_iterations`, default 3: number of Sparta iterations to run. Each iteration includes competition, judging, rating updates, and DPO training.
+    - `current_iteration`, default 0: starting iteration number (for resuming from a previous run).
+    - `num_instructions`, default 500: number of instructions to use for competition in each iteration.
+    - `random_match_prob`, default 0.2: probability of random opponent selection (vs. reputation-based selection). With probability `random_match_prob`, a random opponent is chosen; otherwise, the opponent is selected from the top-K models with similar reputation scores.
+    - `num_opponents`, default 3: number of top-K opponents to consider for matching based on reputation scores when not using random selection.
+    - `judge_batch_size`, default 8: batch size for judge model generation.
+    - `judge_rounds`, default 1: number of judging rounds per pair. Each round produces independent scores that are averaged.
+    - `initial_k`, default 10.0: initial K value for rating updates. The K value controls how much model ratings can change after each competition (similar to the K-factor in Elo rating systems). Higher K means ratings change more quickly.
+    - `min_k`, default 5.0: minimum K value (after decay). The K value decays over time to make rating updates more stable as training progresses.
+    - `window_size`, default 10: window size for deviation calculation. Used to track the variance in rating changes over recent updates.
+    - `min_deviation`, default 0.1: minimum deviation value for rating uncertainty estimation.
+    - `epsilon`, default 0.01: small epsilon for numerical stability in rating calculations.
+    - `decay_rate`, default 0.9: decay rate for K value. The K value is multiplied by `decay_rate` every `decay_steps` updates.
+    - `decay_steps`, default 10: steps for K decay. After this many rating updates, the K value is decayed.
+    - `scaling_factor`, default 20.0: scaling factor for rating updates. Divides the raw rating change to control the magnitude of updates.
+    - `score_type`, default "normal": rating system type. Options: "normal" (standard Elo-like rating with equal weights for all judges), "dynamic" (dynamic-weighted, where model weights are computed based on previous iterations' performance, with lower-performing models getting reduced weights), or "static" (static-weighted, where weights are gradually assigned to more models over iterations based on their historical performance).
+    - `freeze_ratings`, default false: if true, model ratings are not updated during the competition phase. Useful for testing or when you want to use fixed ratings.
+    - `debug`, default false: if true, prints detailed rating update information (update count, K value, deviation changes) for debugging purposes.
 #### Text-level: AggLM
 - file: `agglm.py`
 - description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.
