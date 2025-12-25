@@ -29,6 +29,24 @@ If you are trying to run collaboration with one of the model being too large to 
 
 Reasoning LMs are supported! Please use much larger `"max_response_length"` to account for them: we will parse the text after `</think>` as the actual model output.
 
+#### API-level: Nudging
+- file: `api_nudging.py`
+- description: A training-free guided decoding method. During generation, if the base model is uncertain about the next token (top-1 prob < `gamma`), a (smaller) nudging model intervenes. The nudging model inserts nudging token(s) (often stylistic/discourse markers) to guide the base model’s generation. 
+    - Implementation Details: The method ensures complete words are inserted (by splitting on spaces) to maintain coherence and support collaboration of models with different tokenizers. Generation stops when either the base or nudging model emits an EOS token.
+- related paper(s):
+    - [Nudging: Inference-time Alignment of LLMs via Guided Decoding](https://arxiv.org/abs/2410.09300)
+- method-specific hyperparameters:
+    - `gamma` (float, default 0.4): The uncertainty threshold. If the base model's top-1 probability is below this value, the nudging model takes over.
+    - `base_model_id` (int, default 0): the index of the base model in `model_names`.
+    - `nudging_model_id` (int, default 1): the index of the nudging model in `model_names`. (Requires `len(model_names) >= 2`). All the models that are not the base model are potential nudging models and will be used for searching if `search_nudging` is True.
+    - `search_gamma` (bool, default False): If `True`, performs a grid search over gamma values `[0.2, 0.3, 0.4, 0.5]` using the dev set to find the optimal threshold.
+    - `search_nudging` (bool, default False): If `True`, search over all potential nudging models (all the models in `model_names` excluding `base_model_id`) using the dev set to find the best nudging model.
+- performance & usage note: 
+    - Model support: Supports models from different families (tested on `Llama-3.1-Tulu-3-8B` + `Gemma-2-2b-it` / `Llama-3.1-Tulu-3-8B-DPO`). 
+    - Inference speed: This method is currently implemented without KV-caching (stateless inference). Consequently, batched inference is compute-bound rather than memory-bound.
+        - Expectation: Speed scales linearly with batch size. A batch of size $N$ will take roughly $N$ times longer than the longest sample in the batch.
+        - For minimizing the inference time, one should consider setting `batch_size` to be small or group samples by length.
+
 #### API-level: Prompt Routing
 - file: `api_prompt_routing.py`
 - description: prompt an LLM to route among the candidate LLMs based on their descriptions. First, evaluate models on the dev set to determine who is best and use it for the routing. Then, given (model descriptions, query), this LLM decides which candidate model (including itself) should be selected. Finally, generation with the selected LLM for each query.
@@ -92,6 +110,20 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - `percentage`, default 0.5: the percentage to select deferral threshold in `logit` mode. For each model except last model, calculate responses' scores on dev set. For each model, select its threshold as top `percentage` value in its dev set responses scores.
     - (suggested) `model_names`: arrange model names from weak to strong, from cheap to expensive. For instance, `["Qwen/Qwen2.5-3B-Instruct","Qwen/Qwen2.5-7B-Instruct"]`
 - note to tester: try different LLMs you'd like.
+
+#### API-level: MentorCollab
+- file: `text_mentor_collab.py`
+- description: collaborative generation between a generator model (typically a small model) and a mentor model (typically a large reasoning model). During generation, both models operate in parallel. At each decision point, if the next predicted token differs between the two models, both generate a segment of text (patch). The method then decides which segment to follow either through: (1) "free" mode where the generator model itself judges which option is better, or (2) "train" mode where a trained MLP classifier predicts the better choice based on the generator's hidden states. This allows the base model to selectively incorporate guidance from the instruction-tuned mentor throughout generation.
+- method-specific hyperparameters:
+    - `decision_proportion`, default 25: percentage (0-100) of generation steps where the mentor is consulted. At other steps, the generator proceeds independently.
+    - `patch_size`, default 16: number of tokens to generate in each segment when both models' predictions diverge.
+    - `mode`, default "free": decision strategy. Options are "free" (generator self-judges) or "train" (use trained MLP classifier).
+    - `task`, default "General": task type for loading the trained MLP model. Options are "Math" or "General" (only used in "train" mode).
+    - `mlp_threshold`, default 0.5: decision threshold for the MLP classifier. Scores above this threshold choose the generator's segment, otherwise choose the mentor's (only used in "train" mode).
+- notes:
+    - requires exactly 2 models and 2 GPUs. The first model should be a base model (generator), and the second should be an instruction-tuned variant (mentor). In "train" mode, only specific model pairs are supported (see `MENTOR_COLLAB_TRAIN_SUPPORT_MODELS` in the code).
+    - try `["meta-llama/Llama-3.1-8B", "Qwen/Qwen3-14B"]` with `mode: "free"` first. For "train" mode, ensure the generator model is in the supported list. 
+    - supported generator list for "train" mode: `["Qwen/Qwen3-1.7B", "Qwen/Qwen3-8B-Base", "meta-llama/Llama-3.1-8B", "meta-llama/Llama-3.2-3B-Instruct", "google/gemma-3-4b-it", "google/gemma-3-4b-pt"]`
 
 #### Text-level: Multiagent Refine/Debate
 - file: `text_multiagent_refine.py`
@@ -224,6 +256,46 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - `score_type`, default "normal": rating system type. Options: "normal" (standard Elo-like rating with equal weights for all judges), "dynamic" (dynamic-weighted, where model weights are computed based on previous iterations' performance, with lower-performing models getting reduced weights), or "static" (static-weighted, where weights are gradually assigned to more models over iterations based on their historical performance).
     - `freeze_ratings`, default false: if true, model ratings are not updated during the competition phase. Useful for testing or when you want to use fixed ratings.
     - `debug`, default false: if true, prints detailed rating update information (update count, K value, deviation changes) for debugging purposes.
+#### Text-level: AggLM
+- file: `agglm.py`
+- description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.
+- related paper(s):
+    - [The Majority is not always right: RL training for solution aggregation](https://arxiv.org/pdf/2509.06870)
+- method-specific hyperparameters:
+    - `agg_model`, default `Qwen/Qwen3-1.7B`: the base model to initialize the aggregator. Should ideally have the largest vocabulary size among the solution models. Can be a HuggingFace Hub ID or local path.
+    - `agglm_log_path`, default `logs/agglm`: directory to save training checkpoints, intermediate generation results, and trained LoRA adapters.
+    - `reuse_log`, default `True`: whether to reuse existing generation and model weights. You might need to set this hyperparameter to `False` if error happens in the generation or training process
+    - **Training hyperparameters:**
+        - `learning_rate`, default 1e-4: learning rate for GRPO optimization.
+        - `weight_decay`, default 1e-5: weight decay for regularization.
+        - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
+        - `max_epoches`, default 10: number of training epochs.
+        - `train_batch_size`, default 4: batch size for both GRPO training (per_device_train_batch_size and num_generations).
+        - `sample_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
+        - `max_response_length`, default 512. If you are using a thinking model, have a large max_response_length of at least 1024.
+    - **LoRA configuration (fixed in code):**
+      - rank: 64
+      - lora_alpha: 16
+      - lora_dropout: 0.1
+      - target_modules: `["q_proj", "k_proj", "v_proj", "o_proj"]`
+    - **GRPO-specific settings (fixed in code):**
+        - group size, default 4: number of generations per GRPO update, same to `train_batch_size`
+        - max_prompt_length: 4096
+        - warmup_ratio: 0.1
+- workflow:
+    1. **Training data generation**: For each problem in the dev set, sample `sample_size * m` solutions from the `model_names` solution models (m = number of models). Group them into `simple_size` sets of m solutions each.
+    2. **Hard/easy classification**: Evaluate each solution set. A set is "hard" if the majority answer (most frequent) is incorrect; otherwise it's "easy".
+    3. **Balanced mixing**: Keep all hard examples and randomly sample an equal number of easy examples (50% by default) to create the final training dataset. This prevents overfitting to either always trusting majority vote or always ignoring it.
+    4. **RL training**: Train the aggregator using GRPO with binary rewards (1 if aggregated answer matches ground truth, 0 otherwise) and the aggregation prompt template.
+    5. **Inference**: Generate solutions from all solution models on the test set, aggregate them using the trained AggLM, and evaluate performance.
+- warning: 
+    - Training requires caching all dev set generations (can be large). Cached results are saved in `agglm_log_path` and reused across runs.
+- note to tester: 
+    - Recommended `model_names` for quick testing: `["Qwen/Qwen3-1.7B", "Qwen/Qwen3-1.7B", "Qwen/Qwen3-1.7B"]` (single model, can aggregate solutions from itself).
+    - Outputs: 
+      - Trained LoRA adapter: `{agglm_log_path}/{model_filename}/adapter_model.safetensors`
+      - Cached generations: `{agglm_log_path}/{model_filename}.json`
+      - Final results: `logs/{task}_{num_models}_{score}_agglm.json`
 
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
