@@ -85,7 +85,7 @@ class LogitArithmetic:
         eos_token_id_tensor = torch.tensor(self.tokenizer.eos_token_id).to(input_ids.device)
 
         for step in tqdm(range(max_new_tokens)):
-            inputs = {'input_ids': input_ids}
+            inputs = {'input_ids': input_ids, **kwargs}
             list_of_outputs = self.forward(inputs, return_dict=True) 
             logits_list = [output.logits[..., -1, :] for output in list_of_outputs]
             # Move all logits to the same device as input_ids
