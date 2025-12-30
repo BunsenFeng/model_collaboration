@@ -396,3 +396,29 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - `regular_coef`, default 0.05: the coefficient for L1 regularization to prevent weights from becoming too large.
 - warning: **All LoRA adapters must share the same base model architecture.** This implementation optimizes based on **generation accuracy**, not likelihood loss. This ensures the metric aligns with the final goal.
 - note to tester: recommended set of `model_names`: ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].
+
+#### Weight-level: ExPO (Model Extrapolation)
+- file: `weight_expo.py`
+- description: Extrapolates model weights as a collaboration strategy. Given n models with the same architecture, evaluates them on the dev set and extrapolates from lower-performing to higher-performing models. Inspired by "Model Extrapolation Expedites Alignment" which showed extrapolation can push models further in beneficial directions.
+- related paper(s):
+    - [Model Extrapolation Expedites Alignment](https://arxiv.org/abs/2404.16792) (ACL 2025)
+- formula: `extrapolated_weight = target_weight + alpha * (target_weight - source_weight)`
+    - This pushes weights further in the direction from source (lower performance) to target (higher performance)
+- method-specific hyperparameters:
+    - `mode`, default `worst_to_best`: extrapolation strategy. Options:
+        - `worst_to_best`: evaluate all models on dev, extrapolate from worst to best model
+        - `topk_bottomk`: evaluate all models on dev, merge top-k models as target, merge bottom-k models as source, then extrapolate
+        - `pairs`: legacy mode with explicit source-target pairs (for backward compatibility)
+    - `alpha`, default 0.3: the extrapolation coefficient. Higher values push further from source towards target. Typical values are 0.3 or 0.5.
+    - `k`, default 1: number of models for top-k/bottom-k mode. Only used when `mode` is `topk_bottomk`.
+    - `alpha_mode`, default `fixed`: `fixed` uses the specified alpha directly, `optimized` searches for the best alpha on the dev set.
+    - `alpha_candidates`, default `[0.1, 0.2, 0.3, 0.4, 0.5]`: candidate alpha values when `alpha_mode` is `optimized`.
+    - `expo_base_path`, default `logs/expo/`: directory to save intermediate and final extrapolated models.
+    - (pairs mode only) `pair_selection`, default `dpo_score`: criterion for selecting best pair (`dpo_score`, `improvement`, `sft_score`).
+    - (pairs mode only) `sft_models`, `dpo_models`: explicit lists for legacy pair specification.
+- warning: **All models must share the same architecture.**
+- note to tester: 
+    - Basic (worst to best): `model_names: ["model1", "model2", "model3"]` with `mode: "worst_to_best"`
+    - Top-k/Bottom-k: same models with `mode: "topk_bottomk"` and `k: 2`
+    - Recommended models: `["allenai/Llama-3.1-Tulu-3-8B-SFT", "allenai/Llama-3.1-Tulu-3-8B-DPO", "allenai/Llama-3.1-Tulu-3-8B"]`
+    - Try `alpha_mode: "optimized"` to search for the best alpha on the dev set.
