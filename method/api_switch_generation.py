@@ -62,12 +62,16 @@ def switch_generation(prompts, model_names, selector_model_name, gpu_ids, patch_
             if round_id == max_response_length // patch_size - 1 and objective_flag:
                 generation_logs[i]["generated_segments"][-1] += " The final answer is"
                 generation_logs[i]["generated_sequence"] += " The final answer is"
-            # the s1 inference-time scaling recipe, if the last patch is shorter than 20 characters
-            if round_id != max_response_length // patch_size - 1 and round_id > 0 and len(generation_logs[i]["generated_segments"][-1]) < 20 and wait_flag:
-                generation_logs[i]["generated_segments"][-1] += " Wait,"
-                generation_logs[i]["generated_sequence"] += " Wait,"
+            # the s1 inference-time scaling recipe, if the last patch is shorter than patch_size characters (the average character-per-token is about 4, less for math)
+            if round_id != max_response_length // patch_size - 1 and round_id > 0 and len(generation_logs[i]["generated_segments"][-1]) < patch_size:
+                if wait_flag: # force to continue generation
+                    generation_logs[i]["generated_segments"][-1] += " Wait,"
+                    generation_logs[i]["generated_sequence"] += " Wait,"
+                else: # EOSed
+                    generation_logs[i]["generated_segments"][-1] += "<end>"
+                    generation_logs[i]["generated_sequence"] += "<end>"
             list_of_prompt_list[which_model[i]].append(
-                generation_logs[i]["query"] + " " + generation_logs[i]["generated_sequence"]
+                generation_logs[i]["query"] + "<begin>" + generation_logs[i]["generated_sequence"]
             )
 
         # generate a patch from the selected models distributedly
@@ -89,6 +93,9 @@ def switch_generation(prompts, model_names, selector_model_name, gpu_ids, patch_
         assert all(len(output) == 0 for output in list_of_output_list), "All outputs should be consumed"
 
     final_outputs = [generation_logs[i]["generated_sequence"].strip() for i in range(len(prompts))]
+    # truncate at <end> token if exists
+    for i in range(len(final_outputs)):
+        final_outputs[i] = final_outputs[i].split("<end>")[0].strip()
 
     return final_outputs, generation_logs
 
@@ -132,7 +139,7 @@ def get_all_inputs(task=None):
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     max_response_length = hyperparameters.get("max_response_length")
-    batch_size = hyperparameters.get("batch_size", 16)
+    batch_size = hyperparameters.get("batch_size")
 
     # method-specific hyperparameters
     patch_size = hyperparameters.get("patch_size", 50)
@@ -143,7 +150,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     rollout_per_instance = hyperparameters.get("rollout_per_instance", 16)
     reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", gpu_ids[0])
     reward_model_name = hyperparameters.get("reward_model_name", "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2")
-    wait_flag = hyperparameters.get("wait_flag", True)
+    wait_flag = hyperparameters.get("wait_flag", False)
 
     if selector_model_name is None:
         # train a selector model
