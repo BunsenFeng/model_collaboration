@@ -40,7 +40,7 @@ if __name__ == "__main__":
     )
 
     # execute the method
-    module_path = f"method.{method_name}"
+    module_path = f"model_collaboration.method.{method_name}"
 
     # try:
     print(f"Attempting to load module: {module_path}")
