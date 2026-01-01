@@ -5,9 +5,9 @@ import torch
 import argparse
 import importlib
 import torch._dynamo as dynamo
-from data import eval
+from model_collaboration.data import eval
 from multiprocessing import Pool
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 
 if __name__ == "__main__":
     

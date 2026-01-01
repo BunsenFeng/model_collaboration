@@ -1,7 +1,7 @@
 import json
 import random
-from data import eval
-from method import distributed_generation
+from model_collaboration.data import eval
+from model_collaboration.method import distributed_generation
 
 def feedback_prompt_generator(input, output):
     prompt = "You are part of a team of AI assistants collaborating to answer the user's question. Below is one assistant's answer to the question. Provide constructive feedback to help improve the answer.\n\n"

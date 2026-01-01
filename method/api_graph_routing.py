@@ -9,8 +9,8 @@ from torch_geometric.data import Data
 from sklearn.metrics import f1_score
 
 import numpy as np
-from data import eval
-from method import distributed_generation
+from model_collaboration.data import eval
+from model_collaboration.method import distributed_generation
 from transformers import AutoTokenizer, AutoModel
 from sentence_transformers import SentenceTransformer
 

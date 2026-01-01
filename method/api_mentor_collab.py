@@ -1,7 +1,7 @@
 import json
 from tqdm import tqdm
-from data import eval
-from utils.mentor_collab import MentorCollab
+from model_collaboration.data import eval
+from model_collaboration.utils.mentor_collab import MentorCollab
 
 MENTOR_COLLAB_TRAIN_SUPPORT_MODELS = [
     "Qwen/Qwen3-1.7B",

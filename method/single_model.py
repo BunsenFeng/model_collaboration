@@ -2,8 +2,8 @@ import os
 import json
 import torch
 from tqdm import tqdm
-from data import eval
-from method import distributed_generation
+from model_collaboration.data import eval
+from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
