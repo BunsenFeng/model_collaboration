@@ -1,10 +1,10 @@
 import os
 import json
 import shutil
-from data import eval
-from utils import lora_check
-from utils.swarm import lora_merge
-from method import distributed_generation
+from model_collaboration.data import eval
+from model_collaboration.utils import lora_check
+from model_collaboration.utils.swarm import lora_merge
+from model_collaboration.method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 

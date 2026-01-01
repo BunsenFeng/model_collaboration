@@ -1,6 +1,6 @@
 import json
 from data import eval
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 

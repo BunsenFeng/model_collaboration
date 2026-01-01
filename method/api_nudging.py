@@ -1,7 +1,7 @@
 import json
 import torch
 import torch.nn.functional as F
-from data import eval
+from model_collaboration.data import eval
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from typing import Optional, Dict, Any

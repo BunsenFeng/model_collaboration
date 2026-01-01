@@ -9,10 +9,10 @@ from tqdm import tqdm
 from peft import LoraConfig, AutoPeftModelForCausalLM
 from multiprocessing import Pool
 from datasets import load_dataset
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
-from utils import lora_check
+from model_collaboration.utils import lora_check
 
 def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
                learning_rate=1e-6, epoch=1):
