@@ -1,34 +1,57 @@
 """
-The helper functions for distributed supervised fine-tuning.
+The helper functions for distributed DPO.
 """
 import os
 import torch
 import shutil
 import random
 from tqdm import tqdm
-from peft import LoraConfig
+from peft import LoraConfig, AutoPeftModelForCausalLM
 from multiprocessing import Pool
 from datasets import load_dataset
 from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
+from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
+from model_collaboration.utils import lora_check
 
-def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
-               learning_rate=1e-5, epoch=3):
+def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
+               learning_rate=1e-6, epoch=1):
     """
-    SFT of a single model on a single GPU.
-    model_name: the name of the model you want to SFT.
-    sft_data_path: the path of the SFT data, should be JSONL with each line {"prompt":..., "completion":...}
+    DPO training of a single model on a single GPU.
+    model_name: the name of the model you want to DPO.
+    dpo_data_path: the path of the DPO data, should be JSONL with each line {"prompt":..., "chosen":..., "rejected":...}
     gpu_id: the GPU id you want to use.
-    output_model_path: the path to save the SFT model.
+    output_model_path: the path to save the DPO model.
     """
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
     torch.cuda.set_device(0)
 
-    dataset = load_dataset("json", data_files=sft_data_path, split="train")
+    dataset = load_dataset("json", data_files=dpo_data_path, split="train")
+    # Sparta exports use "instruction" as the prompt field; DPOTrainer expects "prompt" by default.
+    # Rename here so existing preference_pairs.json can be used directly.
+    if "instruction" in dataset.column_names and "prompt" not in dataset.column_names:
+        dataset = dataset.rename_column("instruction", "prompt")
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-    tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    
+    # Check if model_name is a LoRA adapter. If so, merge it into base model first.
+    # This ensures we train a new adapter on top of the merged model, rather than
+    # stacking multiple adapters (which can cause issues).
+    is_adapter = lora_check.is_lora_adapter_peft(model_name)
+    
+    if is_adapter:
+        # Load adapter and merge into base model
+        print(f"[DPO] Detected adapter at {model_name}, merging into base model first...")
+        peft_model = AutoPeftModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
+        model = peft_model.merge_and_unload()
+        del peft_model
+        torch.cuda.empty_cache()
+        print(f"[DPO] Adapter merged successfully.")
+    else:
+        # Load base model directly
+        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 
     if os.path.exists(output_model_path):
         print(f"Model path {output_model_path} exists. Deleting it to avoid conflicts.")
@@ -44,7 +67,7 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
         modules_to_save=None, # layers to unfreeze and train from the original pre-trained model
     )
 
-    training_args = SFTConfig(
+    training_args = DPOConfig(
         output_dir= output_model_path,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
@@ -62,14 +85,16 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=1,
-        max_seq_length=4096
+        # Suppress label_names warning for PEFT models
+        label_names=[],
     )
 
-    trainer = SFTTrainer(
+    trainer = DPOTrainer(
         model=model,
         args=training_args,
         train_dataset=dataset,
         eval_dataset=dataset,
+        processing_class=tokenizer,
         peft_config=peft_config
     )
 
@@ -80,25 +105,25 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
     del model, tokenizer, trainer
     torch.cuda.empty_cache()
 
-def distributed_sft(list_of_model_names, list_of_sft_data_paths, list_of_gpu_ids, list_of_output_model_paths,
-                    batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-5, epoch=3):
+def distributed_dpo(list_of_model_names, list_of_dpo_data_paths, list_of_gpu_ids, list_of_output_model_paths,
+                    batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-6, epoch=1):
     """
-    Distributed SFT of multiple models on multiple GPUs.
-    list_of_model_names: the list of model names you want to SFT.
-    list_of_sft_data_paths: the list of paths of the SFT data, should be JSONL with each line {"prompt":..., "completion":...}
+    Distributed DPO of multiple models on multiple GPUs.
+    list_of_model_names: the list of model names you want to DPO.
+    list_of_dpo_data_paths: the list of paths of the DPO data, should be JSONL with each line {"prompt":..., "chosen":..., "rejected":...}
     list_of_gpu_ids: the list of GPU ids you want to use.
-    list_of_output_model_paths: the list of paths to save the SFT models.
+    list_of_output_model_paths: the list of paths to save the DPO models.
     """
 
     num_models = len(list_of_model_names)
     
     for i in range(0, len(list_of_model_names), len(list_of_gpu_ids)):
-        sft_args = []
+        dpo_args = []
         for j in range(len(list_of_gpu_ids)):
             if i + j < num_models:
-                sft_args.append((
+                dpo_args.append((
                     list_of_model_names[i + j],
-                    list_of_sft_data_paths[i + j],
+                    list_of_dpo_data_paths[i + j],
                     list_of_gpu_ids[j],
                     list_of_output_model_paths[i + j],
                     batch_size,
@@ -107,8 +132,8 @@ def distributed_sft(list_of_model_names, list_of_sft_data_paths, list_of_gpu_ids
                     epoch
                 ))
         
-        pool = Pool(len(sft_args))
-        pool.starmap(single_sft, sft_args)
+        pool = Pool(len(dpo_args))
+        pool.starmap(single_dpo, dpo_args)
         pool.close()
         pool.join()
 
@@ -124,7 +149,7 @@ if __name__ == "__main__":
         "Qwen/Qwen2.5-7B-Instruct"
     ]
 
-    list_of_sft_data_paths = [
+    list_of_dpo_data_paths = [
         "logs/router_model_sft_data_agieval_3.jsonl",
         "logs/router_model_sft_data_agieval_3.jsonl",
         "logs/router_model_sft_data_agieval_3.jsonl"
@@ -133,22 +158,22 @@ if __name__ == "__main__":
     list_of_gpu_ids = [0, 1, 2]
 
     list_of_output_model_paths = [
-        "logs/temp_model_sft_gemma",
-        "logs/temp_model_sft_llama",
-        "logs/temp_model_sft_qwen"
+        "logs/temp_model_dpo_gemma",
+        "logs/temp_model_dpo_llama",
+        "logs/temp_model_dpo_qwen"
     ]
 
-    distributed_sft(
+    distributed_dpo(
         list_of_model_names,
-        list_of_sft_data_paths,
+        list_of_dpo_data_paths,
         list_of_gpu_ids,
         list_of_output_model_paths
     )
 
     list_of_model_names = [
-        "logs/temp_model_sft_gemma",
-        "logs/temp_model_sft_llama",
-        "logs/temp_model_sft_qwen"
+        "logs/temp_model_dpo_gemma",
+        "logs/temp_model_dpo_llama",
+        "logs/temp_model_dpo_qwen"
     ]
 
     list_of_input_list = [
@@ -169,15 +194,15 @@ if __name__ == "__main__":
 
     print(list_of_output_list)
 
-    # single_sft(
+    # single_dpo(
     #     model_name="google/gemma-3-4b-it",
-    #     sft_data_path="logs/router_model_sft_data_agieval_3.jsonl",
+    #     dpo_data_path="logs/router_model_dpo_data_agieval_3.jsonl",
     #     gpu_id=0,
-    #     output_model_path="logs/temp_model_sft",
+    #     output_model_path="logs/temp_model_dpo",
     #     epoch=1
     # )
 
-    # list_of_model_name = ["logs/temp_model_sft"]
+    # list_of_model_name = ["logs/temp_model_dpo"]
     # list_of_input_list = [["What is the capital of France?", "Who is the president of the China?"]]
     # list_of_gpu_id = [0]
 

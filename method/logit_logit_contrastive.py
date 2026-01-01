@@ -1,9 +1,9 @@
 import json
 import torch
-from data import eval
-from utils import logit_arithmetic
+from model_collaboration.data import eval
+from model_collaboration.utils import logit_arithmetic
 from transformers import AutoTokenizer
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 
 # return a function that runs logit contrastive with top-k and bottom-k
 def logit_operation_generator(k, lambda_=0.2):

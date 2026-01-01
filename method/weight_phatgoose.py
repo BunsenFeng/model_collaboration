@@ -57,7 +57,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 
 from peft import PeftModel
-from data import eval as eval_mod
+from model_collaboration.data import eval as eval_mod
 
 
 # -----------------------------
@@ -641,25 +641,29 @@ def _wrap_model_for_single_expert_training(
 # -----------------------------
 
 
-def _read_jsonl(path: str) -> List[Dict[str, Any]]:
-    items: List[Dict[str, Any]] = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                items.append(json.loads(line))
-            except Exception:
-                continue
-    return items
-
-
 def _prepare_sft_tuples_from_task(task: str, task_type: str, ratio: float = 1.0) -> List[Tuple[str, str]]:
     """
     Prepare (prompt, answer) pairs from task dev set for gate training.
     Uses eval module to get inputs and constructs answers based on task type.
     """
+    def _to_text(v: Any) -> str:
+        if v is None:
+            return ""
+        if isinstance(v, (list, dict)):
+            try:
+                return json.dumps(v, ensure_ascii=False)
+            except Exception:
+                return str(v)
+        return str(v)
+
+    def _extract_gold(item: Dict[str, Any]) -> str:
+        for k in ["answer", "output"]:
+            if k in item and item.get(k) is not None:
+                s = _to_text(item.get(k)).strip()
+                if s:
+                    return s
+        return ""
+
     # Get dev inputs
     dev_inputs = eval_mod.prepare_inputs(task, task_type, "dev", ratio=ratio)
     
@@ -689,35 +693,11 @@ def _prepare_sft_tuples_from_task(task: str, task_type: str, ratio: float = 1.0)
             break
         
         question = dev_inputs[i]
-        
-        if task_type == "multiple_choice":
-            # For multiple choice, answer is the letter (e.g., "A", "B", "C", "D")
-            answer = str(item.get("answer", ""))
-        elif task_type == "open_ended":
-            # For open ended, answer is the text response
-            answer = str(item.get("answer", ""))
-        else:
-            # Default: try to get answer
-            answer = str(item.get("answer", ""))
+        answer = _extract_gold(item)
         
         if question and answer:
             pairs.append((question, answer))
     
-    return pairs
-
-
-def _prepare_sft_tuples(data: List[Dict[str, Any]]) -> List[Tuple[str, str]]:
-    """Legacy function for JSONL format with prompt/completion keys."""
-    pairs: List[Tuple[str, str]] = []
-    for ex in data:
-        prompt = ex.get("prompt")
-        completion = ex.get("completion")
-        if prompt is None or completion is None:
-            # try other keys
-            prompt = ex.get("instruction") or ex.get("input") or ex.get("question")
-            completion = ex.get("output") or ex.get("answer") or ex.get("label")
-        if prompt is not None and completion is not None:
-            pairs.append((str(prompt), str(completion)))
     return pairs
 
 

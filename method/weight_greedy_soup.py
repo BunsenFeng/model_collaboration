@@ -1,8 +1,10 @@
+import os
 import json
-from data import eval
-from utils import lora_check
-from utils.swarm import lora_merge
-from method import distributed_generation
+import shutil
+from model_collaboration.data import eval
+from model_collaboration.utils import lora_check
+from model_collaboration.utils.swarm import lora_merge
+from model_collaboration.method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
@@ -45,6 +47,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         current_selected_models = [model_names[i] for i in included_model_indices + [model_index]]
         current_weights = [1.0 / len(current_selected_models)] * len(current_selected_models)
         merged_model_path = "logs/greedy_soup"
+
+        # remove existing merged model path if any
+        if os.path.exists(merged_model_path):
+            shutil.rmtree(merged_model_path)
+
         lora_merge(
             weights=current_weights,
             lora_name_list=current_selected_models,
@@ -72,24 +79,40 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     final_selected_models = [model_names[i] for i in included_model_indices]
     print("Final selected models in the greedy soup: {}".format(final_selected_models))
     # final weights are uniform among the selected models
-    final_weights = [1.0 / len(final_selected_models)] * len(final_selected_models)
-    
-    # save the final greedy soup model
-    lora_merge(
-        weights=final_weights,
-        lora_name_list=final_selected_models,
-        output_path="logs/greedy_soup",
-        gpu_id=gpu_ids[0]
-    )
+    if len(final_selected_models) == 1:
+        final_model_name = final_selected_models[0]
+        print("Only one model selected, using the model: {}".format(final_model_name))
 
-    # evaluate it on the test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
-    list_of_input_list = [test_input_list]
-    list_of_output_list = distributed_generation.distributed_generation(
-        ["logs/greedy_soup"],
-        list_of_input_list,
-        [gpu_ids[0]]
-    )
+        # evaluate it on the test set
+        test_input_list = eval.prepare_inputs(task, task_type, "test")
+        list_of_input_list = [test_input_list]
+        list_of_output_list = distributed_generation.distributed_generation(
+            [final_model_name],
+            list_of_input_list,
+            [gpu_ids[0]]
+        )
+    else:
+        final_weights = [1.0 / len(final_selected_models)] * len(final_selected_models)
+
+        if os.path.exists("logs/greedy_soup"):
+            os.remove("logs/greedy_soup")
+
+        # save the final greedy soup model
+        lora_merge(
+            weights=final_weights,
+            lora_name_list=final_selected_models,
+            output_path="logs/greedy_soup",
+            gpu_id=gpu_ids[0]
+        )
+
+        # evaluate it on the test set
+        test_input_list = eval.prepare_inputs(task, task_type, "test")
+        list_of_input_list = [test_input_list]
+        list_of_output_list = distributed_generation.distributed_generation(
+            ["logs/greedy_soup"],
+            list_of_input_list,
+            [gpu_ids[0]]
+        )
 
     test_outputs = list_of_output_list[0]
     test_score = eval.get_scores(task, task_type, "test", test_outputs)

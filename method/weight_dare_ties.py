@@ -1,11 +1,11 @@
 import os
 import json
 import random
-from data import eval
+from model_collaboration.data import eval
 import torch.nn.functional as F
-from utils import lora_check
-from method import distributed_generation
-from utils.numeric_swarm import NumericSwarm
+from model_collaboration.utils import lora_check
+from model_collaboration.method import distributed_generation
+from model_collaboration.utils.numeric_swarm import NumericSwarm
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
@@ -18,6 +18,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     model_names = lora_check.lora_to_full(model_names)
 
     # method-specific hyperparameters
+
+    base_model_name = hyperparameters.get("base_model_name")
+
     population = hyperparameters.get("population", 5)
     max_iterations = hyperparameters.get("max_iterations", 5)
     mode = hyperparameters.get("mode", "average") # optimized or average
@@ -83,7 +86,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                         f.write("    parameters:\n")
                         f.write("      weight: " + str(weight[j]) + "\n")
                     f.write("merge_method: dare_ties\n")
-                    f.write("base_model: " + model_names[0] + "\n")
+                    f.write("base_model: " + base_model_name + "\n")
                     f.write("dtype: float16\n")
                 
                 os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_id))
@@ -130,7 +133,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             f.write("    parameters:\n")
             f.write("      weight: " + str(normalized_best_weights[j]) + "\n")
         f.write("merge_method: dare_ties\n")
-        f.write("base_model: " + model_names[0] + "\n")
+        f.write("base_model: " + base_model_name + "\n")
         f.write("dtype: float16\n")
 
     os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path)
