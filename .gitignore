@@ -2,6 +2,7 @@ logs/*
 !logs/README.md
 *.sh
 *.json
+!model_collaboration/data/*.json
 !data/*.json
 data/test.py
 test.py
