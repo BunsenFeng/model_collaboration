@@ -1,20 +1,22 @@
-logs/*
-!logs/README.md
+model_collaboration/logs/*
+!model_collaboration/logs/README.md
 *.sh
+model_collaboration/*.sh
 *.json
-!data/*.json
-data/test.py
-test.py
-!test_config.json
-models/
-distill/
-data/*_devonly.json
-boxed.py
-gpt_rejudge.py
-config.slurm
-log.txt
-*.txt
-moco/
+model_collaboration/*.json
+!model_collaboration/data/*.json
+model_collaboration/data/test.py
+model_collaboration/test.py
+!model_collaboration/test_config.json
+model_collaboration/models/
+model_collaboration/distill/
+model_collaboration/data/*_devonly.json
+model_collaboration/boxed.py
+model_collaboration/gpt_rejudge.py
+model_collaboration/config.slurm
+model_collaboration/log.txt
+model_collaboration/*.txt
+model_collaboration/moco/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -12,7 +12,6 @@ from multiprocessing import Pool
 from model_collaboration.method import distributed_generation
 
 def run_main():
-    
     torch.multiprocessing.set_start_method('spawn')
 
     torch.set_float32_matmul_precision('high')
