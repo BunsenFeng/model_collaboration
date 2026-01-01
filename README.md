@@ -7,8 +7,8 @@ The future is now.
 Thank you for joining this effort! Kindly do the following:
 1. Get familiar with "Github Setup" in this readme: you need to create your own branch, code in your branch, and submit pull requests from your branch to the dev branch. **Never edit anything on the dev branch.**
 2. Follow "After that, quick start!!" in this readme.
-3. Read the beginning of `method/user_readme.md` and briefly check out the methods we already have here.
-4. Follow `method/sample_approach.py` and `method/developer_readme.md` to develop your own method. Try to use the helper functions provided there if possible (such as `distributed_generation.distributed_generation`).
+3. Read the beginning of `model_collaboration/method/user_readme.md` and briefly check out the methods we already have here.
+4. Follow `model_collaboration/method/sample_approach.py` and `model_collaboration/method/developer_readme.md` to develop your own method. Try to use the helper functions provided there if possible (such as `distributed_generation.distributed_generation`).
 5. After you implemented and tested your method, git add commit push, open a pull request from your branch to dev, assign your point of contact and Shangbin as the two reviewers.
 
 ### Github Setup
@@ -50,11 +50,11 @@ cd model_collaboration
 Run your first model collaboration experiment (if you don't have 3 GPUs, go to `test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):
 
 ```
-python main.py -c test_config.json
+python -m model_collaboration.main -c model_collaboration/test_config.json
 ```
 
-You will see the outputs and evaluation results in the `logs/` folder.
+You will see the outputs and evaluation results in the `model_collaboration/logs/` folder.
 
-See `method/user_readme.md` for more details about different collaboration methods implemented.
+See `model_collaboration/method/user_readme.md` for more details about different collaboration methods implemented.
 
-Zhaoxuan (our evaluation tsar), additionally see `data/eval_readme.md`.
+Zhaoxuan (our evaluation tsar), additionally see `model_collaboration/data/eval_readme.md`.
