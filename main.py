@@ -21,7 +21,7 @@ def run_main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_file", type=str, help="Path to the configuration file")
-    parser.add_argument("-l", "--log_dir", default="./", type=str, help="Where should the log go?")
+    parser.add_argument("-l", "--log_dir", default="./logs/", type=str, help="Where should the log go?")
     args = parser.parse_args()
 
     with open(args.config_file, "r") as f:
