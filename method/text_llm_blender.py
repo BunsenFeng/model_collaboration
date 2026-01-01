@@ -4,9 +4,9 @@ import os
 import re
 from typing import List, Tuple
 
-from data import eval
-from method import distributed_generation
-from utils import distributed_sft
+from model_collaboration.data import eval
+from model_collaboration.method import distributed_generation
+from model_collaboration.utils import distributed_sft
 
 
 METHOD_NAME = "text_llm_blender"

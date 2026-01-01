@@ -4,10 +4,10 @@ import torch
 import random
 import numpy as np
 import torch.nn.functional as F
-from data import eval
+from model_collaboration.data import eval
 from multiprocessing import Pool
-from method import distributed_generation
-from utils.numeric_swarm import NumericSwarm
+from model_collaboration.method import distributed_generation
+from model_collaboration.utils.numeric_swarm import NumericSwarm
 
 FIRST_INSTRUCTION = "Please answer the following question."
 NON_LAST_INSTRUCTION = "Please answer the following question with the help of previous responses, feel free to ignore wrong or unhelpful responses."

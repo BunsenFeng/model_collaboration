@@ -54,7 +54,7 @@ import random
 from collections import Counter
 from typing import List, Dict, Tuple, Any
 
-from data import eval
+from model_collaboration.data import eval
 
 # Directory where the evaluation data JSON files reside.  This mirrors the
 # convention used in text_majority_vote.py.  We rely on this constant
@@ -63,8 +63,8 @@ from data import eval
 # multiple‑choice options it is not possible to accurately extract the
 # model's chosen answer.
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-from method import distributed_generation
-from utils import distributed_sft
+from model_collaboration.method import distributed_generation
+from model_collaboration.utils import distributed_sft
 
 
 def _majority_vote(responses: List[str]) -> str:

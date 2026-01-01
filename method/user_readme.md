@@ -32,20 +32,34 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
 #### API-level: Nudging
 - file: `api_nudging.py`
 - description: A training-free guided decoding method. During generation, if the base model is uncertain about the next token (top-1 prob < `gamma`), a (smaller) nudging model intervenes. The nudging model inserts nudging token(s) (often stylistic/discourse markers) to guide the base model’s generation. 
-    - Implementation Details: The method ensures complete words are inserted (by splitting on spaces) to maintain coherence and support collaboration of models with different tokenizers. Generation stops when either the base or nudging model emits an EOS token.
+    - Implementation Details: The method ensures complete words are inserted (by splitting on spaces) to maintain coherence and support collaboration of models with different tokenizers. Generation stops when the current selected/active model (the model that is selected to generate the next token) emits an EOS token.
 - related paper(s):
     - [Nudging: Inference-time Alignment of LLMs via Guided Decoding](https://arxiv.org/abs/2410.09300)
 - method-specific hyperparameters:
     - `gamma` (float, default 0.4): The uncertainty threshold. If the base model's top-1 probability is below this value, the nudging model takes over.
     - `base_model_id` (int, default 0): the index of the base model in `model_names`.
     - `nudging_model_id` (int, default 1): the index of the nudging model in `model_names`. (Requires `len(model_names) >= 2`). All the models that are not the base model are potential nudging models and will be used for searching if `search_nudging` is True.
+    - `use_kv_cache` (bool, default False): Speed Optimization. If `True`, enables KV-caching. This significantly speeds up inference but may result in slight output variations (see KV-Cache Trade-offs below).
     - `search_gamma` (bool, default False): If `True`, performs a grid search over gamma values `[0.2, 0.3, 0.4, 0.5]` using the dev set to find the optimal threshold.
     - `search_nudging` (bool, default False): If `True`, search over all potential nudging models (all the models in `model_names` excluding `base_model_id`) using the dev set to find the best nudging model.
 - performance & usage note: 
-    - Model support: Supports models from different families (tested on `Llama-3.1-Tulu-3-8B` + `Gemma-2-2b-it` / `Llama-3.1-Tulu-3-8B-DPO`). 
-    - Inference speed: This method is currently implemented without KV-caching (stateless inference). Consequently, batched inference is compute-bound rather than memory-bound.
-        - Expectation: Speed scales linearly with batch size. A batch of size $N$ will take roughly $N$ times longer than the longest sample in the batch.
-        - For minimizing the inference time, one should consider setting `batch_size` to be small or group samples by length.
+    - Model Compatibility: 
+        - Supports collaboration between different model families.
+        - Tested combinations: `Llama-3.1-Tulu-3-8B` (base) + `Gemma-2-2b-it` (nudging) / `Llama-3.1-Tulu-3-8B-DPO` (nudging).
+    - Inference speed 
+        - Without KV-cache (Stateless): 
+            - Behavior: Inference is compute-bound. The entire sequence is re-processed at every step.
+            - Scaling: Speed scales linearly with sequence length and batch size. A batch of size $N$ will take roughly $N$ times longer than the longest sample in the batch.
+            - Recommendation: Use small batch sizes or group samples by length to minimize wasted computation.
+        - With KV-cache (Stateful):
+            - Behavior: Memory-bound. Only the new token is processed at each step.
+            - Speedup: Significantly faster for long sequences.
+            - Benchmark: In tests on agieval_tiny (dev set), batch_size=8 with KV-cache was approximately 4x faster than batch_size=1 without KV-cache.
+    - **KV-Cache Trade-offs (Read Carefully)**: Enabling `use_kv_cache=True` may produce slightly different outputs compared to the stateless version, particularly when models use different tokenizers.
+        - Cause (Tokenization Fragmentation):
+            - Without Cache: The system re-tokenizes the entire string at every step. The tokenizer can retrospectively merge tokens for optimality (e.g., merging "Einstein" + "'s" into a single token if the vocabulary supports it).
+            - With Cache: Previous tokens are "locked" in the cache. The model sees the sequence as fragmented chunks (e.g., ["Einstein", "'", "s"]).
+        - Cause (Precision): Minor numerical drift in `bfloat16` accumulations between the "Prefill" kernel (used in non-cached) and "Decoding" kernel (used in cached) can flip the selection of tokens with very similar probabilities.
 
 #### API-level: Prompt Routing
 - file: `api_prompt_routing.py`
@@ -232,6 +246,16 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - Currently supports `task_type` in `["multiple_choice", "exact_match", "f1_match"]`, using the existing `data/eval.py` extraction logic for voting and scoring.
     - Use moderate-sized models and small `iterations` / `rounds` if compute is limited; each iteration runs a full multi-model debate plus SFT.
 
+#### Text-level: Blackboard Multi-Agent System (BBMAS)
+- file: `text_bbmas.py`
+- description: multiple LLMs collaborate through a shared blackboard to solve problems iteratively. Agents take turns contributing to the blackboard by selecting from five action types: (1) propose a solving strategy, (2) execute a solution step, (3) verify existing content, (4) critique and refine existing work, or (5) terminate and finalize the solution. Each agent independently decides which action to take based on the current blackboard state through a two-step process: first selecting an action, then executing it. After collaboration concludes (when enough agents vote to terminate or max iterations is reached), all agents vote on the best final conclusion from the termination entries.
+- method-specific hyperparameters:
+    - `max_num_agents_to_act`, default 1: maximum number of agents that can act in each iteration.
+    - `min_num_agents_to_stop`, default 1: minimum number of agents that must request termination to stop the collaboration.
+    - `agent_idle_threshold`, default 6: if an agent hasn't acted for this many iterations, it is forced to act (overrides cooldown).
+    - `max_iterations`, default 50: maximum number of collaboration iterations before forced termination.
+    - `max_num_retries`, default 3: number of retry attempts when action selection or vote parsing fails.
+- note to tester: try with 2-3 diverse models. Reduce `max_iterations` (e.g., to 20) for faster testing. This method generates many LLM calls per test example (2 calls per agent action + voting calls), so it can be slow. Increase `max_num_agents_to_act` to 2-3 for more parallel collaboration.
 #### Text-level: SPARTA
 - file: `text_sparta.py`
 - description: implement SPARTA alignment algorithm, an iterative competition-based training approach. In each iteration: (1) models compete pairwise on instructions, with opponents selected based on reputation scores or randomly; (2) other models (judges) dynamically score the competition responses (judges are models that didn't participate in each specific pair); (3) model ratings are updated based on judge scores using an Elo-like rating system; (4) preference pairs are generated from competitions; (5) DPO training is applied to improve models using the preference pairs. After all iterations, all adapters from all iterations are evaluated on the dev set, and the best one is selected for test evaluation.
