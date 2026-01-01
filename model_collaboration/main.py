@@ -18,6 +18,9 @@ def run_main():
     dynamo.config.cache_size_limit = 1024
     dynamo.config.recompile_limit = 1024
 
+    # record working directory
+    cwd = os.getcwd()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_file", type=str, help="Path to the configuration file")
     parser.add_argument("-l", "--log_dir", default="./model_collaboration/logs/", type=str, help="Where should the log go?")
@@ -55,6 +58,9 @@ def run_main():
         print(f"Method '{method_name}' executed successfully")
     else:
         raise AttributeError(f"The module '{module_path}' does not have a 'run_method' function.")
+
+    # restore working directory
+    os.chdir(cwd)
 
     file_path = Path(__file__).parent.resolve()
     files = os.listdir(os.path.join(file_path, "logs/"))
