@@ -1,0 +1,1003 @@
+{
+    "name": "agieval_tiny",
+    "task_type": "multiple_choice",
+    "dev": [
+        {
+            "id": 1921,
+            "question": "Traffic engineers have increased the capacity of the Krakkenbak Bridge to handle rush-hour traffic flow. The resultant increase in rush-hour traffic flow would not have occurred had the city not invested in computer modeling technology last year at the request of the city's mayor, and the city's financial predicament would not have been resolved if the traffic flow across the bridge during rush hour had not been increased. Which one of the following can be properly inferred from the information above?",
+            "choices": {
+                "A": "The city's financial predicament would not have been resolved had the city chosen a competing computer modeling software package.",
+                "B": "The city's financial predicament would not have been resolved had the city not invested in computer modeling technology.",
+                "C": "On an average day, more traffic crosses the Krakkenbak Bridge this year as compared to last year.",
+                "D": "Traffic flow across the Krakkenbak Bridge during rush hour would not have increased had the city's mayor not made investing in computer modeling technology the highest budgetary priority last year.",
+                "E": "The city's mayor was a proponent of investing in computer modeling technology because of the city's need to increase traffic flow across the Krakkenbak Bridge during rush hour."
+            },
+            "answer": "B",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 1473,
+            "question": "In planning maintenance for a city's infrastructure, a civil engineer estimates that, starting from the present, the population of the city will decrease by 10 percent every 20 years. If the present population of the city is 50,000, which of the following expressions represents the engineer's estimate of the population of the city $t$ years from now?",
+            "choices": {
+                "A": "$50,000(0.1)^{20 t}$",
+                "B": "$50,000(0.1)^{\\frac{t}{20}}$",
+                "C": "$50,000(0.9)^{20 t}$",
+                "D": "$50,000(0.9)^{\\frac{t}{20}}$"
+            },
+            "answer": "D",
+            "domain": "sat-math"
+        },
+        {
+            "id": 1856,
+            "question": "Medical specialists report that patients with back muscle injuries who receive a combination of drugs and physical therapy do only as well as those who receive physical therapy alone. Yet the specialists state that drugs are a necessary part of the treatment of all patients who receive them for back muscle injuries. Which one of the following, if true, most helps to reconcile the medical specialists' two claims?",
+            "choices": {
+                "A": "Medical specialists treat all patients who have serious back muscle injuries with either physical therapy alone or a combination of drugs and physical therapy.",
+                "B": "Medical specialists who prescribe these treatments make accurate judgments about who needs both drugs and physical therapy and who needs physical therapy alone.",
+                "C": "Some back muscle injuries have been completely healed by a combination of drugs and physical therapy.",
+                "D": "Some back muscle injuries that have been aggravated by improper attempts at physical therapy, such as home massage, have been successfully treated with drugs.",
+                "E": "Patients with injuries to other muscles show more improvement when treated with both drugs and physical therapy than when treated with physical therapy alone."
+            },
+            "answer": "B",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 1411,
+            "question": "Shipping Charges\\begin{center}\\begin{tabular}{|c|c|}\\hline$\\begin{array}{c}\\text { Merchandise weight } \\\\ \\text { (pounds) }\\end{array}$ & $\\begin{array}{c}\\text { Shipping } \\\\ \\text { charge }\\end{array}$ \\\\\\hline5 & $\\$ 16.94$ \\\\\\hline10 & $\\$ 21.89$ \\\\\\hline20 & $\\$ 31.79$ \\\\\\hline40 & $\\$ 51.59$ \\\\\\hline\\end{tabular}\\end{center}The table above shows shipping charges for an online retailer that sells sporting goods. There is a linear relationship between the shipping charge and the weight of the merchandise. Which function can be used to determine the total shipping charge $f(x)$, in dollars, for an order with a merchandise weight of $x$ pounds?",
+            "choices": {
+                "A": "$f(x)=0.99 x$",
+                "B": "$f(x)=0.99 x+11.99$",
+                "C": "$f(x)=3.39 x$",
+                "D": "$f(x)=3.39 x+16.94$"
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 328,
+            "question": "Five graduate students Zhang, Wang, Li, Zhao, and Liu graduated from a linguistics major in a college of arts of a university in 2014, and were hired by one of the three employers, Tianshu, Tianji, and Tianxuan, and at least one of them was hired by each unit.name.Known? (1) Li was hired by Tianshu; (2) Li and Zhao were not hired by the same unit; (3) Liu and Zhao were hired by the same unit; (4) If Zhang was hired by Tianxuan, then Wang Ye Was hired by Tianxuan. Which of the following may be correct?",
+            "choices": {
+                "A": "Li and Liu were hired by the same unit.",
+                "B": "Wang, Zhao and Liu were all hired by Tianji.",
+                "C": "Only Liu was hired by Tian Xuan.",
+                "D": "Only Wang was hired by Tianxuan."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1503,
+            "question": "\\begin{center}\\begin{tabular}{|l|c|c|}\\hline\\multicolumn{3}{|c|}{Townsend Realty Group Investments} \\\\\\hlineProperty address & $\\begin{array}{c}\\text { Purchase price } \\\\ \\text { (dollars) }\\end{array}$ & $\\begin{array}{c}\\text { Monthly rental } \\\\ \\text { price } \\\\ \\text { (dollars) }\\end{array}$ \\\\\\hlineClearwater Lane & 128,000 & 950 \\\\\\hlineDriftwood Drive & 176,000 & 1,310 \\\\\\hlineEdgemont Street & 70,000 & 515 \\\\\\hlineGlenview Street & 140,000 & 1,040 \\\\\\hlineHamilton Circle & 450,000 & 3,365 \\\\\\hline\\end{tabular}\\end{center}The Townsend Realty Group invested in the five different properties listed in the table above. The table shows the amount, in dollars, the company paid for each property and the corresponding monthly rental price, in dollars, the company charges for the property at each of the five locations. 23The relationship between the monthly rental price $r$, in dollars, and the property's purchase price $p$, in thousands of dollars, can be represented by a linear function. Which of the following functions represents the relationship?",
+            "choices": {
+                "A": "$r(p)=2.5 p-870$",
+                "B": "$r(p)=5 p+165$",
+                "C": "$r(p)=6.5 p+440$",
+                "D": "$r(p)=7.5 p-10$"
+            },
+            "answer": "D",
+            "domain": "sat-math"
+        },
+        {
+            "id": 711,
+            "question": "Sophist? Because 6 is greater than 4, and 6 is less than 8, 6 is both large and small. Which of the following ways of reasoning is most similar to the reasoning of the above-mentioned sophisters",
+            "choices": {
+                "A": "Because Laozi is more intelligent than Mencius, Laozi has a better view of goodness than Mencius.",
+                "B": "Because Zhang Qing drinks Tonghua glucose when he is healthy, it is sweet, and when he is sick, drinking Tonghua glucose is sour, so Tonghua glucose is both sweet and sour.",
+                "C": "Because Zhao Feng is taller than Li Tong, and Zhao Feng is shorter than Wang Lei, Zhao Feng is both tall and short",
+                "D": "Because a wooden stick is usually straight, but it looks curved in the water, this wooden stick is both straight and curved."
+            },
+            "answer": "C",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1636,
+            "question": "Lady Carlotta stepped out on to the platform of the small wayside station and took a turn or two up and down its uninteresting length, to kill time till the  train should be pleased to proceed on its way. Then,in the roadway beyond, she saw a horse struggling with a more than ample load, and a carter of the sort that seems to bear a sullen hatred against the animal that helps him to earn a living. Lady Carlotta promptly betook her to the roadway, and put rather a 10 different complexion on the struggle. Certain of her acquaintances were wont to give her plentiful admonition as to the undesirability of interfering on behalf of a distressed animal, such interference being \"none of her business.\" Only once had she put the 1 doctrine of non-interference into practice, when one of its most eloquent exponents had been besieged for nearly three hours in a small and extremely uncomfortable may-tree by an angry boar-pig, while Lady Carlotta, on the other side of the fence, had20 proceeded with the water-colour sketch she was engaged on, and refused to interfere between the boar and his prisoner. It is to be feared that she lost the friendship of the ultimately rescued lady. On this occasion she merely lost the train, which gave way to 25 the first sign of impatience it had shown throughout the journey, and steamed off without her. She bore the desertion with philosophical indifference; her friends and relations were thoroughly well used to the fact of her luggage arriving without her.30 She wired a vague non-committal message to her destination to say that she was coming on \"by another train.\" Before she had time to think what her next move might be she was confronted by an imposingly attired lady, who seemed to be taking a 35 prolonged mental inventory of her clothes and looks.\"You must be Miss Hope, the governess I've come to meet,\" said the apparition, in a tone that admitted of very little argument.\"Very well, if I must I must,\" said Lady Carlotta to 40 herself with dangerous meekness.\"I am Mrs. Quabarl,\" continued the lady; \"and where, pray, is your luggage?\"\"It's gone astray,\" said the alleged governess, falling in with the excellent rule of life that the absent 45 are always to blame; the luggage had, in point of fact, behaved with perfect correctitude. \"I've just telegraphed about it,\" she added, with a nearer approach to truth.\"How provoking,\" said Mrs. Quabarl; \"these 50 railway companies are so careless. However, my maid can lend you things for the night,\" and she led the way to her car.During the drive to the Quabarl mansion Lady Carlotta was impressively introduced to the 55 nature of the charge that had been thrust upon her; she learned that Claude and Wilfrid were delicate, sensitive young people, that Irene had the artistic temperament highly developed, and that Viola was something or other else of a mould equally60 commonplace among children of that class and type in the twentieth century.\"I wish them not only to be TAUGHT,\" said Mrs. Quabarl, \"but INTERESTED in what they learn. In their history lessons, for instance, you must try to65 make them feel that they are being introduced to the life-stories of men and women who really lived, not merely committing a mass of names and dates to memory. French, of course, I shall expect you to talk at meal-times several days in the week.\"70 \"I shall talk French four days of the week and Russian in the remaining three.\"\"Russian? My dear Miss Hope, no one in the house speaks or understands Russian.\"\"That will not embarrass me in the least,\" said 75 Lady Carlotta coldly.Mrs. Quabarl, to use a colloquial expression, was knocked off her perch. She was one of those imperfectly self-assured individuals who are magnificent and autocratic as long as they are not80 seriously opposed. The least show of unexpected resistance goes a long way towards rendering them cowed and apologetic. When the new governess failed to express wondering admiration of the large newly-purchased and expensive car, and lightly85 alluded to the superior advantages of one or two makes which had just been put on the market, the discomfiture of her patroness became almost abject. Her feelings were those which might have animated a general of ancient warfaring days, on beholding his 90 heaviest battle-elephant ignominiously driven off the field by slingers and javelin throwers. The narrator implies that Mrs. Quabarl favors a form of education that emphasizes",
+            "choices": {
+                "A": "traditional values.",
+                "B": "active engagement.",
+                "C": "artistic experimentation.",
+                "D": "factual retention."
+            },
+            "answer": "B",
+            "domain": "sat-en"
+        },
+        {
+            "id": 1589,
+            "question": "The weights, in pounds, for 15 horses in a stable were reported, and the mean, median, range, and standard deviation for the data were found. The horse with the lowest reported weight was found to actually weigh 10 pounds less than its reported weight. What value remains unchanged if the four values are reported using the corrected weight?",
+            "choices": {
+                "A": "Mean",
+                "B": "Median",
+                "C": "Range",
+                "D": "Standard deviation"
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 559,
+            "question": "A statistical survey of plastic surgery centers in a hospital in Nanjing shows that for children who choose to perform double eyelid, nose pad and other plastic surgery, the absolute support of up to 85% of parents, after the children do ideological work and agree to the child At 10%, parents \u2019total support for children \u2019s plastic surgery reached 95%, nearly double the support rate of 50% two years ago. Which of the following statements is most suitable as a conclusion derived from the above discussion?",
+            "choices": {
+                "A": "95% of the children who had plastic surgery had their parents' consent.",
+                "B": "No more than 5% of parents strongly disagree with their children for plastic surgery.",
+                "C": "10% of the children who had plastic surgery did ideological work for their parents.",
+                "D": "95% of parents support their children to have plastic surgery."
+            },
+            "answer": "B",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 507,
+            "question": "The Nanjing Yangtze River Bridge, built in 1968, has a clear height of 24 meters in the Fengshui area.Theoretically, it can pass a maximum of 3,000 tons of ships.Today, with the rapid economic development, it has become a building that \u201ccuts the waist\u201d of the Yangtze River waterway and hinders the passage of giant ships.A bridge expert asserted that the Nanjing Yangtze River Bridge must be demolished and rebuilt in order to dredge the golden waterways of the Yangtze River completely. If any of the following is true, can you raise the most doubts about this expert's point of view?",
+            "choices": {
+                "A": "Due to the inability of large ships to pass through the Nanjing Bridge, a large number of exported goods in the middle and upper reaches of the Yangtze River can only be taken by road or railway.",
+                "B": "99% of international ships entering the Yangtze River are moored at ports below the Nanjing Bridge, and dozens of foreign trade terminals above Nanjing rarely have large external ships berthed.",
+                "C": "It is not enough to dismantle only the Nanjing Bridge.The Yangtze River Bridge, which was built in Wuhu, Tongling, Anqing and other places, has a clear height of 24 meters.",
+                "D": "Shipbuilding technology is highly developed, and 8000-ton ships designed for adapting to the passage of the Yangtze River abroad have passed through Nanjing to Wuhan."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 391,
+            "question": "Before the finals of the men \u2019s team division of the World Table Tennis Championships, the coach of Country S was lining up.His idea was? if the No.4 player \u2019s competitive state is good and the injury has healed, then let No.4 player play; only Player No.4 can't play, only player No.6 is sent out. If the No.6 player plays in the final, which of the following must be true?",
+            "choices": {
+                "A": "Player 4 is seriously injured.",
+                "B": "Player 4's competitive state is not good.",
+                "C": "No.6 player was not injured.",
+                "D": "If player 4's injury has healed, then his competitive state is not good."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1310,
+            "question": "A detective is trying to determine the order in which a criminal recruited seven accomplices\u2014Peters, Quinn, Rovero, Stanton, Tao, Villas, and White. In addition to discovering that the suspect recruited the accomplices one at a time, the detective has established the following: Stanton was recruited neither immediately before nor immediately after Tao. Quinn was recruited earlier than Rovero. Villas was recruited immediately before White. Peters was recruited fourth. f Quinn was recruited immediately before Rovero, then Stanton CANNOT have been recruited",
+            "choices": {
+                "A": "first",
+                "B": "second",
+                "C": "third",
+                "D": "fifth",
+                "E": "seventh"
+            },
+            "answer": "B",
+            "domain": "lsat-ar"
+        },
+        {
+            "id": 1696,
+            "question": "At last, Old Widow Lau was done haggling with the driver and we stepped inside Father's shop. It was north-facing, quite dim inside, and perhaps this was  why Father did not see us at first. He was busy with a 5 customer, a man who was distinguished-looking, like the scholars of two decades before. The two men were bent over a glass case, discussing the different qualities of inksticks. Big Uncle welcomed us and invited us to be seated. From his formal tone, I knew10 he did not recognize who we were. So I called his name in a shy voice. And he squinted at me, then laughed and announced our arrival to Little Uncle, who apologized many times for not rushing over sooner to greet us. They rushed us to be seated at one15 of two tea tables for customers. Old Widow Lau refused their invitation three times, exclaiming that my father and uncles must be too busy for visitors. She made weak efforts to leave. On the fourth insistence, we finally sat. Then Little Uncle brought20 us hot tea and sweet oranges, as well as bamboo latticework fans with which to cool ourselves.I tried to notice everything so I could later tell GaoLing what I had seen, and tease out her envy. The floors of the shop were of dark wood, polished and 25 clean, no dirty footprints, even though this was during the dustiest part of the summer. And along the walls were display cases made of wood and glass. The glass was very shiny and not one pane was broken. Within those glass cases were our silk-30 wrapped boxes, all our hard work. They looked so much nicer than they had in the ink-making studio at Immortal Heart village.I saw that Father had opened several of the boxes. He set sticks and cakes and other shapes on a silk 35 cloth covering a glass case that served as a table on which he and the customer leaned. First he pointed to a stick with a top shaped like a fairy boat and said with graceful importance, \"Your writing will flow as smoothly as a keel cutting through a glassy lake.\"40 He picked up a bird shape: \"Your mind will soar into the clouds of higher thought.\" He waved toward a row of ink cakes embellished with designs of peonies and bamboo: \"Your ledgers will blossom into abundance while bamboo surrounds your quiet 45 mind.\"As he said this, Precious Auntie came back into mind. I was remembering how she taught me that everything, even ink, had a purpose and a meaning: Good ink cannot be the quick kind, ready to pour out 50 of a bottle. You can never be an artist if your work comes without effort. That is the problem of modern ink from a bottle. You do not have to think. You simply write what is swimming on the top of your brain. And the top is nothing but pond scum, dead 55 leaves, and mosquito spawn. But when you push an inkstick along an inkstone, you take the first step to cleansing your mind and your heart. You push and you ask yourself, What are my intentions? What is in my heart that matches my mind? 60 I remembered this, and yet that day in the ink shop, I listened to what Father was saying, and his words became far more important than anything Precious Auntie had thought. \"Look here,\" Father said to his customer, and I looked. He held up an65 inkstick and rotated it in the light. \"See? It's the right hue, purple-black, not brown or gray like the cheap brands you might find down the street. And listen to this.\" And I heard a sound as clean and pure as a small silver bell. \"The high-pitched tone tells you that 70 the soot is very fine, as smooth as the sliding banks of old rivers. And the scent-can you smell the balance of strength and delicacy, the musical notes of the ink's perfume? Expensive, and everyone who sees you using it will know that it was well worth the high 75 price.\"I was very proud to hear Father speak of our family's ink this way. Throughout the passage, the narrator is portrayed as someone who is",
+            "choices": {
+                "A": "reserved around unfamiliar people.",
+                "B": "attuned to her immediate surroundings.",
+                "C": "sympathetic to the needs of others.",
+                "D": "anxious about her responsibilities."
+            },
+            "answer": "B",
+            "domain": "sat-en"
+        },
+        {
+            "id": 1418,
+            "question": "A helicopter, initially hovering 40 feet above the ground, begins to gain altitude at a rate of 21 feet per second. Which of the following functions represents the helicopter's altitude above the ground $y$, in feet, $t$ seconds after the helicopter begins to gain altitude?",
+            "choices": {
+                "A": "$y=40+21$",
+                "B": "$y=40+21 t$",
+                "C": "$y=40-21 t$",
+                "D": "$y=40 t+21$"
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 383,
+            "question": "Recently, some countries in the world, especially the United States and Japan, have blamed their domestic economic mystery on China \u2019s fixed exchange rate system between the RMB and the US dollar.Some domestic manufacturing companies have caused pressure. The following are all questions about the above views, except?",
+            "choices": {
+                "A": "Japan has been in recession for more than ten years.At that time, China \u2019s merchandise exports were very small, and the renminbi was very weak.",
+                "B": "The US economic recession was mainly caused by the destruction of the myth of the Internet economy, and the \"9.11\" terrorist attacks exacerbated this recession.",
+                "C": "China's GDP accounts for only 3.9% of the world's total, foreign trade is less than 5% of the world's, and it does not have the ability to affect the world market price and supply and demand.",
+                "D": "Consumers in Western countries have benefited greatly from cheap goods in China."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 2052,
+            "question": "Professor Riley characterized the university president's speech as inflammatory and argued that it was therefore inappropriate. However, Riley has had a long-standing feud with the president, and so we should not conclude that her speech was inflammatory solely on the basis of Riley's testimony. Therefore, unless there are independent reasons to deem the president's speech inflammatory, it is not true that her speech was inappropriate. The argument is flawed in that it",
+            "choices": {
+                "A": "takes for granted that the speech could not be inappropriate if it was not inflammatory",
+                "B": "fails to adequately address the possibility that inflammatory speeches may be appropriate for some audiences",
+                "C": "favors the university president's side in a dispute simply because of the president's privileged standing",
+                "D": "concludes that Riley's claim is false merely on the grounds that Riley has something to gain if the claim is accepted as true",
+                "E": "fails to adequately address the possibility that Riley's animosity toward the university president is well founded"
+            },
+            "answer": "A",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 1655,
+            "question": "The Alcazar Restaurant was on Sheridan Road near Devon Avenue. It was long and narrow, with tables for two along the walls and tables for four  down the middle. The decoration was art moderne,except for the series of murals depicting the four seasons, and the sick ferns in the front window. Lymie sat down at the second table from the cash register, and ordered his dinner. The history book, which he propped against the catsup and the glass 10 sugar bowl, had been used by others before him. Blank pages front and back were filled in with maps, drawings, dates, comic cartoons, and organs of the body; also with names and messages no longer clear and never absolutely legible. On nearly every other15 page there was some marginal notation, either in ink or in very hard pencil. And unless someone had upset a glass of water, the marks on page 177 were from tears.While Lymie read about the Peace of Paris, signed 20 on the thirtieth of May, 1814, between France and the Allied powers, his right hand managed again and again to bring food up to his mouth. Sometimes he chewed, sometimes he swallowed whole the food that he had no idea he was eating. The Congress of25 Vienna met, with some allowance for delays, early in November of the same year, and all the powers engaged in the war on either side sent plenipotentiaries. It was by far the most splendid and important assembly ever convoked to discuss and 30 determine the affairs of Europe. The Emperor of Russia, the King of Prussia, the Kings of Bavaria, Denmark, and Wurttemberg, all were present in person at the court of the Emperor Francis I in the Austrian capital. When Lymie put down his fork and 35 began to count them off, one by one, on the fingers of his left hand, the waitress, whose name was Irma, thought he was through eating and tried to take his plate away. He stopped her. Prince Metternich (his right thumb) presided over the Congress, and40 Prince Talleyrand (the index finger) represented France.A party of four, two men and two women, came into the restaurant, all talking at once, and took possession of the center table nearest Lymie.45 The women had shingled hair and short tight skirts which exposed the underside of their knees when they sat down. One of the women had the face of a young boy but disguised by one trick or another (rouge, lipstick, powder, wet bangs plastered against 50 the high forehead, and a pair of long pendent earrings) to look like a woman of thirty-five, which as a matter of fact she was. The men were older. They laughed more than there seemed any occasion for, while they were deciding between soup and shrimp 55 cocktail, and their laughter was too loud. But it was the women's voices, the terrible not quite sober pitch of the women's voices which caused Lymie to skim over two whole pages without knowing what was on them. Fortunately he realized this and went back. 60 Otherwise he might never have known about the secret treaty concluded between England, France, and Austria, when the pretensions of Prussia and Russia, acting in concert, seemed to threaten a renewal of the attack. The results of the Congress65 were stated clearly at the bottom of page 67 and at the top of page 68 , but before Lymie got halfway through them, a coat that he recognized as his father's was hung on the hook next to his chair. Lymie closed the book and said, \"I didn't think you 70 were coming.\"Time is probably no more unkind to sporting characters than it is to other people, but physical decay unsustained by respectability is somehow more noticeable. Mr. Peters' hair was turning gray and his75 scalp showed through on top. He had lost weight also; he no longer filled out his clothes the way he used to. His color was poor, and the flower had disappeared from his buttonhole. In its place was an American Legion button.80 Apparently he himself was not aware that there had been any change. He straightened his tie self-consciously and when Irma handed him a menu, he gestured with it so that the two women at the next table would notice the diamond ring on the fourth85 finger of his right hand. Both of these things, and also the fact that his hands showed signs of the manicurist, one can blame on the young man who had his picture taken with a derby hat on the back of his head, and also sitting with a girl in the curve of 90 the moon. The young man had never for one second deserted Mr. Peters. He was always there, tugging at Mr. Peters' elbow, making him do things that were not becoming in a man of forty-five. book\") The narrator indicates that Lymie finally closes the history book because",
+            "choices": {
+                "A": "his father has joined him at the table.",
+                "B": "the people at the other table are too disruptive.",
+                "C": "he has finished the chapter about the Congress.",
+                "D": "he is preparing to leave the restaurant."
+            },
+            "answer": "A",
+            "domain": "sat-en"
+        },
+        {
+            "id": 292,
+            "question": "A certain class intends to select two of three girls from Fang Rufen, Guo Yanran, He Zhilian, and three from five boys, including Peng Youwen, Qiu Zhijie, Ren Xiangyang, Song Wenkai, and Tang Xiaohua, to form a five-person support group for university students to volunteer teaching in the mountains.Requirements? (1) Guo Yanran and Tang Xiaohua are not selected at the same time; (2) Peng Youwen and Song Kaiwen are not selected at the same time; (3) Qiu Zhijie and Tang Xiaohua are not selected at the same time. If He Zhilian is not selected, which of the following is not selected?",
+            "choices": {
+                "A": "Tang Xiaohua",
+                "B": "Peng Youwen",
+                "C": "Qiu Zhijie",
+                "D": "Song Wenkai"
+            },
+            "answer": "A",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 323,
+            "question": "The proliferation of private cars in a certain city has aggravated the air pollution in the city, and often caused severe congestion on multiple road sections during the morning and evening peaks.In order to solve this problem, the city government decided to implement all-weather single and double number travel restrictions for private cars, that is, only private cars with ending numbers on odd days are allowed to travel, and only private cars with ending numbers are allowed on even days. Which of the following can best question the decision of the city government?",
+            "choices": {
+                "A": "There is a large automobile production company in the city, and the order restriction will definitely affect the automobile sales of the enterprise.",
+                "B": "Private car owners in the city generally have two or more private cars.",
+                "C": "The owners of private cars in the city are generally wealthy, and they do not care about the fines for violations.",
+                "D": "Mass transit is being developed in the city, which will help overcome congestion."
+            },
+            "answer": "B",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 841,
+            "question": "There are 7 outstanding students G, H, L, M, U, W and Z in a school.During the summer vacation, the school will send them to the United Kingdom and the United States for inspection.The school has only 7 students participating in this activity, and each person happens to go to one of these two countries.Considering the specialty of each student, this activity must meet the following conditions? (1) If G goes to the UK, then H To the United States.(2) If L goes to the UK, both M and U go to the US.(3) The country w went to was different from the country Z went to.(4) The country where U goes is different from the country where G goes.(5) If Z goes to the UK, then H also goes to the UK. If G goes to the United States, which of the following must be true?",
+            "choices": {
+                "A": "H go to the UK",
+                "B": "L go to America",
+                "C": "M go to the UK",
+                "D": "W go to America"
+            },
+            "answer": "B",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 331,
+            "question": "Five graduate students Zhang, Wang, Li, Zhao, and Liu graduated from a linguistics major in a college of arts of a university in 2014, and were hired by one of the three employers, Tianshu, Tianji, and Tianxuan, and at least one of them was hired by each unit.name.Known? (1) Li was hired by Tianshu; (2) Li and Zhao were not hired by the same unit; (3) Liu and Zhao were hired by the same unit; (4) If Zhang was hired by Tianxuan, then Wang Ye Was hired by Tianxuan. If Liu was hired by Tianxuan, which of the following must be wrong?",
+            "choices": {
+                "A": "Tianxuan hired 3 people.",
+                "B": "Li's employer only hired him.",
+                "C": "Wang was hired by Tianxuan.",
+                "D": "Zhang was hired by Tianxuan."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1508,
+            "question": "$$x^{2}+20 x+y^{2}+16 y=-20$$The equation above defines a circle in the $x y$-plane. What are the coordinates of the center of the circle?",
+            "choices": {
+                "A": "$(-20,-16)$",
+                "B": "$(-10,-8)$",
+                "C": "$(10,8)$",
+                "D": "$(20,16)$"
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 2117,
+            "question": "Principle: People should buy an expensive antique only if they can be confident of its authenticity and they find the piece desirable for its intrinsic qualities and not just for its value as an investment.Application: Matilde should not buy the expensive antique vase offered for sale on the Internet. Which one of the following, if true, most helps to justify the above application of the principle?",
+            "choices": {
+                "A": "While this style of vase is not currently sought after by other collectors, Matilde has acquired quite a few similar pieces and has developed significant expertise in identifying counterfeits.",
+                "B": "Although the seller is willing to take back the vase if Matilde cannot independently authenticate it, Matilde is not sure that the vase will appreciate much in value in the future.",
+                "C": "The seller of the vase has offered documentation of its age and origin, and Matilde is highly attracted to its shape and color; moreover, she suspects that it will be highly desirable to other collectors in the future.",
+                "D": "The asking price for the vase is significantly less than the amount Matilde thinks it is worth, and the vase is of a style that Matilde particularly likes.",
+                "E": "While Matilde likes the color and features of the vase, its particular style has frequently been reproduced for the mass market, and the vase cannot be examined closely or authenticated over the Internet."
+            },
+            "answer": "E",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 306,
+            "question": "Aptripa Cave is located near the bay of Dilos in the Peninsula of Maina, and is as large as four football fields.This cave dates back to the Neolithic Age, but was not accidentally discovered by a man walking a dog until the 1950s.After decades of scientific research work, archaeologists excavated tools, pottery, obsidian, silver and copper utensils from the cave, and thus believed that hundreds of people had lived in the cave. Which of the following, if true, can best refute the above argument?",
+            "choices": {
+                "A": "The cave inspired the description of hell in Greek mythology",
+                "B": "The cave is actually an ancient cemetery and funeral venue",
+                "C": "There is no prehistoric village in Europe that has been found earlier than the cave",
+                "D": "The entrance to the cave collapsed 5000 years ago"
+            },
+            "answer": "B",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 238,
+            "question": "By 1970 it was well established that ultraviolet light from the sun contributes to skin cancer. Fortunately, much of the sun's most damaging ultraviolet radiation is screened out by a thin, diffuse layer of ozone-a toxic form of oxygen-in the stratosphere, 1 0 to 25 miles above the earth's surface. During the 1 970s, however, public policy makers worldwide were alerted to the fragility of the ozone layer through the pioneering research and advocacy of two Nobel Prize-winning scientists, Mario Molina and F. Sherwood Rowland. In the absence of pollutants, stratospheric ozone concentrations should remain stable over time, with natural production and destruction of the gas in rough equilibrium. Molina and Rowland showed how manufactured chlorofluorocarbons (CFCs)-highly volatile chemicals, millions of tons of which had been used each year in products such as aerosol sprays and refrigerants-chemically attack and deplete the ozone layer, diminishing its effectiveness as a shield against ultraviolet radiation. Studying two freon gases-types of CFCs-they observed that, when released into the lower atmosphere (troposphere), these gases slowly diffuse upward into the stratosphere. Then??, subjected to massive ultraviolet radiation, they break down into their constituent elements, including chlorine. The resulting increase in the concentration of chlorine in the stratosphere is devastating to the ozone layer. Chlorine and ozone chemically react in a way that both destroys the ozone and regenerates the chlorine atoms. As a result of this chemical reaction, each chlorine atom could destroy as many as 1 00,000 ozone molecules before becoming inactive. In 1 974 the two scientists estimated that the atmosphere contained the accumulation of five years of global CFC production. This meant that, given the rate of diffusion and breakdown of CFCs in the atmosphere, the depletion of the ozone layer would continue for years, if not decades, even if the production and use of CFCs were to cease immediately. Recognizing this as a pressing environmental threat, Molina and Rowland became public advocates for a prompt and proportionate public policy response. As a result, Molina was invited to testify before the U.S. Congress and was later appointed to the U.S. National Science Foundation Committee on Fluorocarbon Technology Assessment. Predictably, the work of Molina and Rowland and their advocacy of dramatic policy changes were subjected to attacks by critics, especially scientists with ties to the CFC industry. However, over time their views were corroborated, especially by the discovery of a hole in the ozone layer over Antarctica, and this led to the development of an international agreement (the Montreal Protocol of 1 987) to ban the production of ozone-depleting gases. In North America, CFCs were banned in the late 1 970s, leading to a transformation in packaging for consumer spray products and the development of more environmentally friendly refrigerant chemicals. Which one of the following, if true, would most strengthen the conclusions of Molina and Rowland concerning the long-term effects of CFCs in the stratosphere?",
+            "choices": {
+                "A": "The hole in the ozone layer over Antarctica continued to grow for years after CFC emissions had almost ceased.",
+                "B": "Other manufactured chemicals have been found to diffuse upward into the stratosphere when released into the troposphere.",
+                "C": "Ozone has been shown to react more violently with chlorine than with many other chemicals.",
+                "D": "Many scientists who in the 1 970s were highly critical of the research methods of Molina and Rowland have come to accept the soundness of their methods.",
+                "E": "Current CFC levels in the troposphere suggest that not all nations currently abide by the Montreal Protocol."
+            },
+            "answer": "A",
+            "domain": "lsat-rc"
+        },
+        {
+            "id": 1048,
+            "question": "In a survey of students, each student selected from a list of 10 songs the 2 songs that the student liked best. If each song was selected 5 times, how many students were surveyed?",
+            "choices": {
+                "A": "96",
+                "B": "48",
+                "C": "32",
+                "D": "25",
+                "E": "18"
+            },
+            "answer": "D",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 1312,
+            "question": "A detective is trying to determine the order in which a criminal recruited seven accomplices\u2014Peters, Quinn, Rovero, Stanton, Tao, Villas, and White. In addition to discovering that the suspect recruited the accomplices one at a time, the detective has established the following: Stanton was recruited neither immediately before nor immediately after Tao. Quinn was recruited earlier than Rovero. Villas was recruited immediately before White. Peters was recruited fourth. If White was recruited immediately before Quinn, which one of the following must have been recruited sixth?",
+            "choices": {
+                "A": "Quinn",
+                "B": "Rovero",
+                "C": "Stanton",
+                "D": "Villas",
+                "E": "White"
+            },
+            "answer": "B",
+            "domain": "lsat-ar"
+        },
+        {
+            "id": 378,
+            "question": "Prince Lima in Li Na's mind is tall, handsome and doctor.She knew four men, Wang Wei, Wu Gang, Li Qiang, and Liu Dawei, and one of them met all the conditions she required.(1) Among the 4 men, there are 3 tall men, 2 doctors, and 1 is handsome; (2) Wang Wei and Wu Gang are both doctors; (3) Liu Dawei and Li Qiang are the same height; (4) Li Qiang and Wang Wei Not all are tall. Who can meet all the requirements of Li Na?",
+            "choices": {
+                "A": "Liu Dawei",
+                "B": "Li Qiang",
+                "C": "Wu Gang",
+                "D": "Wang Wei"
+            },
+            "answer": "C",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1125,
+            "question": "Professors borrowed Rs. 5000 from the university at simple interest. After 3 years, the university got Rs. 300 on interest. What was the rate of interest per annum?",
+            "choices": {
+                "A": "2%",
+                "B": "8%",
+                "C": "5%",
+                "D": "10%",
+                "E": "None of these"
+            },
+            "answer": "A",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 941,
+            "question": "The price of a product is reduced by 30% . By what percentage should it be increased to make it 100%",
+            "choices": {
+                "A": "41.86%",
+                "B": "42.86%",
+                "C": "43.86%",
+                "D": "44.86%",
+                "E": "45.86%"
+            },
+            "answer": "B",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 1956,
+            "question": "Museum curakor: Our ancient Egyptian collection includes an earthenware hippopotamus that resembles a child's roy. It was discovered in a tomb, upside down, with its legs broken off. We know that the ancient Egyptians believed the dead had to wage eternal war with beasts. Breaking the legs off a representation of an animal was thought to help a deceased person in this war. We conclude that, far from being a roy, this hippopotamus was a religious object. Which one of the following is an assumption required by the curator's argument?",
+            "choices": {
+                "A": "The tomb in which the hippopotamus was found was not the tomb of a child.",
+                "B": "Earthenware figures were never used as children's roys in ancient Egypt.",
+                "C": "The tomb in which the hippopotamus was found was not reentered from the time of burial until archaeologists opened it.",
+                "D": "The hippopotamus' legs were not broken 1hrough some natural occurrence after it was placed in the tomb.",
+                "E": "The hippopotamus was originally placed upside down in the tomb."
+            },
+            "answer": "D",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 998,
+            "question": "The number of water lilies on a certain lake doubles every two days. If there is exactly one water lily on the lake, it takes 60 days for the lake to be fully covered with water lilies. In how many days will the lake be fully covered with lilies, if initially there were 64 water lilies on it?",
+            "choices": {
+                "A": "15",
+                "B": "28",
+                "C": "30",
+                "D": "53",
+                "E": "59"
+            },
+            "answer": "D",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 404,
+            "question": "Workers of state-owned enterprises are laid off and migrant workers enter the city, causing a high unemployment rate and a great threat to social stability.Therefore, we must increase the scale of economic development and accelerate the speed of economic development. Which of the following provides the strongest support for the argument in the question stem?",
+            "choices": {
+                "A": "Only by increasing the scale of economic development and accelerating the speed of economic development can more jobs be created.",
+                "B": "There is a certain relationship between the scale and speed of economic development and the social employment rate.",
+                "C": "If a person is unemployed, it will affect the life of himself and his family.",
+                "D": "Unemployed people are easily irritable, emotionally depressed, and deviant."
+            },
+            "answer": "B",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1943,
+            "question": "Columnist: Shortsighted motorists learn the hard way about the wisdom of preventive auto maintenance; such maintenance almost always pays off in the long run. Our usually shortsighted city council should be praised for using similar wisdom when they hired a long-term economic development adviser. In hiring this adviser, the council made an investment that is likely to have a big payoff in several years. Other cities in this region that have devoted resources to economic development planning have earned large returns on such an investment. Which one of the following, if true, most weakens the columnist's argument?",
+            "choices": {
+                "A": "Even some cars that receive regular preventive maintenance break down, requiring costly repairs.",
+                "B": "The columnist's city has a much smaller population and economy than the other cities did when they began devoting resources to economic development planning.",
+                "C": "Most motorists who fail to perform preventive maintenance on their cars do so for nonfinancial reasons.",
+                "D": "Qualified economic development advisers generally demand higher salaries than many city councils are willing to spend.",
+                "E": "Cities that have earned large returns due to hiring economic development advisers did not earn any returns at all in the advisers' first few years of employment."
+            },
+            "answer": "B",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 1656,
+            "question": "The Alcazar Restaurant was on Sheridan Road near Devon Avenue. It was long and narrow, with tables for two along the walls and tables for four  down the middle. The decoration was art moderne,except for the series of murals depicting the four seasons, and the sick ferns in the front window. Lymie sat down at the second table from the cash register, and ordered his dinner. The history book, which he propped against the catsup and the glass 10 sugar bowl, had been used by others before him. Blank pages front and back were filled in with maps, drawings, dates, comic cartoons, and organs of the body; also with names and messages no longer clear and never absolutely legible. On nearly every other15 page there was some marginal notation, either in ink or in very hard pencil. And unless someone had upset a glass of water, the marks on page 177 were from tears.While Lymie read about the Peace of Paris, signed 20 on the thirtieth of May, 1814, between France and the Allied powers, his right hand managed again and again to bring food up to his mouth. Sometimes he chewed, sometimes he swallowed whole the food that he had no idea he was eating. The Congress of25 Vienna met, with some allowance for delays, early in November of the same year, and all the powers engaged in the war on either side sent plenipotentiaries. It was by far the most splendid and important assembly ever convoked to discuss and 30 determine the affairs of Europe. The Emperor of Russia, the King of Prussia, the Kings of Bavaria, Denmark, and Wurttemberg, all were present in person at the court of the Emperor Francis I in the Austrian capital. When Lymie put down his fork and 35 began to count them off, one by one, on the fingers of his left hand, the waitress, whose name was Irma, thought he was through eating and tried to take his plate away. He stopped her. Prince Metternich (his right thumb) presided over the Congress, and40 Prince Talleyrand (the index finger) represented France.A party of four, two men and two women, came into the restaurant, all talking at once, and took possession of the center table nearest Lymie.45 The women had shingled hair and short tight skirts which exposed the underside of their knees when they sat down. One of the women had the face of a young boy but disguised by one trick or another (rouge, lipstick, powder, wet bangs plastered against 50 the high forehead, and a pair of long pendent earrings) to look like a woman of thirty-five, which as a matter of fact she was. The men were older. They laughed more than there seemed any occasion for, while they were deciding between soup and shrimp 55 cocktail, and their laughter was too loud. But it was the women's voices, the terrible not quite sober pitch of the women's voices which caused Lymie to skim over two whole pages without knowing what was on them. Fortunately he realized this and went back. 60 Otherwise he might never have known about the secret treaty concluded between England, France, and Austria, when the pretensions of Prussia and Russia, acting in concert, seemed to threaten a renewal of the attack. The results of the Congress65 were stated clearly at the bottom of page 67 and at the top of page 68 , but before Lymie got halfway through them, a coat that he recognized as his father's was hung on the hook next to his chair. Lymie closed the book and said, \"I didn't think you 70 were coming.\"Time is probably no more unkind to sporting characters than it is to other people, but physical decay unsustained by respectability is somehow more noticeable. Mr. Peters' hair was turning gray and his75 scalp showed through on top. He had lost weight also; he no longer filled out his clothes the way he used to. His color was poor, and the flower had disappeared from his buttonhole. In its place was an American Legion button.80 Apparently he himself was not aware that there had been any change. He straightened his tie self-consciously and when Irma handed him a menu, he gestured with it so that the two women at the next table would notice the diamond ring on the fourth85 finger of his right hand. Both of these things, and also the fact that his hands showed signs of the manicurist, one can blame on the young man who had his picture taken with a derby hat on the back of his head, and also sitting with a girl in the curve of 90 the moon. The young man had never for one second deserted Mr. Peters. He was always there, tugging at Mr. Peters' elbow, making him do things that were not becoming in a man of forty-five. The main idea of the last paragraph is that Mr. Peters",
+            "choices": {
+                "A": "neglects to spend any time with his family members.",
+                "B": "behaves as if he is a younger version of himself.",
+                "C": "is very conscious of symbols of wealth and power.",
+                "D": "is preoccupied with the knowledge that he is growing old."
+            },
+            "answer": "B",
+            "domain": "sat-en"
+        },
+        {
+            "id": 369,
+            "question": "Plants must first bloom before they can produce seeds.There are two types of tarragon-Russian tarragon and French tarragon.They look very similar.Russian tarragon blooms and French tarragon does not bloom, but the leaves of Russian tarragon But there is no unique flavor that makes French tarragon an ideal condiment. Which of the following conclusions can be deduced from the above discussion?",
+            "choices": {
+                "A": "As an ornamental plant, French tarragon is more popular than Russian tarragon.",
+                "B": "The flower of Russian tarragon may not have fragrance.",
+                "C": "The plant grown from tarragon seeds is not French tarragon.",
+                "D": "Apart from Russian tarragon and French tarragon, there are no other types of tarragon."
+            },
+            "answer": "C",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 346,
+            "question": "Ms.Zheng? Hengyuan \u2019s GDP (gross domestic product) growth rate over the past decade is higher than that of Yiyang, so Hengyuan \u2019s economic prospects are better than Yiyang.Mr.Hu? I disagree with you.Although the GDP growth rate of Hengyuan City is higher than that of the Yiyang market, the GDP of Yiyang City is larger. Which of the following most accurately summarizes the controversial focus of Ms.Zheng and Mr.Hu?",
+            "choices": {
+                "A": "Is the GDP of Yiyang City greater than that of Hengyuan City?",
+                "B": "Is the GDP growth rate of Hengyuan City really higher than that of Angyang City?",
+                "C": "A city's GDP has a large value, is the economic outlook necessarily good?",
+                "D": "A city's GDP growth rate is high, is the economic outlook necessarily good?"
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1893,
+            "question": "Psychologist: The obligation to express gratitude cannot be fulfilled anonymously. However much society may have changed over the centuries, human psychology is still driven primarily by personal interaction. Thus, the important social function of positively reinforcing those behaviors that have beneficial consequences for others can be served only if the benefactor knows the source of the gratitude. Which one of the following most accurately describes the role played in the psychologist's argument by the claim that the obligation to express gratitude cannot be fulfilled anonymously?",
+            "choices": {
+                "A": "It is an illustration of a premise that is used to support the argument's conclusion.",
+                "B": "It is used to counter a consideration that might be taken to undermine the argument's conclusion.",
+                "C": "It is used to support indirectly a claim that the argument in turn uses to support directly the conclusion.",
+                "D": "It is used to identify the social benefit with which the argument is concerned.",
+                "E": "It is the conclusion that the argument is intended to support."
+            },
+            "answer": "E",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 126,
+            "question": "David Warsh's book describes a great contradiction inherent in economic theory since 1776, when Adam Smith published The Wealth of Nations. Warsh calls it the struggle between the Pin Factory and the Invisible Hand. Using the example of a pin factory, Smith emphasized the huge increases in efficiency that could be achieved through increased size. The pin factory's employees, by specializing on narrow tasks, produce far more than they could if each worked independently. Also, Smith was the first to recognize how a market economy can harness self-interest to the common good, leading each individual as though \"by an invisible hand to promote an end which was no part of his intention.\" For example, businesses sell products that people want, at reasonable prices, not because the business owners inherently want to please people but because doing so enables them to make money in a competitive marketplace. These two concepts, however, are opposed to each other. The parable of the pin factory says that there are increasing returns to scale\u2014the bigger the pin factory, the more specialized its workers can be, and therefore the more pins the factory can produce per worker. But increasing returns create a natural tendency toward monopoly, because a large business can achieve larger scale and hence lower costs than a small business. So given increasing returns, bigger firms tend to drive smaller firms out of business, until each industry is dominated by just a few players. But for the invisible hand to work properly, there must be many competitors in each industry, so that nobody can exert monopoly power. Therefore, the idea that free markets always get it right depends on the assumption that returns to scale are diminishing, not increasing. For almost two centuries, the assumption of diminishing returns dominated economic theory, with the Pin Factory de-emphasized. Why? As Warsh explains, it wasn't about ideology; it was about following the line of least mathematical resistance. Economics has always had scientific aspirations; economists have always sought the rigor and clarity that comes from representing their ideas using numbers and equations. And the economics of diminishing returns lend themselves readily to elegant formalism, while those of increasing returns-the Pin Factory- are notoriously hard to represent mathematically. Many economists tried repeatedly to bring the Pin Factory into the mainstream of economic thought to reflect the fact that increasing returns obviously characterized many enterprises, such as railroads. Yet they repeatedly failed because they could not state their ideas rigorously enough. Only since the late 1970s has this \"underground river\" -a term used to describe the role of increasing returns in economic thought-surfaced into the mainstream of economic thought. By then, economists had finally found ways to describe the Pin Factory with the rigor needed to make it respectable. Which one of the following best illustrates the concept of increasing returns to scale described in the second paragraph of the passage?",
+            "choices": {
+                "A": "A publishing house is able to greatly improve the productivity of its editors by relaxing the standards to which those editors must adhere. This allows the publishing house to employ many fewer editors.",
+                "B": "A large bee colony is able to use some bees solely to guard its nectar sources. This enables the colony to collect more nectar, which can feed a larger colony that can better divide up the work of processing the nectar.",
+                "C": "A school district increases the total number of students that can be accommodated in a single building by switching to year-round operation, with a different quarter of its student body on vacation at any given time.",
+                "D": "The lobster industry as a whole is able to catch substantially more lobsters a day with the same number of traps because advances in technology make the doors to the traps easier for lobsters to get through.",
+                "E": "A large ant colony divides and produces two competing colonies that each eventually grow large and prosperous enough to divide into more colonies. These colonies together contain more ants than could have existed in one colony."
+            },
+            "answer": "B",
+            "domain": "lsat-rc"
+        }
+    ],
+    "test": [
+        {
+            "id": 1590,
+            "question": "Near the end of a US cable news show, the host invited viewers to respond to a poll on the show's website that asked, \"Do you support the new federal policy discussed during the show?\" At the end of the show, the host reported that $28 \\%$ responded \"Yes,\" and $70 \\%$ responded \"No.\" Which of the following best explains why the results are unlikely to represent the sentiments of the population of the United States?",
+            "choices": {
+                "A": "The percentages do not add up to $100 \\%$, so any possible conclusions from the poll are invalid.",
+                "B": "Those who responded to the poll were not a random sample of the population of the United States.",
+                "C": "There were not $50 \\%$ \"Yes\" responses and $50 \\%$ \"No\" responses.",
+                "D": "The show did not allow viewers enough time to respond to the poll."
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 1613,
+            "question": "Miss Grace Spivey arrived in Threestep, Georgia, in August 1938. She stepped off the train wearing a pair of thick-soled boots suitable for hiking, a navyblue dress, and a little white tam that rode the wavesof her red hair at a gravity-defying angle. August was a hellish month to step off the train in Georgia, although it was nothing, she said, compared to the 119 degrees that greeted her when she arrived one time in Timbuktu, which, she assured us, was a real 10 place in Africa. I believe her remark irritated some of the people gathered to welcome her on the burned grass alongside the tracks. When folks are sweating through their shorts, they don't like to hear that this is nothing compared to someplace else. Irritated or15 not, the majority of those present were inclined to see the arrival of the new schoolteacher in a positive light. Hard times were still upon us in 1938, but, like my momma said, \"We weren't no poorer than we'd ever been,\" and the citizens of Threestep were in the 20 mood for a little excitement.Miss Spivey looked like just the right person to give it to them. She was, by almost anyone's standards, a woman of the world. She'd gone to boarding schools since she was six years old; she'd 25 studied French in Paris and drama in London; and during what she called a \"fruitful intermission\" in her formal education, she had traveled extensively in the Near East and Africa with a friend of her grandmother's, one Janet Miller, who was a medical30 doctor from Nashville, Tennessee. After her travels with Dr. Miller, Miss Spivey continued her education by attending Barnard College in New York City. She told us all that at school the first day. When my little brother Ralphord asked what did she study at35 Barnyard College, Miss Spivey explained that Barnard, which she wrote on the blackboard, was the sister school of Columbia University, of which, she expected, we all had heard.It was there, she told us, in the midst of trying to 40 find her true mission in life, that she wandered one afternoon into a lecture by the famous John Dewey, who was talking about his famous book, Democracy and Education. Professor Dewey was in his seventies by then, Miss Spivey said, but he still liked to chat45 with students after a lecture-especially female students, she added-sometimes over coffee, and see in their eyes the fire his words could kindle. It was after this lecture and subsequent coffee that Miss Spivey had marched to the Teacher's College and 50 signed up, all aflame. Two years later, she told a cheery blue-suited woman from the $\\mathrm{WPA}^{1}$ that she wanted to bring democracy and education to the poorest, darkest, most remote and forgotten corner of America.55 They sent her to Threestep, Georgia.Miss Spivey paused there for questions, avoiding my brother Ralphord's eye.What we really wanted to know about-all twenty-six of us across seven grade levels in the one 60 room-was the pearly white button hanging on a string in front of the blackboard behind the teacher's desk up front. That button on a string was something new. When Mavis Davis (the only bona fide seventh grader, at age thirteen) asked what it was for, Miss65 Spivey gave the string a tug, and to our astonishment, the whole world-or at least a wrinkled map of it-unfolded before our eyes. Her predecessor, Miss Chandler, had never once made use of that map, which was older than our fathers, and until that70 moment, not a one of us knew it was there.Miss Spivey showed us on the map how she and Dr. Janet Miller had sailed across the Atlantic Ocean and past the Rock of Gibraltar into theMediterranean Sea. Using the end of a ruler, she75 gently tapped such places as Morocco and Tunis and Algiers to mark their route along the top of Africa. They spent twenty hours on the train to Baghdad, she said, swathed in veils against the sand that crept in every crack and crevice.80 \"And can you guess what we saw from the train?\" Miss Spivey asked. We could not. \"Camels!\" she said. \"We saw a whole caravan of camels.\" She looked around the room, waiting for us to be amazed and delighted at the thought.85 We all hung there for a minute, thinking hard, until Mavis Davis spoke up.\"She means like the three kings rode to Bethlehem,\" Mavis said, and she folded her hands smugly on her seventh-grade desk in the back of the 90 room.Miss Spivey made a mistake right then. Instead of beaming upon Mavis the kind of congratulatory smile that old Miss Chandler would have bestowed on her for having enlightened the rest of us, Miss95 Spivey simply said, \"That's right.\"1 The Works Progress Administration (WPA) was a government agency that hired people for public and cultural development projects and services. The narrator of the passage can best be described as",
+            "choices": {
+                "A": "one of Miss Spivey's former students.",
+                "B": "Miss Spivey's predecessor.",
+                "C": "an anonymous member of the community.",
+                "D": "Miss Spivey herself. 2"
+            },
+            "answer": "A",
+            "domain": "sat-en"
+        },
+        {
+            "id": 947,
+            "question": "Train A leaves a station every 16 minutes and Train B leaves every 17 minutes. If both trains just left the station simultaneously, how long until they do so again?",
+            "choices": {
+                "A": "272 minutes",
+                "B": "304 minutes",
+                "C": "190 minutes",
+                "D": "70 minutes",
+                "E": "35 minutes"
+            },
+            "answer": "A",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 110,
+            "question": "The corrido, a type of narrative folk song, comes from a region half in Mexico and half in the United States known as the Lower Rio Grande Border. Corridos, which flourished from about 1836 to the late 1930s, are part of a long-standing ballad tradition that has roots in eighteenth-century Spain. Sung in Spanish, corridos combine formal features of several different types of folk songs, but their narratives consistently deal with subject matter specific to the Border region. For example, \"El Corrido de Kiansis\" (c. 1870), the oldest corrido surviving in complete form, records the first cattle drives to Kansas in the late 1860s. A single important event is likely to have inspired several corrido variants, yet the different versions of any given story all partake of standard generic elements. When sung at social gatherings, corridos served to commemorate significant local happenings, but more importantly, their heavy reliance on familiar linguistic and thematic conventions served to affirm the cohesiveness of Border communities. Corridos take their name from the Spanish verb correr, meaning to run or to flow, for corridos tell their stories simply and swiftly, without embellishments. Figures of speech such as metaphors are generally rare in corridos, and when metaphors are used, they usually incorporate everyday images that are familiar to the songs' listeners. In the popular \"El Corrido de Gregorio Cortez,\" for example, the hero Cortez, fighting off pursuers, uses the metaphor of a thunderstorm to boast that he has had harder fights than the one they gave him: \"I have weathered thunderstorms; / This little mist doesn't bother me.\" Similar storm imagery is found in other corridos including \"Kiansis,\" which tells of stampedes caused by thunderstorms during the Kansas cattle drives. Such imagery, highly conventional and readily recognizable to corrido listeners, reflects and strengthens the continuity of the corrido tradition. The corrido is composed not only of familiar images but also of certain ready-made lines that travel easily from one ballad to another. This is most evident in the corrido's formal closing verse, or despedida. The despedida of one variant of \"Gregorio Cortez\" is translated as follows: \"Now with this I say farewell / In the shade of a cypress tree; / This is the end of the ballad / Of Don Gregorio Cortez.\" The first and third lines are a set convention. The second and fourth lines are variable, the fourth carrying the name of the corrido or expressing its subject, and the second varying according to exigencies of rhyme. In the despedida, perhaps the clearest marker of both the corrido's uniqueness and its generic continuity, the corrido's maker asserts that the task of relating an authentic Border tale has been accomplished. Which one of the following is mentioned in the passage as an example of the use of metaphor in corridos?",
+            "choices": {
+                "A": "mist",
+                "B": "a cypress tree",
+                "C": "a fight",
+                "D": "stampedes",
+                "E": "stampedes"
+            },
+            "answer": "B",
+            "domain": "lsat-rc"
+        },
+        {
+            "id": 1783,
+            "question": "Another man might have thrown up his.hands\u2014but not Nawabdin. His twelve daughters.acted as a spur to his genius, and he looked with.Line satisfaction in the mirror each morning at the face of.a warrior going out to do battle. Nawab of course.knew that he must proliferate his sources of.revenue\u2014the salary he received from K. K. Harouni.for tending the tube wells would not even begin to.suffice. He set up a little one-room flour mill, run off.a condemned electric motor\u2014condemned by him..He tried his hand at fish-farming in a little pond at.the edge of his master\u2019s fields. He bought broken.radios, fixed them, and resold them. He did not.demur even when asked to fix watches, though that.enterprise did spectacularly badly, and in fact earned.him more kicks than kudos, for no watch he took.apart ever kept time again..K. K. Harouni rarely went to his farms, but lived.mostly in Lahore. Whenever the old man visited,.Nawab would place himself night and day at the door.leading from the servants\u2019 sitting area into the walled.grove of ancient banyan trees where the old.farmhouse stood. Grizzled, his peculiar aviator.glasses bent and smudged, Nawab tended the.household machinery, the air conditioners, water.heaters, refrigerators, and water pumps, like an.engineer tending the boilers on a foundering steamer.in an Atlantic gale. By his superhuman efforts he.almost managed to maintain K. K. Harouni in the.same mechanical cocoon, cooled and bathed and.lighted and fed, that the landowner enjoyed in.Lahore..Harouni of course became familiar with this.ubiquitous man, who not only accompanied him on.his tours of inspection, but morning and night could.be found standing on the master bed rewiring the.light fixture or in the bathroom poking at the water.heater. Finally, one evening at teatime, gauging the.psychological moment, Nawab asked if he might say.a word. The landowner, who was cheerfully filing his.nails in front of a crackling rosewood fire, told him.to go ahead..\u201cSir, as you know, your lands stretch from here to.the Indus, and on these lands are fully seventeen tube.wells, and to tend these seventeen tube wells there is.but one man, me, your servant. In your service I have.earned these gray hairs\u201d\u2014here he bowed his head to.show the gray\u2014\u201cand now I cannot fulfill my duties.as I should. Enough, sir, enough. I beg you, forgive.me my weakness. Better a darkened house and proud.hunger within than disgrace in the light of day..Release me, I ask you, I beg you.\u201d.The old man, well accustomed to these sorts of.speeches, though not usually this florid, filed away at.his nails and waited for the breeze to stop..\u201cWhat\u2019s the matter, Nawabdin?\u201d.Unauthorized copying or reuse of any part of this page is illegal. **22 CONTINUE**.\u201cMatter, sir? O what could be the matter in your.service. I\u2019ve eaten your salt for all my years. But sir,.on the bicycle now, with my old legs, and with the.many injuries I\u2019ve received when heavy machinery.fell on me\u2014I cannot any longer bicycle about like a.bridegroom from farm to farm, as I could when I.first had the good fortune to enter your employment..I beg you, sir, let me go.\u201d.\u201cAnd what\u2019s the solution?\u201d asked Harouni, seeing.that they had come to the crux. He didn\u2019t particularly.care one way or the other, except that it touched on.his comfort\u2014a matter of great interest to him..\u201cWell, sir, if I had a motorcycle, then I could.somehow limp along, at least until I train up some.younger man.\u201d.The crops that year had been good, Harouni felt.expansive in front of the fire, and so, much to the.disgust of the farm managers, Nawab received a.brand-new motorcycle, a Honda 70. He even.managed to extract an allowance for gasoline..The motorcycle increased his status, gave him.weight, so that people began calling him \u201cUncle,\u201d and.asking his opinion on world affairs, about which he.knew absolutely nothing. He could now range.further, doing a much wider business. Best of all,.now he could spend every night with his wife, who.had begged to live not on the farm but near her.family in Firoza, where also they could educate at.least the two eldest daughters. A long straight road.ran from the canal headworks near Firoza all the way.to the Indus, through the heart of the K. K. Harouni.lands. Nawab would fly down this road on his new.machine, with bags and cloths hanging from every.knob and brace, so that the bike, when he hit a bump,.seemed to be flapping numerous small vestigial.wings; and with his grinning face, as he rolled up to.whichever tube well needed servicing, with his ears.almost blown off, he shone with the speed of his.arrival. It can reasonably be inferred from the passage that Harouni provides Nawab with a motorcycle mainly because",
+            "choices": {
+                "A": "Harouni appreciates that Nawab has to work hard to support his family.",
+                "B": "Harouni sees bene\u001dt to himself from giving Nawab a motorcycle.",
+                "C": "Nawab\u2019s speech is the most eloquent that Harouni has ever heard.",
+                "D": "Nawab threatens to quit if Harouni doesn\u2019t agree to give him a motorcycle."
+            },
+            "answer": "B",
+            "domain": "sat-en"
+        },
+        {
+            "id": 1341,
+            "question": "During the weeklong grand opening of a new antique shop, the antique dealer will auction exactly one antique per day for six consecutive days\u2014June 1st through June 6th. The antiques to be auctioned are: a harmonica, a lamp, a mirror, a sundial, a table, and a vase. The following conditions apply: The sundial is not auctioned on June 1st. If the harmonica is auctioned on an earlier date than the lamp, then the mirror is also auctioned on an earlier date than the lamp. The sundial is auctioned on an earlier date than the mirror and also on an earlier date than the vase. The table is auctioned on an earlier date than the harmonica or on an earlier date than the vase, but not both. Which one of the following could be an accurate list of the six antiques, in the order in which they are auctioned, from June 1st through June 6th?",
+            "choices": {
+                "A": "harmonica, table, sundial, lamp, vase, mirror",
+                "B": "lamp, harmonica, sundial, mirror, vase, table",
+                "C": "harmonica, sundial, table, mirror, lamp, vase",
+                "D": "sundial, mirror, harmonica, table, vase, lamp",
+                "E": "vase, sundial, lamp, harmonica, table, mirror"
+            },
+            "answer": "C",
+            "domain": "lsat-ar"
+        },
+        {
+            "id": 1063,
+            "question": "Christopher and Jonathan were having bets. They decide that a coin will be flipped twenty times and each time it turns heads, Christopher will give $2 to Jonathan and each time it turns out to be Tails, Jonathan will give 3$ to Christopher. After flipping for twenty times none of the both won or lost any amount.\nHow many times did the coin landed on Heads ?",
+            "choices": {
+                "A": "10",
+                "B": "23",
+                "C": "16",
+                "D": "18",
+                "E": "12"
+            },
+            "answer": "E",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 1335,
+            "question": "Four students will be assigned to a history project in which they will search archives from the years 1921, 1922, 1923, and 1924. Each of the four years will have exactly one student assigned to it. Six students\u2014Louis, Mollie, Onyx, Ryan, Tiffany, and Yoshio\u2014are available for this project. The following conditions apply: Only Louis or Tiffany can be assigned to 1923. If Mollie is assigned to the project, then she must be assigned to either 1921 or 1922. If Tiffany is assigned to the project, then Ryan must be assigned to the project. If Ryan is assigned to the project, then Onyx must be assigned to the year immediately prior to Ryan's. Which one of the following could be an accurate assignment of students, in order from the earliest year to the latest?",
+            "choices": {
+                "A": "Louis, Onyx, Ryan, Yoshio",
+                "B": "Mollie, Yoshio, Tiffany, Onyx",
+                "C": "Onyx, Ryan, Louis, Tiffany",
+                "D": "Tiffany, Onyx, Louis, Ryan",
+                "E": "Yoshio, Onyx, Louis, Mollie"
+            },
+            "answer": "C",
+            "domain": "lsat-ar"
+        },
+        {
+            "id": 1380,
+            "question": "$$\\left(x^{2} y-3 y^{2}+5 x y^{2}\\right)-\\left(-x^{2} y+3 x y^{2}-3 y^{2}\\right)$$Which of the following is equivalent to the expression above?",
+            "choices": {
+                "A": "$4 x^{2} y^{2}$",
+                "B": "$8 x y^{2}-6 y^{2}$",
+                "C": "$2 x^{2} y+2 x y^{2}$",
+                "D": "$2 x^{2} y+8 x y^{2}-6 y^{2}$"
+            },
+            "answer": "C",
+            "domain": "sat-math"
+        },
+        {
+            "id": 1273,
+            "question": "Exactly five movies are showing at the repertory theater this evening: a horror film, a mystery, a romance, a sci-fi film, and a western. Each movie is shown exactly once, on one of the theater's three screens: screens 1, 2, and 3. Screens 1 and 2 show two movies each, one beginning at 7 P.M. and the other at 9 P.M.; screen 3 shows exactly one movie, at 8 P.M. The following conditions apply to this evening's schedule: The western begins at some time before the horror film does. The sci-fi film is not shown on screen 3. The romance is not shown on screen 2. The horror film and the mystery are shown on different screens. Which one of the following is an acceptable schedule of the movies for this evening?",
+            "choices": {
+                "A": "screen 1: romance at 7 P.M., horror film at 9 P.M. screen 2: western at 7 P.M., sci-fi film at 9 P.M. screen 3: mystery at 8 P.M.",
+                "B": "screen 1: mystery at 7 P.M., romance at 9 P.M. screen 2: horror film at 7 P.M., sci-fi film at 9 P.M. screen 3: western at 8 P.M.",
+                "C": "screen 1: western at 7 P.M., sci-fi film at 9 P.M. screen 2: mystery at 7 P.M., horror film at 9 P.M. screen 3: romance at 8 P.M.",
+                "D": "screen 1: romance at 7 P.M., mystery at 9 P.M. screen 2: western at 7 P.M., horror film at 9 P.M. screen 3: sci-fi film at 8 P.M.",
+                "E": "screen 1: western at 7 P.M., mystery at 9 P.M. screen 2: sci-fi film at 7 P.M., romance at 9 P.M. screen 3: horror film at 8 P.M."
+            },
+            "answer": "A",
+            "domain": "lsat-ar"
+        },
+        {
+            "id": 1156,
+            "question": "The organizer of a reading club will select at least five and at most six works from a group of nine works. The group consists of three French novels, three Russian novels, two French plays, and one Russian play. The organizer's selection of works must conform to the following requirements: No more than four French works are selected. At least three but no more than four novels are selected. At least as many French novels as Russian novels are selected. If both French plays are selected, then the Russian play is not selected. Any one of the following could be true about the organizer's selections of works EXCEPT:",
+            "choices": {
+                "A": "No Russian novels and exactly one play are selected.",
+                "B": "Exactly one Russian novel and both French plays are selected.",
+                "C": "Exactly two French novels and the Russian play are selected.",
+                "D": "Exactly two French novels and exactly two plays are selected.",
+                "E": "Exactly two Russian novels and exactly one play are selected."
+            },
+            "answer": "A",
+            "domain": "lsat-ar"
+        },
+        {
+            "id": 1396,
+            "question": "$$.a=1,052+1.08 t.$$.The speed of a sound wave in air depends on the air temperature. The formula above shows the relationship between $a$, the speed of a sound wave, in feet per second, and $t$, the air temperature, in degrees Fahrenheit $\\left({ }^{\\circ} \\mathrm{F}\\right)$. At which of the following air temperatures will the speed of a sound wave be closest to 1,000 feet per second?",
+            "choices": {
+                "A": "$-46^{\\circ} \\mathrm{F}$",
+                "B": "$-48^{\\circ} \\mathrm{F}$",
+                "C": "$-49^{\\circ} \\mathrm{F}$",
+                "D": "$-50^{\\circ} \\mathrm{F}$"
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 1488,
+            "question": "If $3(c+d)=5$, what is the value of $c+d ?$",
+            "choices": {
+                "A": "$\\frac{3}{5}$",
+                "B": "$\\frac{5}{3}$",
+                "C": "3",
+                "D": "5"
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 1582,
+            "question": "A company purchased a machine valued at $\\$ 120,000$. The value of the machine depreciates by the same amount each year so that after 10 years the value will be $\\$ 30,000$. Which of the following equations gives the value, $v$, of the machine, in dollars, $t$ years after it was purchased for $0 \\leq t \\leq 10 ?$",
+            "choices": {
+                "A": "$v=30,000-9,000 t$",
+                "B": "$v=120,000-9,000 t$",
+                "C": "$v=120,000+9,000 t$",
+                "D": "$v=120,000-30,000 t$"
+            },
+            "answer": "B",
+            "domain": "sat-math"
+        },
+        {
+            "id": 348,
+            "question": "The Peace Foundation decided to suspend funding for S, on the grounds that such funding may be used in part for weapons research.In this regard, the S Institute promises? All the funding of the Peace Foundation will not be used for any weapon-related research.As a result, the Peace Foundation withdrew the above decision and reached a conclusion; as long as the S Institute kept its promise, the above funding of the Peace Foundation would no longer benefit weapons research. Which of the following most appropriately summarizes the loopholes in the conclusions of the Peace Foundation?",
+            "choices": {
+                "A": "Ignore this possibility? S Institute does not keep its promises.",
+                "B": "Ignore this possibility? S Institute can use weapons from other sources for weapons research.",
+                "C": "Ignored this possibility? the funding of the Peace Foundation enabled S Research to have all the ability to switch other funds to weapons research.",
+                "D": "Ignore this possibility? weapons research does not necessarily endanger peace."
+            },
+            "answer": "C",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 2140,
+            "question": "Given the shape of the hip and foot bones of the Kodiak bear, it has been determined that standing and walking upright is completely natural behavior for these bears. Thus, walking on hind legs is instinctive and not a learned behavior of the Kodiak. To which one of the following criticisms is the argument most vulnerable?",
+            "choices": {
+                "A": "The argument incorrectly generalizes from the behavior of a few bears in support of its conclusion.",
+                "B": "The argument fails to consider the possibility that walking on hind legs is the result of both learning and an innate capacity.",
+                "C": "The word \"behavior\" illicitly changes meaning during the course of the argument.",
+                "D": "The argument presumes, without giving justification, that all behavior can be explained in one or both of only two ways.",
+                "E": "The argument incorrectly appeals to the authority of science in order to support its conclusion."
+            },
+            "answer": "B",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 63,
+            "question": "Mexican Americans share with speakers of Spanish throughout the world a rich and varied repertoire of proverbs as well as a vital tradition of proverb use. The term \"proverb\" refers to a self-contained saying that can be understood independent of a specific verbal context and that has as its main purpose the carrying of a message or piece of wisdom. The great majority of Spanish-language proverbs reached Mexico from peninsular Spain, though they did not all originate there. Many belong, in fact, to the common proverb tradition of Europe and have exact equivalents in English-language proverbial speech. Each use of a proverb is an individual act whose meaning varies depending on the individual speaker and the particular social context in which the use occurs. Nonetheless, it is important to recognize that proverb use is also shaped by the larger community with which the individual interacts. The fact that proverbs often serve a didactic purpose points us to one important function that proverbs serve in Mexican American communities: the instruction of the young. In fact, this function seems to be much more prominent in Mexican tradition in general than in English-speaking traditions. Adolescents of Mexican descent in the United States consistently report the frequent use of proverbs by their parents as a teaching tool, in areas ranging from the inculcation of table manners to the regulation of peer-group relationships. The latter area is a particularly frequent focus of proverb use within Mexican American communities: one of the most frequently used proverbs, for example, translates roughly as, \"Tell me who you run with and I'll tell you who you are.\" Perhaps this emphasis on peer-group relations derives from a sense that traditional, community-approved norms are threatened by those prevalent in the surrounding society, or from a sense that, in dealing with older children especially, parents need to appeal to traditional wisdom to bolster their authority. Another dimension of proverb use within Mexican American communities is that proverbs often serve to foster a consciousness of ethnicity, that is, of membership in a particular ethnic group possessing features that distinguish it from other groups within a multiethnic environment. Even those Mexican American proverbs that do not have an explicitly didactic purpose nevertheless serve as a vehicle for the transmission of both the Spanish language and Mexican culture. It is in these sayings that links to folklore and other aspects of Mexican culture are established and maintained. Proverbs thus provide a means of enhancing Mexican American young people's familiarity with their heritage, thereby strengthening their ties to Mexican tradition. The author of the passage would be most likely to agree with which one of the following statements?",
+            "choices": {
+                "A": "Most Mexican American proverbs have their origin in the common proverb tradition of Europe.",
+                "B": "Mexican American parents are more likely to emphasize the value of traditional wisdom than are most other parents in the United States.",
+                "C": "There are more Spanish-language proverbs than there are proverbs in the common proverb tradition of Europe.",
+                "D": "Proverb use in some communities may reflect parental concern that the young will not embrace traditional norms.",
+                "E": "Most proverbs cannot be accurately translated from one language to another."
+            },
+            "answer": "D",
+            "domain": "lsat-rc"
+        },
+        {
+            "id": 1001,
+            "question": "Points A, B, C, D lie in this order on the circumference of a circle. Minor arc AC is 160\u00b0, and minor arc BD is 150\u00b0. If B bisects minor arc AC, then what is the measure of minor arc AD?",
+            "choices": {
+                "A": "80\u00b0",
+                "B": "130\u00b0",
+                "C": "140\u00b0",
+                "D": "160\u00b0",
+                "E": "220\u00b0"
+            },
+            "answer": "B",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 796,
+            "question": "The modern French thinker Pascal argued this way? either there is a Christian God, or not.Assuming you believe in the existence of God and live in a Christian way, then if God does exist, you will receive endless well-being? if God does not exist, you will lose very little.However, suppose you do not believe in the existence of God and do not live in a Christian way.If God does not exist, you will not lose anything? if God does exist, you will be endlessly punished.So, don't hesitate anymore, choose to believe in the existence of God and live in a Christian way. Which of the following best illustrates the logical loophole of this argument?",
+            "choices": {
+                "A": "The argument incorrectly presupposes that a person can choose whether to believe or not to believe in God at will.",
+                "B": "Pascal changed the faith and turned it into a question about self-interest calculation.",
+                "C": "If God does not exist, we choose to believe in God, which will lead us to misunderstand the world and spend our lives in a confusing way.",
+                "D": "There are many religions in this world, and each religion has a god with unlimited power (God).They will impose unlimited punishment on those who do not believe in themselves."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 759,
+            "question": "Even the most diligent people in the world cannot finish all the books in the world. Which of the following is the logical corollary of the statement above?",
+            "choices": {
+                "A": "The most diligent people in the world must not be able to read all the books in the world.",
+                "B": "The most diligent people in the world may not be able to read all the books in the world.",
+                "C": "The most diligent person in the world may finish all the books in the world.",
+                "D": "The person who reads all the books in the world must be the most diligent person in the world."
+            },
+            "answer": "A",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1026,
+            "question": "An organization decided to raise Rs. 6 lakh by collecting equal contribution from each of its employees. If each of them had contributed Rs. 60 extra, the contribution would have been Rs. 6.24 lakh. How many employees are there in that organization?",
+            "choices": {
+                "A": "300",
+                "B": "200",
+                "C": "400",
+                "D": "100",
+                "E": "500"
+            },
+            "answer": "C",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 2,
+            "question": "Is it necessary for defense lawyers to believe that the clients they defend are innocent of the charges against them? Some legal scholars hold that lawyers' sole obligation is to provide the best defense they are capable of, claiming that in democratic societies all people accused of crimes are entitled to the best possible legal representation. They argue that lawyers have no right to judge defendants because it is the job of the courts to determine guilt or innocence and the job of the lawyer to represent the defendant before the court. They believe that the lawyer's responsibility is to state those facts that will assist each client's case, construct sound arguments based on these facts, and identify flaws in the arguments of opposing counsel. According to these scholars, the lawyer's role is not to express or act on personal opinions but to act as an advocate, saying only what defendants would say if they possessed the proper training or resources with which to represent themselves. But such a position overlooks the fact that the defense lawyer's obligation is twofold: to the defendant, certainly, but no less so to the court and, by extension, to society. For this reason, lawyers, great as their obligation to defendants is, should not, as officers of the court, present to the court assertions that they know to be false. But by the same principle, lawyers who are convinced that their clients are guilty should not undertake to demonstrate their innocence. Guilty defendants should not be entitled to false or insincere representation. When lawyers know with certainty that a defendant is guilty, it is their duty not to deny this. Rather, they should appraise the case as much as possible in their client's favor, after giving due consideration to the facts on the other side, and then present any extenuating circumstances and argue for whatever degree of leniency in sentencing they sincerely believe is warranted. In cases where it is uncertain whether the client is guilty but the lawyer sincerely believes the client may well be innocent, the lawyer should of course try to prove that the client is innocent. The lawyer's obligation to the court and to society also ultimately benefits the defendant, because the \"best defense\" can only truly be provided by an advocate who, after a careful analysis of the facts, is convinced of the merits of the case. The fact that every client is entitled to a defense does not mean that defense lawyers should take every case they are offered. Lawyers should not be mere mouthpieces for a defendant but instead advocates for the rights of the defendant given the facts of the case. Which one of the following sentences would most logically begin a paragraph immediately following the end of the passage?",
+            "choices": {
+                "A": "In keeping with this role, defense lawyers should base their cases upon the foundations of honesty, substantive accuracy and selectivity.",
+                "B": "Therefore, the practice of law remains morally dubious, in that misrepresentation may achieve acquittal for an attorney's client.",
+                "C": "Consequently, the defendant's right to legal representation varies from case to case, depending on the severity of the alleged crime and the defense lawyer's personal interpretation of the case.",
+                "D": "Thus, the lawyers' obligations are threefold\u2014 to be faithful to the dictates of the court, society, and themselves by proving their professional worth in securing acquittal for the clients whom they represent.",
+                "E": "Therefore, judges or other officials of the court should interrogate defense attorneys regarding any prior knowledge they may have of their clients' innocence or guilt."
+            },
+            "answer": "A",
+            "domain": "lsat-rc"
+        },
+        {
+            "id": 1670,
+            "question": "Unlike the gold which needed nothing, and must be worshipped in close-locked solitude - which was hidden away from the daylight, was deaf to the song  of birds, and started to no human tones-Eppie was a 5 creature of endless claims and ever-growing desires, seeking and loving sunshine, and living sounds, and living movements; making trial of everything, with trust in new joy, and stirring the human kindness in all eyes that looked on her. The gold had kept his10 thoughts in an ever-repeated circle, leading to nothing beyond itself; but Eppie was an object compacted of changes and hopes that forced his thoughts onward, and carried them far away from their old eager pacing towards the same blank15 limit-carried them away to the new things that would come with the coming years, when Eppie would have learned to understand how her father Silas cared for her; and made him look for images of that time in the ties and charities that bound together 20 the families of his neighbors. The gold had asked that he should sit weaving longer and longer, deafened and blinded more and more to all things except the monotony of his loom and the repetition of his web; but Eppie called him away from his weaving, and25 made him think all its pauses a holiday, reawakening his senses with her fresh life, even to the old winter-flies that came crawling forth in the early spring sunshine, and warming him into joy because she had joy.30 And when the sunshine grew strong and lasting, so that the buttercups were thick in the meadows, Silas might be seen in the sunny mid-day, or in the late afternoon when the shadows were lengthening under the hedgerows, strolling out with uncovered35 head to carry Eppie beyond the Stone-pits to where the flowers grew, till they reached some favorite bank where he could sit down, while Eppie toddled to pluck the flowers, and make remarks to the winged things that murmured happily above the bright40 petals, calling \"Dad-dad's\" attention continually by bringing him the flowers. Then she would turn her ear to some sudden bird-note, and Silas learned to please her by making signs of hushed stillness, that they might listen for the note to come again: so that45 when it came, she set up her small back and laughed with gurgling triumph. Sitting on the banks in this way, Silas began to look for the once familiar herbs again; and as the leaves, with their unchanged outline and markings, lay on his palm, there was a sense of 50 crowding remembrances from which he turned away timidly, taking refuge in Eppie's little world, that lay lightly on his enfeebled spirit. As the child's mind was growing into knowledge, his mind was growing into memory: as her lifeunfolded, his soul, long stupefied in a cold narrow prison, was unfolding too, and trembling gradually into full consciousness.It was an influence which must gather force with every new year: the tones that stirred Silas' heart60 grew articulate, and called for more distinct answers; shapes and sounds grew clearer for Eppie's eyes and ears, and there was more that \"Dad-dad\" was imperatively required to notice and account for. Also, by the time Eppie was three years old, she65 developed a fine capacity for mischief, and for devising ingenious ways of being troublesome, which found much exercise, not only for Silas' patience, but for his watchfulness and penetration. Sorely was poor Silas puzzled on such occasions by the incompatible 70 demands of love. According to the narrator, one consequence of Silas adopting Eppie is that he",
+            "choices": {
+                "A": "has renounced all desire for money.",
+                "B": "better understands his place in nature.",
+                "C": "seems more accepting of help from others.",
+                "D": "looks forward to a different kind of future"
+            },
+            "answer": "D",
+            "domain": "sat-en"
+        },
+        {
+            "id": 2195,
+            "question": "A person who knowingly brings about misfortune should be blamed for it. However, in some cases a person who unwittingly brings about misfortune should not be blamed for it. For example, a person should never be blamed for unwittingly bringing about misfortune if the person could not reasonably have foreseen it. The principles above, if valid, most help to justify the reasoning in which one of the following?",
+            "choices": {
+                "A": "Although he would have realized it if he had thought about it, it did not occur to Riley that parking his car in the center lane of Main Street could lead to a traffic accident. So, if a traffic accident does result from Riley's parking his car in the center lane of Main Street, he should not be blamed for it.",
+                "B": "Oblicek had no idea that suggesting to her brother that he take out a loan to expand his business was likely to cause the business to go bankrupt, nor could she have reasonably foreseen this. So, if the loan does cause her brother's business to go bankrupt, Oblicek should not be blamed for it.",
+                "C": "Gougon had no reason to think that serving the hollandaise sauce would make his guests ill, but he was concerned that it might. Thus, if the hollandaise sauce does make Gougon's guests ill, Gougon should be blamed for it.",
+                "D": "When Dr. Fitzpatrick gave his patient the wrong medicine, he did not know that it would cause the patient to experience greatly increased blood pressure. So, if no one else knowingly did anything that contributed to the patient's increase in blood pressure, no one other than Dr. Fitzpatrick is to blame for it.",
+                "E": "Any reasonable person could have foreseen that dropping a lit cigarette in dry leaves would start a fire. Thus, even if Kapp did not realize this, she is to blame for starting a fire on Rodriguez's farm since she dropped a lit cigarette in dry leaves there."
+            },
+            "answer": "B",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 878,
+            "question": "In August 2011, China's first aircraft carrier \"Varyag\" went to sea for sea trials.China's aircraft carrier poses a potential challenge to the US Navy's sea-making power in the Western Pacific, and the US military is concerned and takes a precautionary attitude.However, a naval expert with rich actual combat experience wants China to build more aircraft carriers. If any of the following statements are true, can this best explain the expert \u2019s seemingly contradictory attitude?",
+            "choices": {
+                "A": "In August 2011, Vietnam and the United States conducted joint military exercises in the South China Sea.",
+                "B": "The United States, Japan, India and other countries took the opportunity of China \u2019s aircraft carrier trial flight to stir up new \"China threat theory\".",
+                "C": "The Chinese navy has not fully deployed carrier and refueling vessels that support aircraft carriers.The destroyers and submarines that escort the aircraft carrier are also very fragile.",
+                "D": "Aircraft carriers need support and escort.The more aircraft carriers are built, the less resources are used to manufacture other ships and aircraft that support the aircraft carriers."
+            },
+            "answer": "B",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1142,
+            "question": "The population of a city is 5265526. If there are 4169516 adults in the city, how many children are there in the city?",
+            "choices": {
+                "A": "1095961",
+                "B": "1065961",
+                "C": "1085961",
+                "D": "1097961",
+                "E": "1096061"
+            },
+            "answer": "E",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 802,
+            "question": "Wildlife Conservation Organization? There is no killing without trading; without killing, people and nature can live in harmony. If the above statement is true, which of the following statements must be true?",
+            "choices": {
+                "A": "As long as there is killing, there must be business.",
+                "B": "As long as trading is prohibited, people and nature will live in harmony.",
+                "C": "Only when trading is prohibited, people and nature will live in harmony.",
+                "D": "The reason why man and nature cannot get along in harmony is because of the existence of killing."
+            },
+            "answer": "A",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1606,
+            "question": "Close at hand is a bridge over the River Thames, an admirable vantage ground for us to make a survey. The river flows beneath; barges pass, laden  with timber, bursting with corn; there on one side are 5 the domes and spires of the city; on the other, Westminster and the Houses of Parliament. It is a place to stand on by the hour, dreaming. But not now. Now we are pressed for time. Now we are here to consider facts; now we must fix our eyes upon the10 procession-the procession of the sons of educated men.There they go, our brothers who have been educated at public schools and universities, mounting those steps, passing in and out of those15 doors, ascending those pulpits, preaching, teaching, administering justice, practising medicine, transacting business, making money. It is a solemn sight always - a procession, like a caravanserai crossing a desert. ... But now, for the past twenty20 years or so, it is no longer a sight merely, a photograph, or fresco scrawled upon the walls of time, at which we can look with merely an esthetic appreciation. For there, trapesing along at the tail end of the procession, we go ourselves. And that25 makes a difference. We who have looked so long at the pageant in books, or from a curtained window watched educated men leaving the house at about nine-thirty to go to an office, returning to the house at about six-thirty from an office, need look passively30 no longer. We too can leave the house, can mount those steps, pass in and out of those doors, ... make money, administer justice. ... We who now agitate these humble pens may in another century or two speak from a pulpit. Nobody will dare contradict us35 then; we shall be the mouthpieces of the divine spirit-a solemn thought, is it not? Who can say whether, as time goes on, we may not dress in military uniform, with gold lace on our breasts, swords at our sides, and something like the old40 family coal-scuttle on our heads, save that that venerable object was never decorated with plumes of white horsehair. You laugh-indeed the shadow of the private house still makes those dresses look a little queer. We have worn private clothes so 45 long. ... But we have not come here to laugh, or to talk of fashions-men's and women's. We are here, on the bridge, to ask ourselves certain questions. And they are very important questions; and we have very little time in which to answer them. The0 questions that we have to ask and to answer about that procession during this moment of transition are so important that they may well change the lives of all men and women for ever. For we have to ask ourselves, here and now, do we wish to join that55 procession, or don't we? On what terms shall we join that procession? Above all, where is it leading us, the procession of educated men? The moment is short; it may last five years; ten years, or perhaps only a matter of a few months longer. ... But, you will60 object, you have no time to think; you have your battles to fight, your rent to pay, your bazaars to organize. That excuse shall not serve you, Madam. As you know from your own experience, and there are facts that prove it, the daughters of educated men65 have always done their thinking from hand to mouth; not under green lamps at study tables in the cloisters of secluded colleges. They have thought while they stirred the pot, while they rocked the cradle. It was thus that they won us the right to our70 brand-new sixpence. It falls to us now to go on thinking; how are we to spend that sixpence? Think we must. Let us think in offices; in omnibuses; while we are standing in the crowd watching Coronations and Lord Mayor's Shows; let us think ... in the75 gallery of the House of Commons; in the Law Courts; let us think at baptisms and marriages and funerals. Let us never cease from thinking-what is this \"civilization\" in which we find ourselves? What are these ceremonies and why should we take part in80 them? What are these professions and why should we make money out of them? Where in short is it leading us, the procession of the sons of educated men? The central claim of the passage is that",
+            "choices": {
+                "A": "educated women face a decision about how to engage with existing institutions.",
+                "B": "women can have positions of influence in English society only if they give up some of their traditional roles.",
+                "C": "the male monopoly on power in English society has had grave and continuing effects.",
+                "D": "the entry of educated women into positions of power traditionally held by men will transform those positions."
+            },
+            "answer": "A",
+            "domain": "sat-en"
+        },
+        {
+            "id": 1804,
+            "question": "Chairperson: The board of directors of our corporation should not allow the incentives being offered by two foreign governments to entice us to expand our operations into their countries without further consideration of the issue. Although there is an opportunity to increase our profits by expanding our operations there, neither of these countries is politically stable. The chairperson's reasoning most closely conforms to which one of the following principles?",
+            "choices": {
+                "A": "A corporation should never expand operations into countries that are politically unstable.",
+                "B": "Corporations should expand operations into countries when there is a chance of increasing profits.",
+                "C": "Political stability is the most important consideration in deciding whether to expand operations into a country.",
+                "D": "Corporations should always be cautious about expanding operations into politically unstable countries.",
+                "E": "Boards of directors should always disregard governmental incentives when considering where to expand corporate operations."
+            },
+            "answer": "D",
+            "domain": "lsat-lr"
+        },
+        {
+            "id": 1780,
+            "question": "Passage 1.At the 2007 American Geophysical Union\u2019s.meeting in Acapulco, Mexico, some two dozen.scientists presented multiple studies arguing that a.comet or asteroid exploded above or on the northern.ice cap almost 13,000 years ago\u2014showering debris.across the North American continent and causing.temperatures to plunge for the next millennium..The team argues that its idea explains multiple.observations: not only the climate cooling and the.disappearance of the Clovis hunters, but also the.near-simultaneous extinction of the continent\u2019s large.mammals..Not all will be convinced. Several leading.hypotheses already explain each of these three events..A change in ocean circulation is generally thought to.have brought about the onset of the millennium-long.cooling, which is known as the Younger Dryas. This.cooling might, in turn, have caused the Clovis.hunters to disappear. And, if they had not previously.been killed by disease or hunted to extinction, the big.prehistoric beasts may also have been doomed by this.change in climate..The new evidence comes in the form of.geochemical analysis of sedimentary layers at 25.archaeological sites across North America\u20149 of.them Clovis. Certain features of the layers, say the.team, suggest that they contain debris formed by an.extraterrestrial impact. These include spherules of.glass and carbon, and amounts of the element.iridium said to be too high to have originated on.Earth. In addition, the rocks contain black layers of.carbonized material, which the team says are the.remains of wildfires that swept across the continent.after the impact..Passage 2.Proponents of the Younger Dryas impact.hypothesis have claimed various kinds of evidence.for the hypothesis, including deposits of the element.iridium (rare on Earth but abundant in meteorites),.microscopic diamonds (called nanodiamonds), and.magnetic particles in deposits at sites supposedly.dated to about 12,800 years ago. These claims were.sharply contested by some specialists in the relevant.fields, however, who either did not detect such.evidence or argued that the deposits had other causes.than a cosmic impact. For example, some say that.nanodiamonds are common in ordinary geological.formations, and that magnetic particles could come.from ordinary fires..Now comes what some researchers consider the.strongest attack yet on the Younger Dryas impact.hypothesis. In a paper published recently in the.Proceedings of the National Academy of Sciences,a.team led by David Meltzer, an archaeologist at.Southern Methodist University, Dallas, in Texas,.looks at the dating of 29 different sites in the.Americas, Europe, and the Middle East in which.impact advocates have reported evidence for a.cosmic collision. They include sites in which.sophisticated stone projectiles called Clovis points,.used by some of the earliest Americans to hunt.mammals beginning about 13,000 years ago, have.been found. The team argues that when the quality.and accuracy of the dating\u2014which was based on.radiocarbon and other techniques\u2014is examined.closely, only three of the 29 sites actually fall within.the time frame of the Younger Dryas onset, about 12,800 years ago; the rest were probably either earlier.or later by hundreds (and in one case, thousands) of.years..\u201cThe supposed Younger Dryas impact fails on.both theoretical and empirical grounds,\u201d says.Meltzer, who adds that the popular appeal of the.hypothesis is probably due to the way that it provides.\u201csimple explanations for complex problems.\u201d Thus,.\u201cgiant chunks of space debris clobbering the planet.and wiping out life on Earth has undeniably broad.appeal,\u201d Meltzer says, whereas \u201cno one in Hollywood.makes movies\u201d about more nuanced explanations,.such as Clovis points disappearing because early.Americans turned to other forms of stone tool.technology as the large mammals they were hunting.went extinct as a result of the changing climate or.hunting pressure..But impact proponents appear unmoved by the.new study. \u201cWe still stand fully behind the [impact.hypothesis], which is based on more than a.confluence of dates,\u201d says Richard Firestone, a.nuclear chemist at the Lawrence Berkeley National.Laboratory in California. \u201cRadiocarbon dating is a.perilous process,\u201d he contends, adding that the.presence of Clovis artifacts and mammoth bones just.under the claimed iridium, nanodiamond, and.magnetic sphere deposits is a more reliable indicator.that an extraterrestrial event was responsible for their.disappearance. The authors of both passages characterize the impact hypothesis as",
+            "choices": {
+                "A": "unsupported by reliable evidence.",
+                "B": "interesting but difficult to conclusively evaluate.",
+                "C": "more appealing to the public than to specialists.",
+                "D": "controversial in the scientific community."
+            },
+            "answer": "D",
+            "domain": "sat-en"
+        },
+        {
+            "id": 434,
+            "question": "Compared with us, people who lived a century ago have far fewer recreational projects.Therefore, they like reading more than we do today. Which of the following statements is true, which weakens the argument most strongly?",
+            "choices": {
+                "A": "Many books published a century ago have poor literacy.",
+                "B": "The number of books sold today is much greater than it was a century ago.",
+                "C": "One of the more popular recreational projects is playing mahjong.",
+                "D": "On average, people who lived a century ago have far less leisure time than people who are now."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 694,
+            "question": "There are 6 singers? F, G, L, K, H, M.3 piano accompaniment? X, Y, W.Each piano accompanimentist happened to accompany two of the singers.Known condition information is as follows? (1) If X is F accompaniment, then W is L accompaniment.(2) If X is not a G accompaniment, then Y is an M accompaniment.(3) X or Y is H accompaniment.(4) F and G do not share accompaniment; L and K do not share accompaniment; H and M do not share accompaniment. W cannot accompany any of the following singers?",
+            "choices": {
+                "A": "F and K",
+                "B": "F and L",
+                "C": "K and H",
+                "D": "G and K"
+            },
+            "answer": "C",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 1620,
+            "question": "In the early 1990s, textbooks acknowledged that humans had slow-conducting nerves, but asserted that those nerves only responded to two types of  stimuli: pain and temperature. Sensations of pressureand vibration were believed to travel only along myelinated, fast-signaling nerve fibers, which also give information about location. Experiments blocking nerve fibers supported this notion. Preventing fast fibers from firing (either by clamping 10 the relevant nerve or by injecting the local anesthetic lidocaine) seemed to eliminate the sensation of pressure altogether, but blocking slow fibers only seemed to reduce sensitivity to warmth or a small painful shock.15 H\u00e5kan Olausson and his Gothenburg University colleagues \u00c5ke Vallbo and Johan Wessberg wondered if slow fibers responsive to gentle pressure might be active in humans as well as in other mammals. In 1993, they corralled 28 young20 volunteers and recorded nerve signals while gently brushing the subjects' arms with their fingertips. Using a technique called microneurography, in which a fine filament is inserted into a single nerve to capture its electrical impulses, the scientists were able25 to measure how quickly-or slowly-the nerves fired. They showed that soft stroking prompted two different signals, one immediate and one delayed. The delay, Olausson explains, means that the signal from a gentle touch on the forearm will30 reach the brain about a half second later. This delay identified nerve impulses traveling at speeds characteristic of slow, unmyelinated fibers-about 1 meter/second-confirming the presence of these fibers in human hairy skin. (In contrast, fast-35 conducting fibers, already known to respond to touch, signal at a rate between 35 and $75 \\mathrm{~m} / \\mathrm{s}$.)Then, in 1999, the group looked more closely at the characteristics of the slow fibers. They named these \"low-threshold\" nerves \"C-tactile,\" or CT,40 fibers, said Olausson, because of their \"exquisite sensitivity\" to slow, gentle tactile stimulation, but unresponsiveness to noxious stimuli like pinpricks.But why exactly humans might have such fibers, which respond only to a narrow range of rather45 subtle stimuli, was initially mystifying. Unlike other types of sensory nerves, CT fibers could be found only in hairy human skin-such as the forearm and thigh. No amount of gentle stroking of hairless skin, such as the palms and soles of the feet, prompted50 similar activity signatures. Olausson and his colleagues decided that these fibers must be conveying a different dimension of sensory information than fast-conducting fibers.Although microneurography can give55 information about how a single nerve responds to gentle brushing and pressure, it cannot tease out what aspect of sensation that fiber relays, says Olausson. He wanted to know if that same slow nerve can distinguish where the brush touches the$60 \\mathrm{arm}$, and whether it can discern the difference between a goat-hair brush and a feather. Most importantly, could that same fiber convey a pleasant sensation?To address the question, Olausson's group sought65 out a patient known as G.L. who had an unusual nerve defect. More than 2 decades earlier, she had developed numbness across many parts of her body after taking penicillin to treat a cough and fever. Testing showed that she had lost responsiveness to 70 pressure, and a nerve biopsy confirmed that G.L.'s quick-conducting fibers were gone, resulting in an inability to sense any pokes, prods, or pinpricks below her nose. But she could still sense warmth, suggesting that her slow-conducting unmyelinated 75 fibers were intact.Upon recruiting G.L., Olausson tested her by brushing her arm gently at the speed of between 2-10 centimeters per second. She had more trouble distinguishing the direction or pressure of the brush80 strokes than most subjects, but reported feeling a pleasant sensation. When the researchers tried brushing her palm, where CT fibers are not found, she felt nothing.Olausson used functional MRI studies to examine 85 which areas of the brain lit up when G.L.'s arm was gently brushed to activate CT fibers. In normal subjects, both the somatosensory and insular cortices were activated, but only the insular cortex [which processes emotion] was active when researchers90 brushed G.L.'s arm. This solidified the notion that CT fibers convey a more emotional quality of touch, rather than the conscious aspect that helps us describe what we are sensing. CT fibers, it seemed, specifically provide pleasurable sensations Which conclusion is best supported by the findings of Olausson's 1993 experiment?",
+            "choices": {
+                "A": "Stimulation at bodily extremities can be sensed as rapidly as stimulation closer to the brain.",
+                "B": "The presence of hairs in human skin lessens the speed with which nerves conduct signals.",
+                "C": "Gentle pressure is sensed not only by fast fibers but also by slow fibers.",
+                "D": "The speed at which a nerve fires is dependent on the strength of pressure applied to the nerve."
+            },
+            "answer": "C",
+            "domain": "sat-en"
+        },
+        {
+            "id": 967,
+            "question": "A ship went on a voyage. After it had traveled 180 miles a plane started with 10 times the speed of the ship. Find the distance when they meet from starting point.",
+            "choices": {
+                "A": "238",
+                "B": "289",
+                "C": "200",
+                "D": "287",
+                "E": "187"
+            },
+            "answer": "C",
+            "domain": "aqua-rat"
+        },
+        {
+            "id": 500,
+            "question": "Turkey has applied for membership in the EU since 1987, and the two sides are still in difficult negotiations until now.From a strategic perspective, the EU needs Turkey.If you say \"no\" to Turkey, the EU will lose Turkey's cooperation in security, justice, and energy.However, if Turkey joins the EU, it will bring a series of problems such as inconsistent cultural and religious views, heavy burden of economic subsidies, and a large influx of immigrants into the job market. Which of the following conclusions can be derived from the above statement?",
+            "choices": {
+                "A": "In the long run, the EU cannot not only obtain Turkey's comprehensive cooperation, but also completely avoid the difficult problems caused by Turkey's accession to the EU.",
+                "B": "If Turkey meets the EU's political and economic accession standards, it can join the EU.",
+                "C": "The EU will either get full cooperation from Turkey or completely avoid the troubles caused by Turkey's accession to the EU.",
+                "D": "Only 3% of Turkey \u2019s land is in Europe, and most Europeans do not recognize Turkey as a European country."
+            },
+            "answer": "A",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 352,
+            "question": "According to a psychological theory, to be happy, one must maintain an intimate relationship with those around him.However, the great painters in the world often spend most of their time in loneliness and have no intimate relationships.Therefore, the above argument of this psychological theory is untenable. Which of the following is most likely assumed by the above argument?",
+            "choices": {
+                "A": "The psychological theory is to reveal the relationship between inner experience and artistic achievement.",
+                "B": "People with intimate relationships have little time for loneliness.",
+                "C": "Loneliness is necessary for great painting artists.",
+                "D": "Artists who have achieved great achievements cannot be unhappy."
+            },
+            "answer": "D",
+            "domain": "logiqa-en"
+        },
+        {
+            "id": 30,
+            "question": "Most of what has been written about Thurgood Marshall, a former United States Supreme Court justice who served from 1967 to 1991, has just focused on his judicial record and on the ideological content of his earlier achievements as a lawyer pursuing civil rights issues in the courts. But when Marshall's career is viewed from a technical perspective, his work with the NAACP (National Association for the Advancement of Colored People) reveals a strategic and methodological legacy to the field of public interest law. Though the NAACP, under Marshall's direction, was not the first legal organization in the U.S. to be driven by a political and social agenda, he and the NAACP developed innovations that forever changed the landscape of public interest law: during the 1940s and 1950s, in their campaign against state-sanctioned racial segregation, Marshall and the NAACP, instead of simply pursuing cases as the opportunity arose, set up a predetermined legal campaign that was meticulously crafted and carefully coordinated. One aspect of this campaign, the test case strategy, involved sponsoring litigation of tactically chosen cases at the trial court level with careful evaluation of the precedential nuances and potential impact of each decision. This allowed Marshall to try out different approaches and discover which was the best to be used. An essential element in the success of this tactic was the explicit recognition that in a public interest legal campaign, choosing the right plaintiff can mean the difference between success and failure. Marshall carefully selected cases with sympathetic litigants, whose public appeal, credibility, and commitment to the NAACP's goals were unsurpassed. In addition, Marshall used sociological and psychological statistics\u2014presented in expert testimony, for example, about the psychological impact of enforced segregation\u2014as a means of transforming constitutional law by persuading the courts that certain discriminatory laws produced public harms in violation of constitutional principles. This tactic, while often effective, has been criticized by some legal scholars as a pragmatic attempt to give judges nonlegal material with which to fill gaps in their justifications for decisions where the purely legal principles appear inconclusive. Since the time of Marshall's work with the NAACP, the number of public interest law firms in the U.S. has grown substantially, and they have widely adopted his combination of strategies for litigation, devoting them to various public purposes. These strategies have been used, for example, in consumer advocacy campaigns and, more recently, by politically conservative public interest lawyers seeking to achieve, through litigation, changes in the law that they have not been able to accomplish in the legislature. If we focus on the particular content of Marshall's goals and successes, it might seem surprising that his work has influenced the quest for such divergent political objectives, but the techniques that he honed\u2014 originally considered to be a radical departure from accepted conventions\u2014have become the norm for U.S. public interest litigation today. It can be most reasonably inferred from the passage that the author views the test case strategy developed by Marshall as",
+            "choices": {
+                "A": "arbitrary",
+                "B": "inflexible",
+                "C": "unprecedented",
+                "D": "necessary",
+                "E": "subjective"
+            },
+            "answer": "C",
+            "domain": "lsat-rc"
+        },
+        {
+            "id": 161,
+            "question": "Given the amount of time and effort that curators, collectors, dealers, scholars, and critics spend on formulating judgments of taste in relation to oil paintings, it seems odd that so few are prepared to apply some of the same skills in exploring works of art that stimulate another sense altogether: that of smell. Why is great perfume not taken more seriously? While art professionals are very serious about many branches of literature, architecture, and music, I have yet to find a curatorial colleague who regularly beats a path to the fragrance counter in search of, say, Joy Parfum, the 1930 masterpiece by Henri Almeras.And yet, the parallels between what ought to be regarded as sister arts are undeniable. Painters combine natural and, these days, synthetic pigments with media such as oils and resins, much as the perfumer carefully formulates natural and synthetic chemical compounds. The Old Masters deployed oil paint across the color spectrum, and applied layers on a determining ground and various kinds of underpainting, slowly building up to the surface, completing their work with thin glazes on top. Thus various types of mashed-up earth and vegetable suspended in linseed or poppy oil are brushed over a stretch of woven fabric. They begin to dry, and a picture is born. Its appearance changes over time, because the tendency of oil paint is to become gradually more transparent.So, too, talented \"noses\" experiment with complex configurations of olfactory elements and produce in symphonic combination many small sensations, at times discordant, sweet, bitter, melancholy, or happy, as the case may be. These combinations change and develop in sequence or in unison as the substance and its constituents evaporate at different rates, some quickly, others slowly, thanks to the warmth of our skin. A brilliant perfumer may thus devise an imaginary world no less powerful, or intimate, than that of a great composer or painter, and in calling on our capacity to discover there some memory of childhood or of a long-forgotten experience, perfumers are in the same business as the artist who creates the illusion of life on canvas.Perhaps one reason that truly great smells are so often undervalued is that perfumes are today made and distributed under the not particularly watchful gaze of a few large corporations. The cynical bean counters in Paris and Zurich do not hesitate to tamper with old formulas, insisting on the substitution of cheap chemical compounds that approximately resemble rarer, better ingredients in an effort to increase profits. They do not tell their customers when or how they do this; indeed, they presume their customers won't notice the difference. Consequently, fine perfume is now hopelessly entangled with the international cosmetic dollar, and ill-served by marketing and public relations. Which one of the following most accurately expresses the main point of the passage?",
+            "choices": {
+                "A": "Despite their pursuit of profit, corporations that produce and market perfumes value artistic skill.",
+                "B": "A masterpiece perfume evokes reactions that are no less powerful than those evoked by a masterpiece in music or painting.",
+                "C": "The corporate nature of the perfume business is the reason that so few truly great perfumes are now produced.",
+                "D": "Great perfumes are works of art and deserve respect and attention as such.",
+                "E": "Perfume-making and oil painting should be regarded as sister arts, both of which involve the skilled application of complex configurations of ingredients."
+            },
+            "answer": "D",
+            "domain": "lsat-rc"
+        },
+        {
+            "id": 1364,
+            "question": "At an upcoming exhibition, four art students\u2014Franz, Greene, Hidalgo, and Isaacs\u2014will each display exactly two paintings\u2014an oil and a watercolor. Exactly two paintings will be displayed on each of the walls of the exhibition room\u2014walls 1, 2, 3, and 4\u2014with one painting in the upper position and one in the lower position. The following conditions will apply: No wall has only watercolors displayed on it. No wall has the work of only one student displayed on it. No wall has both a painting by Franz and a painting by Isaacs displayed on it. Greene's watercolor is displayed in the upper position of the wall on which Franz's oil is displayed. Isaacs's oil is displayed in the lower position of wall 4. Which one of the following could be an accurate list of the paintings displayed in the lower position on walls 1 through 4, listed in that order?",
+            "choices": {
+                "A": "Franz's oil, Franz's watercolor, Greene's oil, Isaacs's oil",
+                "B": "Franz's oil, Hidalgo's watercolor, Isaacs's watercolor, Isaacs's oil",
+                "C": "Greene's oil, Franz's oil, Isaacs's oil, Hidalgo's oil",
+                "D": "Hidalgo's oil, Greene's oil, Greene's watercolor, Isaacs's oil",
+                "E": "Hidalgo's watercolor, Franz's oil, Greene's oil, Isaacs's oil"
+            },
+            "answer": "C",
+            "domain": "lsat-ar"
+        },
+        {
+            "id": 128,
+            "question": "David Warsh's book describes a great contradiction inherent in economic theory since 1776, when Adam Smith published The Wealth of Nations. Warsh calls it the struggle between the Pin Factory and the Invisible Hand. Using the example of a pin factory, Smith emphasized the huge increases in efficiency that could be achieved through increased size. The pin factory's employees, by specializing on narrow tasks, produce far more than they could if each worked independently. Also, Smith was the first to recognize how a market economy can harness self-interest to the common good, leading each individual as though \"by an invisible hand to promote an end which was no part of his intention.\" For example, businesses sell products that people want, at reasonable prices, not because the business owners inherently want to please people but because doing so enables them to make money in a competitive marketplace. These two concepts, however, are opposed to each other. The parable of the pin factory says that there are increasing returns to scale\u2014the bigger the pin factory, the more specialized its workers can be, and therefore the more pins the factory can produce per worker. But increasing returns create a natural tendency toward monopoly, because a large business can achieve larger scale and hence lower costs than a small business. So given increasing returns, bigger firms tend to drive smaller firms out of business, until each industry is dominated by just a few players. But for the invisible hand to work properly, there must be many competitors in each industry, so that nobody can exert monopoly power. Therefore, the idea that free markets always get it right depends on the assumption that returns to scale are diminishing, not increasing. For almost two centuries, the assumption of diminishing returns dominated economic theory, with the Pin Factory de-emphasized. Why? As Warsh explains, it wasn't about ideology; it was about following the line of least mathematical resistance. Economics has always had scientific aspirations; economists have always sought the rigor and clarity that comes from representing their ideas using numbers and equations. And the economics of diminishing returns lend themselves readily to elegant formalism, while those of increasing returns-the Pin Factory- are notoriously hard to represent mathematically. Many economists tried repeatedly to bring the Pin Factory into the mainstream of economic thought to reflect the fact that increasing returns obviously characterized many enterprises, such as railroads. Yet they repeatedly failed because they could not state their ideas rigorously enough. Only since the late 1970s has this \"underground river\" -a term used to describe the role of increasing returns in economic thought-surfaced into the mainstream of economic thought. By then, economists had finally found ways to describe the Pin Factory with the rigor needed to make it respectable. Which one of the following, if true, would most undermine the connection that the author draws between increased size and monopoly power?",
+            "choices": {
+                "A": "In some industries, there are businesses that are able to exert monopoly power in one geographical region even though there are larger businesses in the same industry in other regions.",
+                "B": "As the tasks workers focus on become narrower, the workers are not able to command as high a salary as when they were performing a greater variety of tasks.",
+                "C": "When an industry is dominated by only a few players, these businesses often collude in order to set prices as high as a true monopoly would.",
+                "D": "The size that a business must reach in order to begin to achieve increasing returns to scale varies widely from industry to industry.",
+                "E": "If a business has very specialized workers, any gains in productivity achieved by making workers even more specialized are offset by other factors such as higher training costs and increased turnover."
+            },
+            "answer": "E",
+            "domain": "lsat-rc"
+        }
+    ]
+}
