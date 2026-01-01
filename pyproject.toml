@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelco"
-version = "0.0.1.3"
+version = "0.0.1.4"
 authors = [
   { name="Shangbin Feng", email="shangbin@cs.washington.edu" },
 ]
@@ -78,7 +78,7 @@ moco = "model_collaboration.main:run_main"
 
 [tool.setuptools]
 include-package-data = true
-package-data = {"model_collaboration.data" = ["*.json"]}
+package-data = { "model_collaboration.data" = ["*.json"], "model_collaboration.logs" = ["*.md"]}
 
 [project.urls]
 Homepage = "https://github.com/BunsenFeng/model_collaboration"
