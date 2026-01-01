@@ -9,9 +9,9 @@ from trl import GRPOTrainer, GRPOConfig
 from transformers import AutoModelForCausalLM
 import torch.distributed as dist
 
-from data import eval
+from model_collaboration.data import eval
 from datasets import Dataset
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 from torch import _dynamo
 
 

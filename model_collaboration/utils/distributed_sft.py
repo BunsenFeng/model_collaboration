@@ -9,7 +9,7 @@ from tqdm import tqdm
 from peft import LoraConfig
 from multiprocessing import Pool
 from datasets import load_dataset
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 

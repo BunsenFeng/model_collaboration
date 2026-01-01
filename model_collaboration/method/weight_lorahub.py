@@ -11,8 +11,8 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel, PeftConfig, get_peft_model_state_dict, set_peft_model_state_dict
 
-from data import eval
-from utils import lora_check
+from model_collaboration.data import eval
+from model_collaboration.utils import lora_check
 
 # ==========================================
 # 1. Helper Functions

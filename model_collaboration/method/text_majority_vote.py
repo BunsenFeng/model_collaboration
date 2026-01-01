@@ -2,8 +2,8 @@ import json
 import os
 import random
 from collections import defaultdict
-from data import eval
-from method import distributed_generation
+from model_collaboration.data import eval
+from model_collaboration.method import distributed_generation
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 
