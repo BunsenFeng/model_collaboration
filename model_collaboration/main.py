@@ -20,7 +20,7 @@ def run_main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_file", type=str, help="Path to the configuration file")
-    parser.add_argument("-l", "--log_dir", default="./logs/", type=str, help="Where should the log go?")
+    parser.add_argument("-l", "--log_dir", default="./model_collaboration/logs/", type=str, help="Where should the log go?")
     args = parser.parse_args()
 
     with open(args.config_file, "r") as f:
@@ -60,7 +60,8 @@ def run_main():
     files = os.listdir(os.path.join(file_path, "logs/"))
     for file in files:
         if file.endswith(".json"):
-            shutil.move(os.path.join(os.path.join(file_path, "logs/"), file), args.log_dir)
+            if not os.path.exists(os.path.join(args.log_dir, file)):
+                shutil.move(os.path.join(os.path.join(file_path, "logs/"), file), args.log_dir)
     
     # except ImportError as e:
     #     print(f"Error importing module '{module_path}': {e}")

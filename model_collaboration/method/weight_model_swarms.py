@@ -7,13 +7,19 @@ from model_collaboration.method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     print("The model you are using are:")
     for model_name in model_names:
         print(model_name)
     print("Make sure they share the same model architecture, or expect errors.")
 
     # method-specific hyperparameters
-    swarm_base_path = hyperparameters.get("swarm_base_path", "logs/model_swarms/")
+    swarm_base_path = hyperparameters.get("swarm_base_path", "model_collaboration/logs/model_swarms/")
     swarm_base_path = swarm_base_path[:-1] + "_" + task + "/"
     if os.path.exists(swarm_base_path):
         swarm_base_path = swarm_base_path[:-1] + str(random.randint(0, 10000000)) + "/"
@@ -119,7 +125,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log)
     
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_model_swarms.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_model_swarms.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

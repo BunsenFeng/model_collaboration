@@ -8,6 +8,12 @@ from model_collaboration.method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     print("The model you are using are:")
     for model_name in model_names:
         print(model_name)
@@ -46,7 +52,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     for model_index in ranked_model_indices[1:]:
         current_selected_models = [model_names[i] for i in included_model_indices + [model_index]]
         current_weights = [1.0 / len(current_selected_models)] * len(current_selected_models)
-        merged_model_path = "logs/greedy_soup"
+        merged_model_path = "model_collaboration/logs/greedy_soup"
 
         # remove existing merged model path if any
         if os.path.exists(merged_model_path):
@@ -94,14 +100,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     else:
         final_weights = [1.0 / len(final_selected_models)] * len(final_selected_models)
 
-        if os.path.exists("logs/greedy_soup"):
-            os.remove("logs/greedy_soup")
+        if os.path.exists("model_collaboration/logs/greedy_soup"):
+            os.remove("model_collaboration/logs/greedy_soup")
 
         # save the final greedy soup model
         lora_merge(
             weights=final_weights,
             lora_name_list=final_selected_models,
-            output_path="logs/greedy_soup",
+            output_path="model_collaboration/logs/greedy_soup",
             gpu_id=gpu_ids[0]
         )
 
@@ -109,7 +115,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         test_input_list = eval.prepare_inputs(task, task_type, "test")
         list_of_input_list = [test_input_list]
         list_of_output_list = distributed_generation.distributed_generation(
-            ["logs/greedy_soup"],
+            ["model_collaboration/logs/greedy_soup"],
             list_of_input_list,
             [gpu_ids[0]]
         )
@@ -138,7 +144,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log)
 
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_greedy_soup.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_greedy_soup.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

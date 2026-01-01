@@ -182,8 +182,8 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - `fuser_model_name`, default first entry of `model_names`: causal LM used as the fuser model that reads the question and top-k candidate answers and generates the final answer.
     - `fuser_gpu_id`, default `gpu_ids[0]`: GPU id to use for fuser inference.
     - `fuser_max_response_length`, default `max_response_length` from the config: maximum number of tokens for the fused final answer.
-    - `train_ranker_on_dev`, default False: whether to train the ranker on the dev set before evaluation on the test set. If True, the method will (1) generate candidate answers and scores on the dev split for all base models, (2) construct pairwise preference data based on dev scores, and (3) run SFT via `utils.distributed_sft.single_sft` to fine-tune `ranker_model_name`. At inference time, the ranker is always used in a pairwise A/B comparison mode with win-count aggregation. The trained checkpoint is saved under `logs/text_llm_blender/ranker_model_<task>_<num_models>/` and used only for the current run.
-    - `train_fuser_on_dev`, default False: whether to train the fuser on the dev set before evaluation on the test set. If True, the method will (1) use dev scores to select top-k candidate answers per example, (2) build fusion prompts with these candidates, (3) use the dataset gold dev answer as the supervision target when available (and fall back to the best-scoring candidate otherwise), and (4) run SFT via `utils.distributed_sft.single_sft` to fine-tune `fuser_model_name`. The trained checkpoint is saved under `logs/text_llm_blender/fuser_model_<task>_<num_models>/` and used only for the current run.
+    - `train_ranker_on_dev`, default False: whether to train the ranker on the dev set before evaluation on the test set. If True, the method will (1) generate candidate answers and scores on the dev split for all base models, (2) construct pairwise preference data based on dev scores, and (3) run SFT via `utils.distributed_sft.single_sft` to fine-tune `ranker_model_name`. At inference time, the ranker is always used in a pairwise A/B comparison mode with win-count aggregation. The trained checkpoint is saved under `model_collaboration/logs/text_llm_blender/ranker_model_<task>_<num_models>/` and used only for the current run.
+    - `train_fuser_on_dev`, default False: whether to train the fuser on the dev set before evaluation on the test set. If True, the method will (1) use dev scores to select top-k candidate answers per example, (2) build fusion prompts with these candidates, (3) use the dataset gold dev answer as the supervision target when available (and fall back to the best-scoring candidate otherwise), and (4) run SFT via `utils.distributed_sft.single_sft` to fine-tune `fuser_model_name`. The trained checkpoint is saved under `model_collaboration/logs/text_llm_blender/fuser_model_<task>_<num_models>/` and used only for the current run.
     - `ranker_sft_batch_size`, default 1: per-device train batch size for ranker SFT when `train_ranker_on_dev` is True.
     - `ranker_sft_gradient_accumulation_steps`, default 16: gradient accumulation steps for ranker SFT.
     - `ranker_sft_learning_rate`, default 1e-5: learning rate for ranker SFT.
@@ -194,7 +194,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - `fuser_sft_epoch`, default 3: number of training epochs for fuser SFT.
 - note to tester:
     - For pure zero-shot ranking and fusion, set `train_ranker_on_dev: false` and `train_fuser_on_dev: false`, and choose reasonable `ranker_model_name` / `fuser_model_name` (e.g., `ranker_model_name: "Qwen/Qwen2.5-7B-Instruct"`, `fuser_model_name` as one of your candidate models).
-    - To adapt the ranker and/or fuser to a specific task, set the corresponding `train_*_on_dev` flags to true. Intermediate SFT data and checkpoints will be saved under `logs/text_llm_blender/` (e.g., `ranker_sft_<task>_<num_models>.jsonl`, `ranker_model_<task>_<num_models>/`). The final evaluation log remains `logs/<task>_<num_models>_<score>_llm_blender.json` as usual.
+    - To adapt the ranker and/or fuser to a specific task, set the corresponding `train_*_on_dev` flags to true. Intermediate SFT data and checkpoints will be saved under `model_collaboration/logs/text_llm_blender/` (e.g., `ranker_sft_<task>_<num_models>.jsonl`, `ranker_model_<task>_<num_models>/`). The final evaluation log remains `model_collaboration/logs/<task>_<num_models>_<score>_llm_blender.json` as usual.
 
 #### Text-level: Heterogeneous Swarms
 - file: `text_heterogeneous_swarms.py`
@@ -287,7 +287,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - [The Majority is not always right: RL training for solution aggregation](https://arxiv.org/pdf/2509.06870)
 - method-specific hyperparameters:
     - `agg_model`, default `Qwen/Qwen3-1.7B`: the base model to initialize the aggregator. Should ideally have the largest vocabulary size among the solution models. Can be a HuggingFace Hub ID or local path.
-    - `agglm_log_path`, default `logs/agglm`: directory to save training checkpoints, intermediate generation results, and trained LoRA adapters.
+    - `agglm_log_path`, default `model_collaboration/logs/agglm`: directory to save training checkpoints, intermediate generation results, and trained LoRA adapters.
     - `reuse_log`, default `True`: whether to reuse existing generation and model weights. You might need to set this hyperparameter to `False` if error happens in the generation or training process
     - **Training hyperparameters:**
         - `learning_rate`, default 1e-4: learning rate for GRPO optimization.
@@ -319,7 +319,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - Outputs: 
       - Trained LoRA adapter: `{agglm_log_path}/{model_filename}/adapter_model.safetensors`
       - Cached generations: `{agglm_log_path}/{model_filename}.json`
-      - Final results: `logs/{task}_{num_models}_{score}_agglm.json`
+      - Final results: `model_collaboration/logs/{task}_{num_models}_{score}_agglm.json`
 
 #### Logit-level: Logit Fusion
 - file: `logit_logit_fusion.py`
@@ -369,7 +369,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
 - related paper(s):
     - [Model Swarms: Collaborative Search to Adapt LLM Experts via Swarm Intelligence](https://arxiv.org/abs/2410.11163)
 - method-specific hyperparameters:
-    - `swarm_base_path`, default `logs/model_swarms/`: a place to do the bookkeeping for the swarm algorithm.
+    - `swarm_base_path`, default `model_collaboration/logs/model_swarms/`: a place to do the bookkeeping for the swarm algorithm.
     - `base_model`, default None: the common base model architecture of these LLMs.
     - `fast_merge_flag`, default False: False if they are regular full-size models, True if they are lora adapters.
     - `max_iterations`, default 10: the maximum number of iterations.
@@ -406,7 +406,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - `k`, default 1: number of models for top-k/bottom-k mode. Only used when `mode` is `topk_bottomk`.
     - `alpha_mode`, default `fixed`: `fixed` uses the specified alpha directly, `optimized` searches for the best alpha on the dev set.
     - `alpha_candidates`, default `[0.1, 0.2, 0.3, 0.4, 0.5]`: candidate alpha values when `alpha_mode` is `optimized`.
-    - `expo_base_path`, default `logs/expo/`: directory to save intermediate and final extrapolated models.
+    - `expo_base_path`, default `model_collaboration/logs/expo/`: directory to save intermediate and final extrapolated models.
     - (pairs mode only) `pair_selection`, default `dpo_score`: criterion for selecting best pair (`dpo_score`, `improvement`, `sft_score`).
     - (pairs mode only) `sft_models`, `dpo_models`: explicit lists for legacy pair specification.
 - warning: **All models must share the same architecture.**

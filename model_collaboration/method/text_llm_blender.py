@@ -601,6 +601,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
       4) Use the (possibly trained) fuser to fuse top-k candidates.
     """
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     os.makedirs("logs", exist_ok=True)
     os.makedirs(METHOD_LOG_DIR, exist_ok=True)
 
@@ -703,7 +709,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log_entry)
 
     os.makedirs("logs", exist_ok=True)
-    log_filename = "logs/{}_{}_{}_llm_blender.json".format(
+    log_filename = "model_collaboration/logs/{}_{}_{}_llm_blender.json".format(
         task, len(model_names), round(avg_test_score, 4)
     )
     with open(log_filename, "w") as f:

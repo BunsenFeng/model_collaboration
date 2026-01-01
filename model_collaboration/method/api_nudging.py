@@ -583,6 +583,12 @@ class Nudging:
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     batch_size = hyperparameters.get("batch_size")
     max_new_tokens = hyperparameters.get("max_response_length")
     temperature = hyperparameters.get("temperature")
@@ -688,7 +694,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log)
 
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_nudging.json".format(task, len(model_names), round(avg_test_scores, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_nudging.json".format(task, len(model_names), round(avg_test_scores, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 
