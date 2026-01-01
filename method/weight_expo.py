@@ -22,10 +22,10 @@ import random
 import shutil
 import torch
 from tqdm import tqdm
-from data import eval
-from utils import lora_check
-from utils.swarm import lora_merge
-from method import distributed_generation
+from model_collaboration.data import eval
+from model_collaboration.utils import lora_check
+from model_collaboration.utils.swarm import lora_merge
+from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 

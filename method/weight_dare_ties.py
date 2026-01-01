@@ -1,11 +1,11 @@
 import os
 import json
 import random
-from data import eval
+from model_collaboration.data import eval
 import torch.nn.functional as F
-from utils import lora_check
-from method import distributed_generation
-from utils.numeric_swarm import NumericSwarm
+from model_collaboration.utils import lora_check
+from model_collaboration.method import distributed_generation
+from model_collaboration.utils.numeric_swarm import NumericSwarm
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 

@@ -7,9 +7,9 @@ from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
 
 import numpy as np
-from data import eval
-from method import distributed_generation
-from utils import distributed_dpo
+from model_collaboration.data import eval
+from model_collaboration.method import distributed_generation
+from model_collaboration.utils import distributed_dpo
 import logging
 
 logger = logging.getLogger(__name__)

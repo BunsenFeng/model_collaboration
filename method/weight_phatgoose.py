@@ -57,7 +57,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 
 from peft import PeftModel
-from data import eval as eval_mod
+from model_collaboration.data import eval as eval_mod
 
 
 # -----------------------------

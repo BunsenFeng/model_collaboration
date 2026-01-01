@@ -2,8 +2,8 @@
 Method: text_structure.py
 """
 import json
-from data import eval
-from method import distributed_generation
+from model_collaboration.data import eval
+from model_collaboration.method import distributed_generation
 import numpy as np
 
 # optionally, `from utils import distributed_sft` if your approach finetunes multiple models

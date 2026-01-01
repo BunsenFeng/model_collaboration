@@ -3,10 +3,10 @@ import json
 import torch
 import shutil
 import random
-from data import eval
+from model_collaboration.data import eval
 from peft import LoraConfig
 from datasets import load_dataset
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModelForCausalLM
 

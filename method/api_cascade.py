@@ -2,9 +2,9 @@
 LLM API level cascade
 """
 import json
-from data import eval
+from model_collaboration.data import eval
 import torch
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 
 def just_ask_prompt(input):
     # ask the model to say whether they are unconfident about their answers
