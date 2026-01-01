@@ -29,6 +29,13 @@ It is possible that any, all, or none of these solutions are correct or complete
 
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
+
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     print("The model you are using are:")
     for model_name in model_names:
         print(model_name)
@@ -41,7 +48,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         )
         agg_model = 'Qwen/Qwen3-1.7B'
 
-    agglm_log_path = hyperparameters.get("agglm_log_path", 'logs/agglm')
+    agglm_log_path = hyperparameters.get("agglm_log_path", 'model_collaboration/logs/agglm')
     reuse_log = hyperparameters.get("reuse_log", True)
     if os.path.exists(agglm_log_path) and not reuse_log:
         shutil.rmtree(agglm_log_path)
@@ -221,7 +228,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log)
 
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_agglm.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_agglm.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

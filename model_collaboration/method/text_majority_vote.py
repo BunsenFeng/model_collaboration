@@ -102,6 +102,12 @@ def evaluate_models_on_dev(task, task_type, model_indices, model_names, gpu_ids,
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     assert task_type in ["multiple_choice", "exact_match", "f1_match"], "This method only supports multiple_choice, exact_match, and f1_match types of tasks."
 
     tie_breaking = hyperparameters.get("tie", "random")
@@ -180,7 +186,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log_entry)
     
     # save to a json file
-    log_filename = "logs/{}_{}_{}_majority_vote.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_majority_vote.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

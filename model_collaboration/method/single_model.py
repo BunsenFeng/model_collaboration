@@ -8,6 +8,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     max_new_tokens = hyperparameters.get("max_response_length", 100)
     temperature = hyperparameters.get("temperature", 0.7)
     top_p = hyperparameters.get("top_p", 0.9)
@@ -87,7 +93,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # file name with task, model name, and avg_test_score with 4 decimal places
     simple_model_name = model_names[0].split("/")[-1]
-    log_filename = "logs/{}_{}_{}_single_model.json".format(task, simple_model_name, round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_single_model.json".format(task, simple_model_name, round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

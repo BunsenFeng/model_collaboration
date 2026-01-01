@@ -138,6 +138,12 @@ def get_all_inputs(task=None):
             
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     max_response_length = hyperparameters.get("max_response_length")
     batch_size = hyperparameters.get("batch_size")
 
@@ -222,7 +228,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 # print({"prompt": sft_input, "completion": sft_output})
 
         # save the sft data
-        sft_filename = "logs/selector_model_sft_data_{}_{}.jsonl".format(task, len(model_names))
+        sft_filename = "model_collaboration/logs/selector_model_sft_data_{}_{}.jsonl".format(task, len(model_names))
         with open(sft_filename, "w") as f:
             for data_point in sft_data_points:
                 f.write(json.dumps(data_point) + "\n")
@@ -246,7 +252,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         )
 
         training_args = SFTConfig(
-            output_dir= "logs/selector_sft_{}".format(task),
+            output_dir= "model_collaboration/logs/selector_sft_{}".format(task),
             per_device_train_batch_size=1,
             per_device_eval_batch_size=1,
             gradient_accumulation_steps=32,
@@ -276,15 +282,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         )
 
         trainer.train()
-        trainer.save_model("logs/selector_sft_{}".format(task))
+        trainer.save_model("model_collaboration/logs/selector_sft_{}".format(task))
         # save tokenizer as well
-        tokenizer.save_pretrained("logs/selector_sft_{}".format(task))
+        tokenizer.save_pretrained("model_collaboration/logs/selector_sft_{}".format(task))
 
         del model
         del tokenizer
         torch.cuda.empty_cache()
 
-        selector_model_name = "logs/selector_sft_{}".format(task)
+        selector_model_name = "model_collaboration/logs/selector_sft_{}".format(task)
     else:
         print("Using pre-defined selector model: {}".format(selector_model_name))
     test_inputs = eval.prepare_inputs(task, task_type, "test")
@@ -322,7 +328,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log_entry)
 
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_switch_generation.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_switch_generation.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

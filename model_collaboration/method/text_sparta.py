@@ -456,7 +456,7 @@ RatingSystemStaticWeighted below. The older _update_reputation helper is no long
 
 def save_judged_pairs_sparta(judged_pairs: List[Dict[str, Any]], base_dir: str, iteration: int) -> None:
     """
-    Save judged_pairs under logs/text_sparta/iteration_k/judged_results/judged_pairs.json,
+    Save judged_pairs under model_collaboration/logs/text_sparta/iteration_k/judged_results/judged_pairs.json,
     mirroring the original save_judged_pairs behavior.
     """
     try:
@@ -482,7 +482,7 @@ def save_rating_history_sparta(
     iteration: int,
 ) -> None:
     """
-    Save rating_history to logs/text_sparta/ as a JSON snapshot, matching save_rating_history.
+    Save rating_history to model_collaboration/logs/text_sparta/ as a JSON snapshot, matching save_rating_history.
     """
     try:
         os.makedirs(base_dir, exist_ok=True)
@@ -1165,7 +1165,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             **Iteration Control:**
             - num_iterations (int, default=1): Number of Sparta iterations to run
             - current_iteration (int, default=0): Starting iteration number (for resuming)
-            - base_dir (str, default="logs/text_sparta"): Base directory for saving logs and models
+            - base_dir (str, default="model_collaboration/logs/text_sparta"): Base directory for saving logs and models
             
             **Generation Hyperparameters (used for both competition and judging):**
             - max_response_length (int, default=256): Maximum number of tokens to generate
@@ -1208,11 +1208,17 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         - LoRA adapters are automatically detected and merged before training new adapters
     """
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     # ------------------------- 0. Load all hyperparameters in one place -------------------------
     # Iteration control
     num_iterations = int(hyperparameters.get("num_iterations", 3))  # Number of iterations to run
     start_iteration = int(hyperparameters.get("current_iteration", 0))  # Starting iteration number (for resuming)
-    base_dir = hyperparameters.get("base_dir", os.path.join("logs", "text_sparta"))
+    base_dir = hyperparameters.get("base_dir", os.path.join("model_collaboration/logs", "text_sparta"))
     
     # General generation hyperparameters (used for both competition and judging)
     max_response_length = int(hyperparameters.get("max_response_length", 256))
@@ -1590,7 +1596,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # 1) Collect all adapter paths from every iteration for every model
     #    We rely on the naming convention used in the DPO step:
-    #    logs/text_sparta/iteration_{k}/dpo_<safe_model_name>
+    #    model_collaboration/logs/text_sparta/iteration_{k}/dpo_<safe_model_name>
     all_adapter_entries: List[Tuple[int, str, str]] = []  # (iteration, model_name, adapter_path)
     for it in range(start_iteration, start_iteration + num_iterations):
         iter_dir_eval = os.path.join(base_dir, f"iteration_{it}")
@@ -1708,7 +1714,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log_entry)
     
     # Save to a json file
-    log_filename = f"logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_text_sparta.json"
+    log_filename = f"model_collaboration/logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_text_sparta.json"
     os.makedirs(os.path.dirname(log_filename), exist_ok=True)
     with open(log_filename, "w", encoding="utf-8") as f:
         json.dump(experiment_logs, f, indent=4, ensure_ascii=False)

@@ -97,6 +97,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         You get these arguments from the config file that users pass in.
     """
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     # 1. extract the hyperparameters from the hyperparameters dict
     num_rounds = hyperparameters.get("num_rounds", None)
     assert type(num_rounds) == int and num_rounds > 0, "Please provide num_rounds (positive integer) in hyperparameters."
@@ -250,14 +256,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     # save to a json file
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_text_structure.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_text_structure.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 
     return 0
 
     # after that, you can use "method": "your_approach_name" in the config file to run your approach
-    # if you ever saves anything other than the final log, make sure to save it in `logs/<your_method_name>/`!
+    # if you ever saves anything other than the final log, make sure to save it in `model_collaboration/logs/<your_method_name>/`!
     # hooray, that's pretty much it!
     # for documentation of all the helper functions we provide, see `method/developer_readme.md`
 

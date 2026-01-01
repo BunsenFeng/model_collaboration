@@ -189,6 +189,12 @@ def run_method(task: str,
         0 upon successful completion.
     """
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     # Extract method‑specific hyperparameters with sensible defaults
     iterations = int(hyperparameters.get("iterations", 1))
     rounds = int(hyperparameters.get("rounds", 2))
@@ -602,7 +608,7 @@ def run_method(task: str,
         experiment_logs["logs"].append(log_entry)
     # Save final log file
     final_log_filename = os.path.join(
-        "logs",
+        "model_collaboration/logs",
         f"{task}_{len(model_names)}_{round(avg_test_score, 4)}_{method_name}.json"
     )
     os.makedirs(os.path.dirname(final_log_filename), exist_ok=True)

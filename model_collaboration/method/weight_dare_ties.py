@@ -9,6 +9,12 @@ from model_collaboration.utils.numeric_swarm import NumericSwarm
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     print("The model you are using are:")
     for model_name in model_names:
         print(model_name)
@@ -24,7 +30,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     population = hyperparameters.get("population", 5)
     max_iterations = hyperparameters.get("max_iterations", 5)
     mode = hyperparameters.get("mode", "average") # optimized or average
-    dare_ties_base_path = hyperparameters.get("dare_ties_base_path", "logs/dare_ties/")
+    dare_ties_base_path = hyperparameters.get("dare_ties_base_path", "model_collaboration/logs/dare_ties/")
 
     dare_ties_base_path = dare_ties_base_path[:-1] + "_" + task + "/"
     if os.path.exists(dare_ties_base_path):
@@ -172,7 +178,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log)
 
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_dare_ties.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_dare_ties.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

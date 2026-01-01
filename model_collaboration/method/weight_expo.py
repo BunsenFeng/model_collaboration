@@ -122,6 +122,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             - alpha_mode: str, "fixed" or "optimized" (default: "fixed")
             - alpha_candidates: list of float, for optimization (default: [0.1, 0.2, 0.3, 0.4, 0.5])
     """
+
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
     
     print("=" * 60)
     print("ExPO: Model Extrapolation for Collaboration")
@@ -143,7 +149,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     k = hyperparameters.get("k", 1)
     
     # Create output directory
-    expo_base_path = hyperparameters.get("expo_base_path", "logs/expo/")
+    expo_base_path = hyperparameters.get("expo_base_path", "model_collaboration/logs/expo/")
     expo_base_path = expo_base_path.rstrip("/") + "_" + task + "/"
     if os.path.exists(expo_base_path):
         expo_base_path = expo_base_path.rstrip("/") + "_" + str(random.randint(0, 10000000)) + "/"
@@ -361,7 +367,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         }
         experiment_logs["logs"].append(log)
     
-    log_filename = f"logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_expo.json"
+    log_filename = f"model_collaboration/logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_expo.json"
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
     
@@ -525,7 +531,7 @@ def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_
             "score": test_scores[i]
         })
     
-    log_filename = f"logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_expo.json"
+    log_filename = f"model_collaboration/logs/{task}_{len(model_names)}_{round(avg_test_score, 4)}_expo.json"
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
     

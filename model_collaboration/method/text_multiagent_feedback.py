@@ -22,6 +22,12 @@ def refine_based_on_feedback_prompt_generator(input, output, feedbacks):
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     # method-specific hyperparameters
     rounds = hyperparameters.get("round", 3)
     feedback_count = hyperparameters.get("feedback_count", 3)
@@ -160,7 +166,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log)
 
     # fill name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_multiagent_feedback.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_multiagent_feedback.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

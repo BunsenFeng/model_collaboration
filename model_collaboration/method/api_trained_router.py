@@ -35,6 +35,12 @@ def reward_model_scores(gpu_id, list_of_input, list_of_output):
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     # method-specific hyperparameters
     router_base_model = hyperparameters.get("router_base_model", "Qwen/Qwen2.5-7B-Instruct")
     model_descriptions = hyperparameters.get("model_descriptions", None)
@@ -96,7 +102,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         sft_data_points.append({"prompt": sft_input, "completion": sft_output})
 
     # save the SFT data
-    sft_filename = "logs/router_model_sft_data_{}_{}.jsonl".format(task, len(model_names))
+    sft_filename = "model_collaboration/logs/router_model_sft_data_{}_{}.jsonl".format(task, len(model_names))
     with open(sft_filename, "w") as f:
         for data_point in sft_data_points:
             f.write(json.dumps(data_point) + "\n")
@@ -113,8 +119,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         device_map="cuda:{}".format(gpu_ids[0]) if gpu_ids[0] >= 0 else "cpu",
     )
 
-    if os.path.exists("logs/router_sft_{}".format(task)):
-        shutil.rmtree("logs/router_sft_{}".format(task))
+    if os.path.exists("model_collaboration/logs/router_sft_{}".format(task)):
+        shutil.rmtree("model_collaboration/logs/router_sft_{}".format(task))
 
     peft_config = LoraConfig(
         r=64,  # the rank of the LoRA matrices
@@ -127,7 +133,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
 
     training_args = SFTConfig(
-        output_dir= "logs/router_sft_{}".format(task),
+        output_dir= "model_collaboration/logs/router_sft_{}".format(task),
         per_device_train_batch_size=1,
         per_device_eval_batch_size=1,
         gradient_accumulation_steps=32,
@@ -157,15 +163,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
 
     trainer.train()
-    trainer.save_model("logs/router_sft_{}".format(task))
+    trainer.save_model("model_collaboration/logs/router_sft_{}".format(task))
     # save tokenizer as well
-    tokenizer.save_pretrained("logs/router_sft_{}".format(task))
+    tokenizer.save_pretrained("model_collaboration/logs/router_sft_{}".format(task))
 
     del router_model
     del tokenizer
     torch.cuda.empty_cache()
 
-    router_model_name = "logs/router_sft_{}".format(task)
+    router_model_name = "model_collaboration/logs/router_sft_{}".format(task)
 
     # using the router for the test set
     test_input_list = eval.prepare_inputs(task, task_type, "test")
@@ -249,7 +255,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         experiment_logs["logs"].append(log)
 
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_trained_router.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_trained_router.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

@@ -200,6 +200,12 @@ def graph_generate(prompts, adjacency_matrix, model_names, gpu_id, max_response_
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     max_response_length = hyperparameters.get("max_response_length")
     temperature = hyperparameters.get("temperature")
     top_p = hyperparameters.get("top_p")
@@ -327,7 +333,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         })
 
     # file name with task, number of models, and avg_test_score with 4 decimal places
-    log_filename = "logs/{}_{}_{}_heterogeneous_swarms.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_heterogeneous_swarms.json".format(task, len(model_names), round(avg_test_score, 4))
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
 

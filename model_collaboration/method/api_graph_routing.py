@@ -26,6 +26,12 @@ def get_embedding(embedding_model_name, sentences):
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
+    import os
+    from pathlib import Path
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
     # method-specific hyperparameters
     embedding_model_name = hyperparameters.get("embedding_model_name", "sentence-transformers/all-MiniLM-L6-v2")
     hidden_features = hyperparameters.get("hidden_features", 8)
@@ -195,7 +201,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     # Train GNN router
     print("Training GNN router...")
-    model_path = f"logs/graph_router_{task}_{len(model_names)}.pt"
+    model_path = f"model_collaboration/logs/graph_router_{task}_{len(model_names)}.pt"
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     
     config = {
@@ -344,7 +350,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         }
         experiment_logs["logs"].append(log)
     
-    log_filename = "logs/{}_{}_{}_graph_router.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_graph_router.json".format(task, len(model_names), round(avg_test_score, 4))
     os.makedirs(os.path.dirname(log_filename), exist_ok=True)
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)
