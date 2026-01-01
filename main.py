@@ -2,14 +2,16 @@ import os
 import sys
 import json
 import torch
+import shutil
 import argparse
 import importlib
 import torch._dynamo as dynamo
+from pathlib import Path
 from model_collaboration.data import eval
 from multiprocessing import Pool
 from model_collaboration.method import distributed_generation
 
-if __name__ == "__main__":
+def run_main():
     
     torch.multiprocessing.set_start_method('spawn')
 
@@ -19,6 +21,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config_file", type=str, help="Path to the configuration file")
+    parser.add_argument("-l", "--log_dir", default="./logs/", type=str, help="Where should the log go?")
     args = parser.parse_args()
 
     with open(args.config_file, "r") as f:
@@ -53,9 +56,19 @@ if __name__ == "__main__":
         print(f"Method '{method_name}' executed successfully")
     else:
         raise AttributeError(f"The module '{module_path}' does not have a 'run_method' function.")
+
+    file_path = Path(__file__).parent.resolve()
+    files = os.listdir(os.path.join(file_path, "logs/"))
+    for file in files:
+        if file.endswith(".json"):
+            shutil.move(os.path.join(os.path.join(file_path, "logs/"), file), args.log_dir)
+    
     # except ImportError as e:
     #     print(f"Error importing module '{module_path}': {e}")
     #     sys.exit(1)
     # except Exception as e:
     #     print(f"An error occurred while executing the method: {e}")
     #     sys.exit(1)
+
+if __name__ == "__main__":
+    run_main()
