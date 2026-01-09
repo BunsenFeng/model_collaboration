@@ -804,7 +804,25 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         task_type: Type of task
         gpu_ids: GPU IDs to use
         model_names: List of two model names [generator, mentor]
-        hyperparameters: Dict of hyperparameters
+        hyperparameters: Dict of hyperparameters with the following keys:
+            # Inference control
+            - run_inference (bool): Whether to run inference after training (default: True)
+            - inference_split (str): Dataset split for inference (default: "test")
+
+            # Deferral parameters
+            - deferral_threshold (float): Threshold for deferring to mentor (default: 0.5)
+            - deferral_strategy (str): Strategy for deferral ("defer" or "compose") (default: "defer")
+            - threshold_warmup_schedule (str): Warmup schedule ("none", "linear", "cosine") (default: "none")
+            - threshold_warmup_steps (int): Number of warmup steps (default: 15)
+
+            # Generation parameters
+            - max_tokens (int): Maximum tokens to generate (default: 2048)
+
+            # Output control
+            - save_inference_results (bool): Whether to save inference results (default: True)
+
+    Returns:
+        str: Path to the Co-LLM directory containing checkpoints
     """
     import os
     from pathlib import Path
@@ -968,18 +986,37 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         logger.info("=" * 80)
     else:
         logger.info(f"Model checkpoints already exist at {collm_dir}/model_checkpoints_final. Skipping training.")
-    run_inference(
-        task, 
-        task_type, 
-        "test", 
-        f"{collm_dir}/model_checkpoints_final", 
-        f"{collm_dir}/model_checkpoints_init", 
-        gpu_ids, 
-        deferral_threshold=0.5, 
-        deferral_strategy="defer", 
-        max_tokens=2048, 
-        threshold_warmup_schedule="none", 
-        threshold_warmup_steps=15, 
-        save_results=True
-    )
-    return 0
+
+    # Run inference if requested
+    if hyperparameters.get("run_inference", True):
+        logger.info("\n" + "=" * 80)
+        logger.info("Starting inference with trained model...")
+        logger.info("=" * 80)
+
+        # Get inference hyperparameters
+        inference_split = hyperparameters.get("inference_split", "test")
+        deferral_threshold = hyperparameters.get("deferral_threshold", 0.5)
+        deferral_strategy = hyperparameters.get("deferral_strategy", "defer")
+        max_tokens = hyperparameters.get("max_tokens", 512)
+        threshold_warmup_schedule = hyperparameters.get("threshold_warmup_schedule", "none")
+        threshold_warmup_steps = hyperparameters.get("threshold_warmup_steps", 15)
+        save_inference_results = hyperparameters.get("save_inference_results", True)
+
+        avg_score = run_inference(
+            task=task,
+            task_type=task_type,
+            split=inference_split,
+            model_base=f"{collm_dir}/model_checkpoints_final",
+            model_ref=mentor,  # Use the original mentor model
+            gpu_ids=gpu_ids,
+            deferral_threshold=deferral_threshold,
+            deferral_strategy=deferral_strategy,
+            max_tokens=max_tokens,
+            threshold_warmup_schedule=threshold_warmup_schedule,
+            threshold_warmup_steps=threshold_warmup_steps,
+            save_results=save_inference_results,
+        )
+
+        logger.info(f"\nFinal {inference_split} score: {avg_score:.4f}")
+
+    return collm_dir
