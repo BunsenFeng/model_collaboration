@@ -393,6 +393,7 @@ class CoLLMScorer:
         use_flash_attn=False,
         device_map="auto",
         torch_dtype=torch.float16,
+        local_files_only=False,
     ):
         """
         Initialize the CoLLMScorer.
@@ -406,6 +407,7 @@ class CoLLMScorer:
             use_flash_attn: Whether to use flash attention
             device_map: Device map for model loading
             torch_dtype: Torch dtype for model
+            local_files_only: Whether to only use local cached files
         """
         self.model_name_or_path = model_name_or_path
         self.max_seq_length = max_seq_length
@@ -413,6 +415,7 @@ class CoLLMScorer:
         self.use_slow_tokenizer = use_slow_tokenizer
         self.device_map = device_map
         self.torch_dtype = torch_dtype
+        self.local_files_only = local_files_only
 
         # Initialize tokenizer
         self.tokenizer = self._initialize_tokenizer(tokenizer_name)
@@ -429,7 +432,7 @@ class CoLLMScorer:
             )
 
         tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_name, use_fast=not self.use_slow_tokenizer, local_files_only=True
+            tokenizer_name, use_fast=not self.use_slow_tokenizer, local_files_only=self.local_files_only
         )
 
         # Add special tokens for different tokenizer types
@@ -476,10 +479,11 @@ class CoLLMScorer:
             "low_cpu_mem_usage": True,
             "device_map": self.device_map,
             "torch_dtype": self.torch_dtype,
+            "local_files_only": self.local_files_only,
         }
 
         if use_flash_attn:
-            model_kwargs["use_flash_attention_2"] = True
+            model_kwargs["attn_implementation"] = "flash_attention_2"
 
         model = AutoModelForCausalLM.from_pretrained(
             self.model_name_or_path,

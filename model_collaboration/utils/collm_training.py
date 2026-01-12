@@ -10,7 +10,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Optional
+from typing import Dict, Optional
 
 import datasets
 import torch
@@ -32,7 +32,7 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint
 
-from collm.training import deferral_training_tools
+from model_collaboration.utils import collm_trainer as deferral_training_tools
 
 logger = logging.getLogger(__name__)
 DEFAULT_DEFERRAL_TOKEN = "<|defer|>"

@@ -27,54 +27,85 @@ from datasets import load_dataset
 from tqdm import tqdm
 from transformers import TrainingArguments
 from model_collaboration.data import eval
-from model_collaboration.utils.co-llm_scoring import CoLLMScorer
-from model_collaboration.utils.co-llm_training import CoLLMTrainer
+from model_collaboration.utils.collm_scoring import CoLLMScorer
+from model_collaboration.utils.collm_training import CoLLMTrainer
+
+SYSTEM_PROMPT = "You are a helpful assistant that solves problems step by step."
 
 logger = logging.getLogger(__name__)
 
 class TrainDataInitializer:
-    def __init__(self, dataset_name='nlile/hendrycks-MATH-benchmark', output_dir='data/train_data_initializer', output_name='math_data.jsonl'):
-        self.dataset = load_dataset(dataset_name)
+    """
+    Initialize training data from a dataset.
+
+    Args:
+        dataset_name (str): Name of the dataset to load (default: 'nlile/hendrycks-MATH-benchmark')
+        split (str): Dataset split to use (default: 'train')
+        training_num (int): Number of training examples to use (default: 10000)
+        output_dir (str): Output directory for processed data
+        output_name (str): Output filename (default: 'math_data.jsonl')
+    """
+    def __init__(
+        self,
+        dataset_name='nlile/hendrycks-MATH-benchmark',
+        split='train',
+        training_num=10000,
+        output_dir='data/train_data_initializer',
+        output_name='math_data.jsonl'
+    ):
+        self.dataset_name = dataset_name
+        self.split = split
+        self.training_num = training_num
+        self.output_dir = output_dir
+        self.output_name = output_name
         self.output_path = os.path.join(output_dir, output_name)
 
+        logger.info(f"Loading dataset: {dataset_name}, split: {split}")
+        self.dataset = load_dataset(dataset_name, split=split)
+        logger.info(f"Dataset loaded with {len(self.dataset)} examples")
+
     def process(self):
+        """Process the dataset and save to JSONL format."""
+        os.makedirs(self.output_dir, exist_ok=True)
+
+        # Determine number of examples to process
+        num_examples = min(self.training_num, len(self.dataset))
+        logger.info(f"Processing {num_examples} training examples...")
+
         with open(self.output_path, 'w') as f:
-            few_shot_examples = list(self.dataset["train"].select(range(4)))
-            for idx, example in enumerate(self.dataset["train"].select(range(4, len(self.dataset["train"])))):
+            for idx, example in enumerate(tqdm(self.dataset.select(range(num_examples)), desc="Processing training data")):
                 problem = example["problem"]
                 solution = example["solution"]
-                level = example["level"]
-                type_name = example["subject"]
-                few_shot_text = ""
-                for i, fs_example in enumerate(few_shot_examples):
-                    few_shot_text += f"Problem: {fs_example['problem']}\n"
-                    few_shot_text += f"Solution: {fs_example['solution']}\n\n"
+                level = example.get("level", "unknown")
+                type_name = example.get("subject", "unknown")
 
-                full_prompt = few_shot_text + f"Problem: {problem.strip()}\nSolution: "
-
-                messages = []
-                messages.append({
-                    "role": "system",
-                    "content": "Think step by step."
-                })
-                messages.append({
-                    "role": "user",
-                    "content": full_prompt
-                })
-                messages.append({
-                    "role": "assistant",
-                    "content": solution.strip()
-                })
+                # Create messages without few-shot examples
+                messages = [
+                    {
+                        "role": "system",
+                        "content": SYSTEM_PROMPT
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Problem: {problem.strip()}"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": solution.strip()
+                    }
+                ]
 
                 f.write(
                     json.dumps({
-                        "dataset": "competition_math",
-                        "id": f"math_train_{idx}",
+                        "dataset": self.dataset_name.split('/')[-1],
+                        "id": f"{self.split}_{idx}",
                         "level": level,
                         "type": type_name,
                         "messages": messages,
                     }, ensure_ascii=False) + "\n"
                 )
+
+        logger.info(f"Training data saved to: {self.output_path}")
 
 
 class DataInitializer:
@@ -84,7 +115,7 @@ class DataInitializer:
         self.init_method = init_method
         self.output_dir = output_dir
         self.log_level = log_level
-        logger.debug("Base  df  (Small Model)  path : {}".format(args.training_model_ds))
+        logger.debug("Base  df  (Small Model)  path : {}".format(self.training_model_ds))
         logger.debug("Deferral df (Large Model) path: {}".format(self.deferral_model_ds))
         logger.debug("Output path:                    {}".format(self.output_dir))
         logger.debug("Init method: {}".format(self.init_method))
@@ -103,26 +134,33 @@ class DataInitializer:
                 self.ds2[example_id]["reference_log_probs"],
                 self.ds2[example_id]["reference_max_prob"],
             )
-        if self.init_method == "a":
-            # When the deferral model is correct, while the training model is not
-            more_confident = is_reference_max_deferral > is_reference_max_training
-            more_confident = more_confident.long()
-            ## Some additional note for why this is correct
-            # more_confident = torch.logical_and(
-            #     torch.logical_or(is_reference_max_deferral, is_reference_max_training), ~is_reference_max_training
-            # )
-            # more_confident = more_confident.long()
-            # a = torch.logical_and(
-            #     torch.logical_or(is_reference_max_deferral, is_reference_max_training), ~is_reference_max_training
-            # )
-            # b = is_reference_max_deferral > is_reference_max_training
-            # assert torch.allclose(a, b)
 
-        elif self.init_method == "b":
-            # When the training model is not correct.
-            more_confident = (~is_reference_max_training).long()
-        else:
-            raise NotImplementedError("Unknown init method {}".format(self.init_method))
+            if self.init_method == "a":
+                # When the deferral model is correct, while the training model is not
+                more_confident = is_reference_max_deferral > is_reference_max_training
+                more_confident = more_confident.long()
+                ## Some additional note for why this is correct
+                # more_confident = torch.logical_and(
+                #     torch.logical_or(is_reference_max_deferral, is_reference_max_training), ~is_reference_max_training
+                # )
+                # more_confident = more_confident.long()
+                # a = torch.logical_and(
+                #     torch.logical_or(is_reference_max_deferral, is_reference_max_training), ~is_reference_max_training
+                # )
+                # b = is_reference_max_deferral > is_reference_max_training
+                # assert torch.allclose(a, b)
+
+            elif self.init_method == "b":
+                # When the training model is not correct.
+                more_confident = (~is_reference_max_training).long()
+            else:
+                raise NotImplementedError("Unknown init method {}".format(self.init_method))
+
+            # We want to mask out the log probs in user conversations, similar to what
+            # the tulu paper does
+            input_mask = self.ds1[example_id]["labels"][1:] == -100
+            more_confident[input_mask] = -100
+            all_more_confidence.append(more_confident)
 
         ds3 = self.ds1.remove_columns(["reference_log_probs"]).add_column(
             "reference_log_probs", [ele.long().tolist() for ele in all_more_confidence]
@@ -172,6 +210,7 @@ class ModelScorer:
         max_train_samples=None,
         overwrite_cache=False,
         debug=False,
+        local_files_only=False,
     ):
         """
         Initialize the ModelScorer.
@@ -192,6 +231,7 @@ class ModelScorer:
             max_train_samples: Maximum number of training samples (default: None)
             overwrite_cache: Whether to overwrite cache (default: False)
             debug: Whether to run in debug mode (default: False)
+            local_files_only: Whether to only use local cached files (default: False)
         """
         self.model_name_or_path = model_name_or_path
         self.tokenizer_name = tokenizer_name
@@ -208,6 +248,7 @@ class ModelScorer:
         self.max_train_samples = max_train_samples
         self.overwrite_cache = overwrite_cache
         self.debug = debug
+        self.local_files_only = local_files_only
 
         # Initialize the scorer
         self.scorer = None
@@ -233,6 +274,7 @@ class ModelScorer:
             preprocessing_format=self.preprocessing_format,
             use_slow_tokenizer=self.use_slow_tokenizer,
             use_flash_attn=self.use_flash_attn,
+            local_files_only=self.local_files_only,
         )
 
         # Process the dataset
@@ -805,6 +847,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         gpu_ids: GPU IDs to use
         model_names: List of two model names [generator, mentor]
         hyperparameters: Dict of hyperparameters with the following keys:
+            # Dataset parameters
+            - training_dataset_name (str): Name of the training dataset (default: "nlile/hendrycks-MATH-benchmark")
+            - training_split (str): Dataset split for training (default: "train")
+            - training_num (int): Number of training examples to use (default: 10000)
+
             # Inference control
             - run_inference (bool): Whether to run inference after training (default: True)
             - inference_split (str): Dataset split for inference (default: "test")
@@ -833,6 +880,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     if len(model_names) != 2:
         raise ValueError("Co-LLM requires exactly 2 models.")
 
+    # Extract hyperparameters with defaults
+    training_dataset_name = hyperparameters.get('training_dataset_name', 'nlile/hendrycks-MATH-benchmark')
+    training_split = hyperparameters.get('training_split', 'train')
+    training_num = hyperparameters.get('training_num', 10000)
+
     generator = model_names[0]
     mentor = model_names[1]
     collm_name = f"{generator}-{mentor}"
@@ -843,8 +895,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
         # Step 1: Initialize training data
         logger.info("Step 1: Initializing training data...")
+        logger.info(f"  Dataset: {training_dataset_name}")
+        logger.info(f"  Split: {training_split}")
+        logger.info(f"  Number of examples: {training_num}")
+
         train_data = TrainDataInitializer(
-            dataset_name='nlile/hendrycks-MATH-benchmark',
+            dataset_name=training_dataset_name,
+            split=training_split,
+            training_num=training_num,
             output_dir=collm_dir,
             output_name='math_data.jsonl'
         )
@@ -923,7 +981,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             save_total_limit=1,
             bf16=True,
             # Additional arguments
-            evaluation_strategy="no",
+            eval_strategy="no",
             save_strategy="epoch",
             report_to="wandb",
             logging_first_step=True,
@@ -970,7 +1028,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             # DeepSpeed configuration
             deepspeed="ds_config_zero2_no_offload.json",
             # Additional arguments
-            evaluation_strategy="no",
+            eval_strategy="no",
             report_to="wandb",
             logging_first_step=True,
             tf32=True,
