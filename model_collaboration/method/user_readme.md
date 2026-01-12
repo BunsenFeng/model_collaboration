@@ -126,7 +126,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
 - note to tester: try different LLMs you'd like.
 
 #### API-level: MentorCollab
-- file: `text_mentor_collab.py`
+- file: `api_mentor_collab.py`
 - description: collaborative generation between a generator model (typically a small model) and a mentor model (typically a large reasoning model). During generation, both models operate in parallel. At each decision point, if the next predicted token differs between the two models, both generate a segment of text (patch). The method then decides which segment to follow either through: (1) "free" mode where the generator model itself judges which option is better, or (2) "train" mode where a trained MLP classifier predicts the better choice based on the generator's hidden states. This allows the base model to selectively incorporate guidance from the instruction-tuned mentor throughout generation.
 - method-specific hyperparameters:
     - `decision_proportion`, default 25: percentage (0-100) of generation steps where the mentor is consulted. At other steps, the generator proceeds independently.
