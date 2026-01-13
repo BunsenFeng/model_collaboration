@@ -886,7 +886,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     training_dataset_name = hyperparameters.get('training_dataset_name', 'nlile/hendrycks-MATH-benchmark')
     training_split = hyperparameters.get('training_split', 'train')
     training_num = hyperparameters.get('training_num', 10000)
-    training_devices = hyperparameters.get('training_devices', [4, 5, 6, 7])
+    training_devices = hyperparameters.get('training_devices', [0, 1, 2, 3])
 
     # Convert training_devices to string
     devices_str = ','.join(map(str, training_devices))

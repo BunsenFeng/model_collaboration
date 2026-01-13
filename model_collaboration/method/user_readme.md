@@ -347,10 +347,14 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - [Learning to Decode Collaboratively with Multiple Language Models](https://arxiv.org/abs/2403.03870) (ACL 2024)
 - method-specific hyperparameters:
     - **Dataset parameters** (for training data preparation):
-        - `training_dataset_name`, default `"nlile/hendrycks-MATH-benchmark"`: HuggingFace dataset name to use for training
+        - **`training_dataset_name`** (str, default: `"nlile/hendrycks-MATH-benchmark"`):  
+            HuggingFace dataset name used for training.  
+            Each dataset example is expected to contain the following fields:
+            - `example["problem"]`: the input problem statement
+            - `example["solution"]`: the corresponding ground-truth solution
         - `training_split`, default `"train"`: dataset split to use for training data
         - `training_num`, default `10000`: number of training examples to use from the dataset
-        - `training_devices`, default `[4, 5, 6, 7]`: list of GPU device IDs to use for training. This sets `CUDA_VISIBLE_DEVICES` during training. The number of devices determines the distributed training configuration
+        - `training_devices`, default `[0, 1, 2, 3]`: list of GPU device IDs to use for training. This sets `CUDA_VISIBLE_DEVICES` during training. The number of devices determines the distributed training configuration
     - **Inference control**:
         - `run_inference`, default `True`: whether to run inference after training completes
         - `inference_split`, default `"test"`: dataset split to use for inference (`"test"` or `"dev"`)
