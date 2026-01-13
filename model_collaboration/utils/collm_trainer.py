@@ -408,6 +408,8 @@ def smart_tokenizer_and_embedding_resize_for_def_token(
     input_embeddings[-num_new_tokens:] = input_embeddings_avg
 
     if gperp is not None:
+        # Ensure gperp is on the same device as output_embeddings
+        gperp = gperp.to(output_embeddings.device)
         output_embeddings[-num_new_tokens:, :] = gperp
     else:
         # output_embeddings_avg = output_embeddings[:-num_new_tokens].logsumexp(

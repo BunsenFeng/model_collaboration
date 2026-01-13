@@ -340,6 +340,7 @@ class ModelTrainer:
         deferral_initialization_weight_balance=None,
         deferral_trainer_version="v1",
         deferral_initialization_search_version="v1",
+        deferral_initialization_path=None,
         # Training arguments
         num_train_epochs=3,
         per_device_train_batch_size=8,
@@ -455,6 +456,7 @@ class ModelTrainer:
             deferral_initialization_weight_balance=deferral_initialization_weight_balance,
             deferral_trainer_version=deferral_trainer_version,
             deferral_initialization_search_version=deferral_initialization_search_version,
+            deferral_initialization_path=deferral_initialization_path,
             streaming=streaming,
             overwrite_cache=overwrite_cache,
             training_args=self.training_args,
@@ -884,13 +886,26 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     training_dataset_name = hyperparameters.get('training_dataset_name', 'nlile/hendrycks-MATH-benchmark')
     training_split = hyperparameters.get('training_split', 'train')
     training_num = hyperparameters.get('training_num', 10000)
+    training_devices = hyperparameters.get('training_devices', [4, 5, 6, 7])
+
+    # Convert training_devices to string
+    devices_str = ','.join(map(str, training_devices))
+    num_gpus = len(training_devices)
 
     generator = model_names[0]
     mentor = model_names[1]
     collm_name = f"{generator}-{mentor}"
     collm_dir = f"model_collaboration/logs/co-llm/{collm_name}"
 
-    if not os.path.exists(f"{collm_dir}/model_checkpoints"):
+    logger.info("=" * 80)
+    logger.info(f"Training devices: GPU {devices_str} ({num_gpus} GPUs)")
+    logger.info("=" * 80)
+
+    # Set CUDA_VISIBLE_DEVICES for training
+    os.environ['CUDA_VISIBLE_DEVICES'] = devices_str
+    logger.info(f"Set CUDA_VISIBLE_DEVICES={devices_str}")
+
+    if not os.path.exists(f"{collm_dir}/model_checkpoints_final"):
         os.makedirs(collm_dir, exist_ok=True)
 
         # Step 1: Initialize training data
@@ -1009,7 +1024,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             max_seq_length=2048,
             preprocessing_num_workers=64,
             # Deferral configuration - load from phase 1
-            no_deferral_initialization_search=True,  # Skip search in phase 2
+            no_deferral_initialization_search=False,  # Do not skip - we need to load gperp
+            deferral_initialization_path=f"{collm_dir}/model_checkpoints_init/gperp_init.bin",  # Load from phase 1
             deferral_trainer_version="v1",
             # Training configuration
             num_train_epochs=2,
@@ -1025,15 +1041,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             save_total_limit=1,
             save_strategy="epoch",
             bf16=True,
-            # DeepSpeed configuration
-            deepspeed="ds_config_zero2_no_offload.json",
             # Additional arguments
             eval_strategy="no",
             report_to="wandb",
             logging_first_step=True,
             tf32=True,
             overwrite_output_dir=True,
-            ddp_find_unused_parameters=False,
         )
         phase2_trainer.run()
 

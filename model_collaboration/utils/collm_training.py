@@ -120,6 +120,11 @@ class ModelArguments:
         metadata={"help": "The version of the initialization search to use."},
     )
 
+    deferral_initialization_path: Optional[str] = field(
+        default=None,
+        metadata={"help": "Path to a pre-computed deferral token initialization file (gperp_init.bin). If provided, will load from this path instead of searching or using the output_dir."},
+    )
+
 
 @dataclass
 class DataTrainingArguments:
@@ -202,6 +207,7 @@ class CoLLMTrainer:
         deferral_initialization_weight_balance=None,
         deferral_trainer_version="v1",
         deferral_initialization_search_version="v1",
+        deferral_initialization_path=None,
         streaming=False,
         overwrite_cache=False,
         training_args=None,
@@ -247,6 +253,7 @@ class CoLLMTrainer:
             use_flash_attn=use_flash_attn,
             deferral_trainer_version=deferral_trainer_version,
             deferral_initialization_search_version=deferral_initialization_search_version,
+            deferral_initialization_path=deferral_initialization_path,
         )
 
         # Store data arguments
@@ -343,12 +350,25 @@ class CoLLMTrainer:
                 if self.model_args.torch_dtype in ["auto", None]
                 else getattr(torch, self.model_args.torch_dtype)
             )
+
+            model_kwargs = {
+                "config": config,
+                "torch_dtype": torch_dtype,
+                "attn_implementation": "flash_attention_2" if self.model_args.use_flash_attn else "eager",
+            }
+
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_args.model_name_or_path,
-                config=config,
-                torch_dtype=torch_dtype,
-                attn_implementation="flash_attention_2" if self.model_args.use_flash_attn else "eager",
+                **model_kwargs
             )
+            
+            # Always move model to CUDA if available
+            # DeepSpeed will handle device placement during its initialization,
+            # but we need the model on CUDA for cases where DeepSpeed is configured
+            # but not properly initialized (e.g., not launched with torchrun)
+            if torch.cuda.is_available():
+                self.model = self.model.cuda()
+                logger.info("Model moved to CUDA")
 
         logger.info(f"Model loaded: {self.model.lm_head.weight.data.shape}")
 
@@ -387,11 +407,20 @@ class CoLLMTrainer:
             gperp = None
         else:
             with self.training_args.main_process_first(desc="Search for deferral token initialization"):
-                init_path = f"{self.training_args.output_dir}/gperp_init.bin"
+                # Check if a specific initialization path is provided
+                if self.model_args.deferral_initialization_path:
+                    init_path = self.model_args.deferral_initialization_path
+                else:
+                    init_path = f"{self.training_args.output_dir}/gperp_init.bin"
+
                 if os.path.isfile(init_path):
                     logger.info(f"Loading deferral token initialization from {init_path}")
                     gperp = torch.load(init_path)
                 else:
+                    if self.model_args.deferral_initialization_path:
+                        raise FileNotFoundError(
+                            f"Deferral initialization file not found at specified path: {init_path}"
+                        )
                     logger.info("Searching for deferral token initialization")
                     search_deferral_initialization = deferral_training_tools.ALL_INITIALIZATION_SEARCH[
                         self.model_args.deferral_initialization_search_version
@@ -416,6 +445,12 @@ class CoLLMTrainer:
         deferral_training_tools.smart_tokenizer_and_embedding_resize_for_def_token(
             self.tokenizer, self.model, gperp
         )
+
+        # Ensure model is on correct device after embedding resize operations
+        # resize_token_embeddings can create new embedding layers on CPU
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
+            logger.info("Model moved to CUDA after embedding resize")
 
         # Initialize trainer
         DeferralTrainer = deferral_training_tools.ALL_DEFERRAL_TRAINERS[self.model_args.deferral_trainer_version]

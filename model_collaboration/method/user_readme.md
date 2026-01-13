@@ -346,7 +346,12 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
 - related paper(s):
     - [Learning to Decode Collaboratively with Multiple Language Models](https://arxiv.org/abs/2403.03870) (ACL 2024)
 - method-specific hyperparameters:
-    - **Inference control** (only used if training is run):
+    - **Dataset parameters** (for training data preparation):
+        - `training_dataset_name`, default `"nlile/hendrycks-MATH-benchmark"`: HuggingFace dataset name to use for training
+        - `training_split`, default `"train"`: dataset split to use for training data
+        - `training_num`, default `10000`: number of training examples to use from the dataset
+        - `training_devices`, default `[4, 5, 6, 7]`: list of GPU device IDs to use for training. This sets `CUDA_VISIBLE_DEVICES` during training. The number of devices determines the distributed training configuration
+    - **Inference control**:
         - `run_inference`, default `True`: whether to run inference after training completes
         - `inference_split`, default `"test"`: dataset split to use for inference (`"test"` or `"dev"`)
     - **Deferral parameters**:
@@ -360,35 +365,36 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
             - `"cosine"`: use cosine schedule from 1.0 to target threshold
         - `threshold_warmup_steps`, default `15`: number of generation steps over which to apply threshold warmup (only used if warmup_schedule is not `"none"`)
     - **Generation parameters**:
-        - `max_tokens`, default `512`: maximum number of tokens to generate during inference
+        - `max_tokens`, default `2048`: maximum number of tokens to generate during inference
     - **Output control**:
         - `save_inference_results`, default `True`: whether to save detailed inference results to a JSON file
 - workflow:
-    1. **Initialize training data**: load MATH dataset and create training samples
+    1. **Initialize training data**: load dataset (default: MATH) and create training samples
     2. **Score with generator**: compute log probabilities using the small (generator) model
     3. **Score with mentor**: compute log probabilities using the large (mentor) model
     4. **Create deferral labels**: identify tokens where models disagree to mark deferral points
     5. **Phase 1 training**: search for optimal deferral token initialization (8000 steps)
-    6. **Phase 2 training**: main training with DeepSpeed ZeRO-2 for memory optimization (2 epochs)
+    6. **Phase 2 training**: main training with marginal likelihood loss (2 epochs)
     7. **Inference** (if `run_inference=True`): collaborative generation where trained model defers to mentor
 - requirements:
     - **Must use exactly 2 models**: `[generator_model, mentor_model]` where generator is smaller than mentor
-    - **Training**: requires 4 GPUs for distributed training in Phase 2
-    - **Inference**: requires 2 GPUs (one for generator, one for mentor)
+    - **Training**: uses GPUs specified in `training_devices` (default: 4 GPUs)
+    - **Inference**: uses GPUs specified in `gpu_ids` (requires 2 GPUs: one for generator, one for mentor)
     - **Must train before inference**: the method trains a model with deferral mechanism first, then uses it for inference
-    - **Currently MATH-only**: training pipeline is specifically designed for MATH domain and uses hardcoded MATH dataset
+    - **Currently MATH-only**: training pipeline is specifically designed for MATH domain and uses hardcoded MATH dataset by default
 - outputs:
     - Training checkpoints saved to: `model_collaboration/logs/co-llm/{generator}-{mentor}/`
-        - `model_checkpoints_init/`: Phase 1 checkpoints with deferral token initialization
+        - `model_checkpoints_init/`: Phase 1 checkpoints with deferral token initialization (`gperp_init.bin`)
         - `model_checkpoints_final/`: Phase 2 final trained model (use this for inference)
         - `generator_scored_data/`, `mentor_scored_data/`: scored datasets
         - `train_data_initializer/`: training data with deferral labels
+        - `math_data.jsonl`: processed training data
     - Inference results saved to: `model_collaboration/logs/{task}_{base_model}_{ref_model}_collm_thresh{threshold}.json`
 - warning:
-    - Training is compute-intensive and requires 4 GPUs with DeepSpeed ZeRO-2
+    - Training can be compute-intensive depending on model sizes and `training_num`
     - Training currently only works for MATH domain tasks
     - Must complete training before running inference
-    - Ensure `ds_config_zero2_no_offload.json` exists in project root for Phase 2 training
+    - If training was interrupted, delete the `model_checkpoints_final/` directory to retrain
 - note to tester:
     - **Basic test** (full pipeline with default settings):
       ```json
@@ -396,9 +402,20 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
         "method": "logit_co-llm",
         "task": "math",
         "task_type": "exact_match",
-        "gpu_ids": [0, 1, 2, 3],
+        "gpu_ids": [0, 1],
         "model_names": ["Qwen/Qwen3-1.7B", "Qwen/Qwen3-14B"],
-        "hyperparameters": {}
+        "hyperparameters": {
+          "training_devices": [0, 1, 2, 3]
+        }
+      }
+      ```
+    - **Quick test** (fewer training examples):
+      ```json
+      {
+        "hyperparameters": {
+          "training_num": 100,
+          "training_devices": [0, 1]
+        }
       }
       ```
     - **Train only** (skip inference to save time):
@@ -411,10 +428,11 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
       ```
     - **Different deferral thresholds** (after training, to test different threshold values):
       ```python
-      from model_collaboration.method.logit_co-llm import run_inference
+      from model_collaboration.method import logit_co_llm
+      # Note: use underscore in import, not hyphen
 
       for threshold in [0.3, 0.5, 0.7]:
-          score = run_inference(
+          score = logit_co_llm.run_inference(
               task="math",
               task_type="exact_match",
               split="test",
@@ -433,6 +451,16 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
           "deferral_threshold": 0.5,
           "threshold_warmup_schedule": "linear",
           "threshold_warmup_steps": 15
+        }
+      }
+      ```
+    - **Custom dataset** (use different training data):
+      ```json
+      {
+        "hyperparameters": {
+          "training_dataset_name": "nlile/hendrycks-MATH-benchmark",
+          "training_split": "train",
+          "training_num": 5000
         }
       }
       ```
