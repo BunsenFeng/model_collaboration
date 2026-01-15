@@ -1,18 +1,28 @@
 {
-    "method": "text_multiagent_refine",
+    "method": "logit_co-llm",
     "task": "agieval_tiny",
     "task_type": "multiple_choice",
-    "gpu_ids": [0,1,2],
+    "gpu_ids": [4,5],
     "model_names": [
-        "allenai/Llama-3.1-Tulu-3-8B-SFT",
-        "allenai/Llama-3.1-Tulu-3-8B-DPO",
-        "allenai/Llama-3.1-Tulu-3-8B"
+        "Qwen/Qwen3-1.7B",
+        "Qwen/Qwen3-14B"
     ],
     "hyperparameters": {
+        "training_dataset_name": "nlile/hendrycks-MATH-benchmark",
+        "training_split": "train",
+        "training_num": 1,
+        "training_devices": [4, 5, 6, 7],
         "max_response_length": 256,
         "temperature": 0.7,
         "top_p": 0.9,
         "batch_size": 16,
-        "round": 1
+        "round": 1,
+        "deferral_threshold": 0.5,
+        "deferral_strategy": "defer",
+        "max_tokens": 2048,
+        "threshold_warmup_schedule": "none",
+        "threshold_warmup_steps": 15,
+        "run_inference": true,
+        "inference_split": "test"
     }
 }

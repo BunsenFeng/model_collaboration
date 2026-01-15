@@ -931,7 +931,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             train_file=f"{collm_dir}/math_data.jsonl",
             output_dir=f"{collm_dir}/generator_scored_data",
             max_seq_length=2048,
-            use_flash_attn=True,
+            use_flash_attn=False,
             use_completion_format=True,
             use_slow_tokenizer=True,
             preprocessing_num_workers=16
@@ -946,7 +946,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             train_file=f"{collm_dir}/math_data.jsonl",
             output_dir=f"{collm_dir}/mentor_scored_data",
             max_seq_length=2048,
-            use_flash_attn=True,
+            use_flash_attn=False,
             use_completion_format=True,
             use_slow_tokenizer=True,
             preprocessing_num_workers=16
@@ -975,7 +975,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dataset_name=f"{collm_dir}/train_data_initializer",
             # Model configuration
             use_fast_tokenizer=False,
-            use_flash_attn=True,
+            use_flash_attn=False,
             torch_dtype="bfloat16",
             max_seq_length=2048,
             # Deferral configuration
@@ -1019,7 +1019,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dataset_name=f"{collm_dir}/mentor_scored_data",  # Use mentor scored data for phase 2
             # Model configuration
             use_fast_tokenizer=False,
-            use_flash_attn=True,
+            use_flash_attn=False,
             torch_dtype="bfloat16",
             max_seq_length=2048,
             preprocessing_num_workers=64,
