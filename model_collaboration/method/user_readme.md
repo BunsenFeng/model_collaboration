@@ -354,7 +354,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
             - `example["solution"]`: the corresponding ground-truth solution
         - `training_split`, default `"train"`: dataset split to use for training data
         - `training_num`, default `10000`: number of training examples to use from the dataset
-        - `training_devices`, default `[0, 1, 2, 3]`: list of GPU device IDs to use for training. This sets `CUDA_VISIBLE_DEVICES` during training. The number of devices determines the distributed training configuration
+        - `max_seq_length`, default `512`: sequence length that to be trained during deferral training
     - **Inference control**:
         - `run_inference`, default `True`: whether to run inference after training completes
         - `inference_split`, default `"test"`: dataset split to use for inference (`"test"` or `"dev"`)
@@ -369,7 +369,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
             - `"cosine"`: use cosine schedule from 1.0 to target threshold
         - `threshold_warmup_steps`, default `15`: number of generation steps over which to apply threshold warmup (only used if warmup_schedule is not `"none"`)
     - **Generation parameters**:
-        - `max_tokens`, default `2048`: maximum number of tokens to generate during inference
+        - `max_response_length`, default `2048`: maximum number of tokens to generate during inference
     - **Output control**:
         - `save_inference_results`, default `True`: whether to save detailed inference results to a JSON file
 - workflow:

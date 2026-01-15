@@ -755,7 +755,7 @@ def run_inference(
 
     # Set GPU devices
     if gpu_ids is None:
-        gpu_ids = [0, 1]
+        gpu_ids = [0, 1, 2, 3]
     device_base = f"cuda:{gpu_ids[0]}"
     device_ref = f"cuda:{gpu_ids[1]}"
 
@@ -865,7 +865,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             - threshold_warmup_steps (int): Number of warmup steps (default: 15)
 
             # Generation parameters
-            - max_tokens (int): Maximum tokens to generate (default: 2048)
+            - max_response_length (int): Maximum response length to generate (default: 2048)
 
             # Output control
             - save_inference_results (bool): Whether to save inference results (default: True)
@@ -886,7 +886,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     training_dataset_name = hyperparameters.get('training_dataset_name', 'nlile/hendrycks-MATH-benchmark')
     training_split = hyperparameters.get('training_split', 'train')
     training_num = hyperparameters.get('training_num', 10000)
-    training_devices = hyperparameters.get('training_devices', [0, 1, 2, 3])
+    max_sequence_length = hyperparameters.get('max_sequence_length', 2048)
+    training_devices = gpu_ids
 
     # Convert training_devices to string
     devices_str = ','.join(map(str, training_devices))
@@ -930,7 +931,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             tokenizer_name=generator,
             train_file=f"{collm_dir}/math_data.jsonl",
             output_dir=f"{collm_dir}/generator_scored_data",
-            max_seq_length=2048,
+            max_seq_length=max_sequence_length,
             use_flash_attn=False,
             use_completion_format=True,
             use_slow_tokenizer=True,
@@ -945,7 +946,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             tokenizer_name=mentor,
             train_file=f"{collm_dir}/math_data.jsonl",
             output_dir=f"{collm_dir}/mentor_scored_data",
-            max_seq_length=2048,
+            max_seq_length=max_sequence_length,
             use_flash_attn=False,
             use_completion_format=True,
             use_slow_tokenizer=True,
@@ -977,7 +978,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             use_fast_tokenizer=False,
             use_flash_attn=False,
             torch_dtype="bfloat16",
-            max_seq_length=2048,
+            max_seq_length=max_sequence_length,
             # Deferral configuration
             deferral_initialization_weight_balance=8,
             deferral_initialization_search_version="v1",
@@ -1021,7 +1022,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             use_fast_tokenizer=False,
             use_flash_attn=False,
             torch_dtype="bfloat16",
-            max_seq_length=2048,
+            max_seq_length=max_sequence_length,
             preprocessing_num_workers=64,
             # Deferral configuration - load from phase 1
             no_deferral_initialization_search=False,  # Do not skip - we need to load gperp
@@ -1068,7 +1069,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         inference_split = hyperparameters.get("inference_split", "test")
         deferral_threshold = hyperparameters.get("deferral_threshold", 0.5)
         deferral_strategy = hyperparameters.get("deferral_strategy", "defer")
-        max_tokens = hyperparameters.get("max_tokens", 512)
+        max_tokens = hyperparameters.get("max_response_length", 512)
         threshold_warmup_schedule = hyperparameters.get("threshold_warmup_schedule", "none")
         threshold_warmup_steps = hyperparameters.get("threshold_warmup_steps", 15)
         save_inference_results = hyperparameters.get("save_inference_results", True)
