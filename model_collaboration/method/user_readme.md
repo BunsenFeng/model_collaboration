@@ -342,7 +342,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
 
 #### Logit-level: Co-LLM (Collaborative Decoding with Deferral)
 - file: `logit_co-llm.py`
-- description: trains a small generator model to defer to a large mentor model when uncertain. The method uses a special deferral token (`<|defer|>`) whose probability indicates when the generator should seek help from the mentor. The training pipeline includes: (1) scoring data with both generator and mentor models, (2) creating deferral labels based on prediction differences, (3) two-phase training (deferral token initialization search + main training with marginal likelihood loss), and (4) collaborative inference where the trained model dynamically defers to the mentor during generation. **Currently only supports training on MATH domain tasks.**
+- description: trains a small generator model to defer to a large mentor model when uncertain. The method uses a special deferral token (`<|defer|>`) whose probability indicates when the generator should seek help from the mentor. The training pipeline includes: (1) scoring data with both generator and mentor models, (2) creating deferral labels based on prediction differences, (3) two-phase training (deferral token initialization search + main training with marginal likelihood loss), and (4) collaborative inference where the trained model dynamically defers to the mentor during generation.
 - related paper(s):
     - [Learning to Decode Collaboratively with Multiple Language Models](https://arxiv.org/abs/2403.03870) (ACL 2024)
 - method-specific hyperparameters:
@@ -355,9 +355,6 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
         - `training_split`, default `"train"`: dataset split to use for training data
         - `training_num`, default `10000`: number of training examples to use from the dataset
         - `max_seq_length`, default `512`: sequence length that to be trained during deferral training
-    - **Inference control**:
-        - `run_inference`, default `True`: whether to run inference after training completes
-        - `inference_split`, default `"test"`: dataset split to use for inference (`"test"` or `"dev"`)
     - **Deferral parameters**:
         - `deferral_threshold`, default `0.5`: probability threshold for deferring to the mentor model. When the deferral token probability exceeds this threshold, the mentor model is consulted. Lower values (e.g., 0.3) increase mentor usage and performance but cost more; higher values (e.g., 0.7) rely more on the generator
         - `deferral_strategy`, default `"defer"`: how to use the mentor model when deferring. Options:
@@ -370,8 +367,6 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
         - `threshold_warmup_steps`, default `15`: number of generation steps over which to apply threshold warmup (only used if warmup_schedule is not `"none"`)
     - **Generation parameters**:
         - `max_response_length`, default `2048`: maximum number of tokens to generate during inference
-    - **Output control**:
-        - `save_inference_results`, default `True`: whether to save detailed inference results to a JSON file
 - workflow:
     1. **Initialize training data**: load dataset (default: MATH) and create training samples
     2. **Score with generator**: compute log probabilities using the small (generator) model
@@ -379,96 +374,24 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     4. **Create deferral labels**: identify tokens where models disagree to mark deferral points
     5. **Phase 1 training**: search for optimal deferral token initialization (8000 steps)
     6. **Phase 2 training**: main training with marginal likelihood loss (2 epochs)
-    7. **Inference** (if `run_inference=True`): collaborative generation where trained model defers to mentor
+    7. **Inference**: collaborative generation where trained model defers to mentor
 - requirements:
     - **Must use exactly 2 models**: `[generator_model, mentor_model]` where generator is smaller than mentor
-    - **Training**: uses GPUs specified in `training_devices` (default: 4 GPUs)
+    - **Training**: uses GPUs specified in `gpu_ids` (default: 4 GPUs)
     - **Inference**: uses GPUs specified in `gpu_ids` (requires 2 GPUs: one for generator, one for mentor)
     - **Must train before inference**: the method trains a model with deferral mechanism first, then uses it for inference
-    - **Currently MATH-only**: training pipeline is specifically designed for MATH domain and uses hardcoded MATH dataset by default
 - outputs:
     - Training checkpoints saved to: `model_collaboration/logs/co-llm/{generator}-{mentor}/`
         - `model_checkpoints_init/`: Phase 1 checkpoints with deferral token initialization (`gperp_init.bin`)
         - `model_checkpoints_final/`: Phase 2 final trained model (use this for inference)
         - `generator_scored_data/`, `mentor_scored_data/`: scored datasets
         - `train_data_initializer/`: training data with deferral labels
-        - `math_data.jsonl`: processed training data
+        - `training_data.jsonl`: processed training data
     - Inference results saved to: `model_collaboration/logs/{task}_{base_model}_{ref_model}_collm_thresh{threshold}.json`
 - warning:
     - Training can be compute-intensive depending on model sizes and `training_num`
-    - Training currently only works for MATH domain tasks
     - Must complete training before running inference
     - If training was interrupted, delete the `model_checkpoints_final/` directory to retrain
-- note to tester:
-    - **Basic test** (full pipeline with default settings):
-      ```json
-      {
-        "method": "logit_co-llm",
-        "task": "math",
-        "task_type": "exact_match",
-        "gpu_ids": [0, 1],
-        "model_names": ["Qwen/Qwen3-1.7B", "Qwen/Qwen3-14B"],
-        "hyperparameters": {
-          "training_devices": [0, 1, 2, 3]
-        }
-      }
-      ```
-    - **Quick test** (fewer training examples):
-      ```json
-      {
-        "hyperparameters": {
-          "training_num": 100,
-          "training_devices": [0, 1]
-        }
-      }
-      ```
-    - **Train only** (skip inference to save time):
-      ```json
-      {
-        "hyperparameters": {
-          "run_inference": false
-        }
-      }
-      ```
-    - **Different deferral thresholds** (after training, to test different threshold values):
-      ```python
-      from model_collaboration.method import logit_co_llm
-      # Note: use underscore in import, not hyphen
-
-      for threshold in [0.3, 0.5, 0.7]:
-          score = logit_co_llm.run_inference(
-              task="math",
-              task_type="exact_match",
-              split="test",
-              model_base="model_collaboration/logs/co-llm/Qwen3-1.7B-Qwen3-14B/model_checkpoints_final",
-              model_ref="Qwen/Qwen3-14B",
-              gpu_ids=[0, 1],
-              deferral_threshold=threshold,
-              deferral_strategy="defer",
-              max_tokens=2048,
-          )
-      ```
-    - **With warmup schedule** (helps with longer sequences):
-      ```json
-      {
-        "hyperparameters": {
-          "deferral_threshold": 0.5,
-          "threshold_warmup_schedule": "linear",
-          "threshold_warmup_steps": 15
-        }
-      }
-      ```
-    - **Custom dataset** (use different training data):
-      ```json
-      {
-        "hyperparameters": {
-          "training_dataset_name": "nlile/hendrycks-MATH-benchmark",
-          "training_split": "train",
-          "training_num": 5000
-        }
-      }
-      ```
-    - Recommended model pairs: small generator + large mentor (e.g., Qwen3-1.7B + Qwen3-14B, Llama-3.1-8B + Llama-3.1-70B)
     - To adjust training hyperparameters (epochs, batch size, learning rate), modify the `ModelTrainer` initialization in `run_method()`
 
 #### Weight-level: Greedy Soup

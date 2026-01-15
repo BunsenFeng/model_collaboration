@@ -43,7 +43,7 @@ class TrainDataInitializer:
         split (str): Dataset split to use (default: 'train')
         training_num (int): Number of training examples to use (default: 10000)
         output_dir (str): Output directory for processed data
-        output_name (str): Output filename (default: 'math_data.jsonl')
+        output_name (str): Output filename (default: 'training_data.jsonl')
     """
     def __init__(
         self,
@@ -51,7 +51,7 @@ class TrainDataInitializer:
         split='train',
         training_num=10000,
         output_dir='data/train_data_initializer',
-        output_name='math_data.jsonl'
+        output_name='training_data.jsonl'
     ):
         self.dataset_name = dataset_name
         self.split = split
@@ -853,10 +853,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             - training_dataset_name (str): Name of the training dataset (default: "nlile/hendrycks-MATH-benchmark")
             - training_split (str): Dataset split for training (default: "train")
             - training_num (int): Number of training examples to use (default: 10000)
-
-            # Inference control
-            - run_inference (bool): Whether to run inference after training (default: True)
-            - inference_split (str): Dataset split for inference (default: "test")
+            - max_sequence_length (int): Maximum sequence length to use (default: 512)
 
             # Deferral parameters
             - deferral_threshold (float): Threshold for deferring to mentor (default: 0.5)
@@ -866,9 +863,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
             # Generation parameters
             - max_response_length (int): Maximum response length to generate (default: 2048)
-
-            # Output control
-            - save_inference_results (bool): Whether to save inference results (default: True)
 
     Returns:
         str: Path to the Co-LLM directory containing checkpoints
@@ -920,7 +914,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             split=training_split,
             training_num=training_num,
             output_dir=collm_dir,
-            output_name='math_data.jsonl'
+            output_name='training_data.jsonl'
         )
         train_data.process()
 
@@ -929,7 +923,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         generator_scorer = ModelScorer(
             model_name_or_path=generator,
             tokenizer_name=generator,
-            train_file=f"{collm_dir}/math_data.jsonl",
+            train_file=f"{collm_dir}/training_data.jsonl",
             output_dir=f"{collm_dir}/generator_scored_data",
             max_seq_length=max_sequence_length,
             use_flash_attn=False,
@@ -944,7 +938,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         mentor_scorer = ModelScorer(
             model_name_or_path=mentor,
             tokenizer_name=mentor,
-            train_file=f"{collm_dir}/math_data.jsonl",
+            train_file=f"{collm_dir}/training_data.jsonl",
             output_dir=f"{collm_dir}/mentor_scored_data",
             max_seq_length=max_sequence_length,
             use_flash_attn=False,
@@ -1059,36 +1053,31 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     else:
         logger.info(f"Model checkpoints already exist at {collm_dir}/model_checkpoints_final. Skipping training.")
 
-    # Run inference if requested
-    if hyperparameters.get("run_inference", True):
-        logger.info("\n" + "=" * 80)
-        logger.info("Starting inference with trained model...")
-        logger.info("=" * 80)
+    logger.info("\n" + "=" * 80)
+    logger.info("Starting inference with trained model...")
+    logger.info("=" * 80)
 
-        # Get inference hyperparameters
-        inference_split = hyperparameters.get("inference_split", "test")
-        deferral_threshold = hyperparameters.get("deferral_threshold", 0.5)
-        deferral_strategy = hyperparameters.get("deferral_strategy", "defer")
-        max_tokens = hyperparameters.get("max_response_length", 512)
-        threshold_warmup_schedule = hyperparameters.get("threshold_warmup_schedule", "none")
-        threshold_warmup_steps = hyperparameters.get("threshold_warmup_steps", 15)
-        save_inference_results = hyperparameters.get("save_inference_results", True)
+    # Get inference hyperparameters
+    deferral_threshold = hyperparameters.get("deferral_threshold", 0.5)
+    deferral_strategy = hyperparameters.get("deferral_strategy", "defer")
+    max_tokens = hyperparameters.get("max_response_length", 512)
+    threshold_warmup_schedule = hyperparameters.get("threshold_warmup_schedule", "none")
+    threshold_warmup_steps = hyperparameters.get("threshold_warmup_steps", 15)
 
-        avg_score = run_inference(
-            task=task,
-            task_type=task_type,
-            split=inference_split,
-            model_base=f"{collm_dir}/model_checkpoints_final",
-            model_ref=mentor,  # Use the original mentor model
-            gpu_ids=gpu_ids,
-            deferral_threshold=deferral_threshold,
-            deferral_strategy=deferral_strategy,
-            max_tokens=max_tokens,
-            threshold_warmup_schedule=threshold_warmup_schedule,
-            threshold_warmup_steps=threshold_warmup_steps,
-            save_results=save_inference_results,
-        )
+    avg_score = run_inference(
+        task=task,
+        task_type=task_type,
+        split="test",
+        model_base=f"{collm_dir}/model_checkpoints_final",
+        model_ref=mentor,  # Use the original mentor model
+        gpu_ids=gpu_ids,
+        deferral_threshold=deferral_threshold,
+        deferral_strategy=deferral_strategy,
+        max_tokens=max_tokens,
+        threshold_warmup_schedule=threshold_warmup_schedule,
+        threshold_warmup_steps=threshold_warmup_steps,
+    )
 
-        logger.info(f"\nFinal {inference_split} score: {avg_score:.4f}")
+    logger.info(f"\nFinal test score: {avg_score:.4f}")
 
     return collm_dir
