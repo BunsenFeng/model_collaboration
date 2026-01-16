@@ -129,3 +129,4 @@ dependencies:
       - xxhash==3.5.0
       - yarl==1.20.1
       - nevergrad
+      - wandb
