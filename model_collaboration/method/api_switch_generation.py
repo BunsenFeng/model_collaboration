@@ -124,11 +124,11 @@ def reward_model_scores(gpu_id, list_of_input, list_of_output):
 
 def get_all_inputs(task=None):
     list_of_all_inputs = []
-    files = os.listdir("data/")
+    files = os.listdir("model_collaboration/data/")
     for file in files:
         try:
-            if file.endswith(".json") and (task is None or file.startswith(task)):
-                with open(os.path.join("data/", file), "r") as f:
+            if file == task + ".json":
+                with open(os.path.join("model_collaboration/data/", file), "r") as f:
                     task_type = json.load(f)["task_type"]
                 inputs = eval.prepare_inputs(file[:-5], task_type, "dev")
                 list_of_all_inputs.extend(inputs)

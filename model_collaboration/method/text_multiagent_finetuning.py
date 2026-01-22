@@ -242,7 +242,7 @@ def run_method(task: str,
 
     # Directory to store intermediate data and models
     method_name = "multiagent_finetuning"
-    base_log_dir = os.path.join("logs", method_name)
+    base_log_dir = os.path.join("model_collaboration/logs", method_name)
 
     # Iterate the finetuning loop
     for it in range(iterations):

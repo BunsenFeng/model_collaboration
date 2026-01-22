@@ -44,7 +44,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     split_ratio = hyperparameters.get("split_ratio", [0.7, 0.15, 0.15])  # train, val, test
     scenario = hyperparameters.get("scenario", "Performance First")  # "Performance First", "Balance", "Cost First"
     model_descriptions = hyperparameters.get("model_descriptions", None)
-    task_description = hyperparameters.get("task_description", None) # default to be task name
+    task_description = hyperparameters.get("task_description", task) # default to be task name
     
     assert model_descriptions != None, "The model_descriptions is needed in hyperparameters in task config."
     assert task_description != None, "The task_description is needed in hyperparameters in task config."
@@ -350,7 +350,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         }
         experiment_logs["logs"].append(log)
     
-    log_filename = "model_collaboration/logs/{}_{}_{}_graph_router.json".format(task, len(model_names), round(avg_test_score, 4))
+    log_filename = "model_collaboration/logs/{}_{}_{}_graph_routing.json".format(task, len(model_names), round(avg_test_score, 4))
     os.makedirs(os.path.dirname(log_filename), exist_ok=True)
     with open(log_filename, "w") as f:
         json.dump(experiment_logs, f, indent=4)

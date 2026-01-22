@@ -205,6 +205,7 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
 - method-specific hyperparameters:
     - `population`, default 5: the population size for particle swarm optimization, essentially how many graph structures to explore in each iteration.
     - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization.
+    - `ratio`, default 0.25: what fraction of the dev set to use for optimizåtion.
     - There are more hyperparameters for particle swarm optimization, please refer to `text_heterogeneous_swarms.py`. Only change them if you know what you are doing.
 - warning: this could be slow with large `population` and `max_iterations`. Reduce them to save computation.
 
@@ -281,19 +282,19 @@ Reasoning LMs are supported! Please use much larger `"max_response_length"` to a
     - `freeze_ratings`, default false: if true, model ratings are not updated during the competition phase. Useful for testing or when you want to use fixed ratings.
     - `debug`, default false: if true, prints detailed rating update information (update count, K value, deviation changes) for debugging purposes.
 #### Text-level: AggLM
-- file: `agglm.py`
+- file: `text_agglm.py`
 - description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.
 - related paper(s):
     - [The Majority is not always right: RL training for solution aggregation](https://arxiv.org/pdf/2509.06870)
 - method-specific hyperparameters:
-    - `agg_model`, default `Qwen/Qwen3-1.7B`: the base model to initialize the aggregator. Should ideally have the largest vocabulary size among the solution models. Can be a HuggingFace Hub ID or local path.
+    - `agg_model`, default `Qwen/Qwen2.5-1.5B-Instruct`: the base model to initialize the aggregator. Should ideally have the largest vocabulary size among the solution models. Can be a HuggingFace Hub ID or local path.
     - `agglm_log_path`, default `model_collaboration/logs/agglm`: directory to save training checkpoints, intermediate generation results, and trained LoRA adapters.
     - `reuse_log`, default `True`: whether to reuse existing generation and model weights. You might need to set this hyperparameter to `False` if error happens in the generation or training process
     - **Training hyperparameters:**
         - `learning_rate`, default 1e-4: learning rate for GRPO optimization.
         - `weight_decay`, default 1e-5: weight decay for regularization.
         - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
-        - `max_epoches`, default 10: number of training epochs.
+        - `max_epoches`, default 1: number of training epochs.
         - `train_batch_size`, default 4: batch size for both GRPO training (per_device_train_batch_size and num_generations).
         - `sample_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
         - `max_response_length`, default 512. If you are using a thinking model, have a large max_response_length of at least 1024.
