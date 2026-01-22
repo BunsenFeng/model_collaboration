@@ -33,7 +33,7 @@ def lora_to_full(model_names):
             model = AutoPeftModelForCausalLM.from_pretrained(model_names[i], torch_dtype="bfloat16")
             model = model.merge_and_unload()
             tokenizer = AutoTokenizer.from_pretrained(model_names[i])
-            full_model_name = "logs/" + model_names[i].split("/")[-1] + "_full"
+            full_model_name = "model_collaboration/logs/" + model_names[i].split("/")[-1] + "_full"
             if os.path.exists(full_model_name):
                 shutil.rmtree(full_model_name)
             model.save_pretrained(full_model_name)

@@ -11,17 +11,6 @@ from transformers.generation.utils import (
     LogitsProcessorList
 )
 
-# Assuming data.eval exists in your environment as per your snippet
-try:
-    from data import eval
-except ImportError:
-    # Placeholder for standalone testing if data.eval is missing
-    class eval:
-        @staticmethod
-        def prepare_inputs(task, task_type, split): return ["Test prompt"]
-        @staticmethod
-        def get_scores(task, task_type, split, outputs): return [0.0] * len(outputs)
-
 class Nudging:
     def __init__(
         self,

@@ -11,9 +11,9 @@ from typing import List, Optional
 import torch
 from dataclasses import dataclass
 from collections import defaultdict
-from method import distributed_generation
+from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from data import eval
+from model_collaboration.data import eval
 
 
 def hf_gen(model, tokenizer, prompt):

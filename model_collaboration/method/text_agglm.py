@@ -44,9 +44,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     agg_model = hyperparameters.get("agg_model", None)
     if agg_model is None:
         print(
-            "Taking Qwen/Qwen3-1.7B as the base model. Please specify the agg_model in hyperparameters to avoid this warning."
+            "Taking Qwen/Qwen2.5-1.5B-Instruct as the base model. Please specify the agg_model in hyperparameters to avoid this warning."
         )
-        agg_model = 'Qwen/Qwen3-1.7B'
+        agg_model = 'Qwen/Qwen2.5-1.5B-Instruct'
 
     agglm_log_path = hyperparameters.get("agglm_log_path", 'model_collaboration/logs/agglm')
     reuse_log = hyperparameters.get("reuse_log", True)
@@ -56,7 +56,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     learning_rate = hyperparameters.get("learning_rate", 1e-4)
     weight_decay = hyperparameters.get("weight_decay", 1e-5)
     lr_scheduler = hyperparameters.get("lr_scheduler", 'cosine')
-    max_epoches = hyperparameters.get("max_epoches", 10)
+    max_epoches = hyperparameters.get("max_epoches", 1)
     max_response_length = hyperparameters.get("max_response_length", 512)
     temperature = hyperparameters.get("temperature", 1.0)
     batch_size = hyperparameters.get("train_batch_size", 4)
@@ -65,6 +65,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # prepare training data
     file_name = '_'.join([model_name.split("/")[-1] for model_name in model_names]) + f'_{s}.json'
+    file_name = file_name[:-5][:min(len(file_name[:-5]), 50)] + ".json" # in case there are many models
     if not os.path.exists(agglm_log_path + '/' + file_name[:-5] + '/' + 'adapter_model.safetensors'):
         if os.path.exists(agglm_log_path + '/' + file_name):
             dev_res_list = json.load(open(agglm_log_path + '/' + file_name, 'r'))
@@ -189,7 +190,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dist.barrier()
             dist.destroy_process_group()
 
-    new_gpu_ids = [i for i in range(len(model_names))]
+    new_gpu_ids = [i for i in range(len(gpu_ids))]
     test_input_list = eval.prepare_inputs(task, task_type, 'test')
     list_of_test_output_list = distributed_generation.distributed_generation(
         model_names,

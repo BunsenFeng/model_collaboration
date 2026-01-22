@@ -7,7 +7,7 @@ from model_collaboration.data import eval
 from peft import LoraConfig
 from datasets import load_dataset
 from model_collaboration.method import distributed_generation
-from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
+from trl import SFTConfig, SFTTrainer
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModelForCausalLM
 
 def load_reward_model(gpu_id, model_name):

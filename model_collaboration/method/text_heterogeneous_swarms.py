@@ -228,6 +228,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     patience = hyperparameters.get("patience", 5)
     restart_patience = hyperparameters.get("restart_patience", 3)
 
+    ratio = hyperparameters.get("ratio", 0.25)
+
     # initialize the swarm
     swarm = NumericSwarm(
         dimension=len(model_names) * len(model_names), # adjacency matrix size
@@ -247,7 +249,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
 
     # optimize the graph structure on the dev set
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     for iteration in range(max_iterations):
         population_of_graphs = swarm.get_particles() # [tensor(len(model_names)*len(model_names)), ...]
         list_of_adjacency_matrices = [list_to_numpy_graph(graph.tolist()) for graph in population_of_graphs]
@@ -286,7 +288,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         list_of_scores = []
         for i in range(len(list_of_output_list)):
             outputs = list_of_output_list[i]
-            score = eval.get_scores(task, task_type, "dev", outputs)
+            score = eval.get_scores(task, task_type, "dev", outputs, ratio=ratio)
             list_of_scores.append(sum(score) / len(score)) # average score over the dev set
         assert len(list_of_scores) == len(list_of_adjacency_matrices)
 

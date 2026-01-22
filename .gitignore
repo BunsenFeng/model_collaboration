@@ -17,6 +17,7 @@ model_collaboration/config.slurm
 model_collaboration/log.txt
 model_collaboration/*.txt
 model_collaboration/moco/
+wandb/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

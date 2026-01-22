@@ -101,7 +101,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         final_weights = [1.0 / len(final_selected_models)] * len(final_selected_models)
 
         if os.path.exists("model_collaboration/logs/greedy_soup"):
-            os.remove("model_collaboration/logs/greedy_soup")
+            # remove existing merged model path if any
+            shutil.rmtree("model_collaboration/logs/greedy_soup")
 
         # save the final greedy soup model
         lora_merge(

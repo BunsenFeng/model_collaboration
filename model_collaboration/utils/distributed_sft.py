@@ -11,7 +11,7 @@ from multiprocessing import Pool
 from datasets import load_dataset
 from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
+from trl import SFTConfig, SFTTrainer
 
 def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
                learning_rate=1e-5, epoch=3):
