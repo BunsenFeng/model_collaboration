@@ -3,6 +3,7 @@ model_collaboration/logs/*
 *.sh
 model_collaboration/*.sh
 *.json
+!examples/*.json
 model_collaboration/*.json
 !model_collaboration/data/*.json
 model_collaboration/data/test.py
