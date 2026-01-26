@@ -2,6 +2,15 @@
 
 This document describes the evaluation datasets and task types supported by MoCo. For full citation details, please refer to the paper appendix.
 
+## Configuration Concepts
+
+The evaluation configuration relies on two main parameters found in your config file (e.g., `test_config.json`):
+
+- **`task`**: Specifies the dataset to use (e.g., `agieval`, `gsm8k`). This corresponds to the specific benchmark or data source.
+- **`task_type`**: Defines the evaluation metric and expected output format (e.g., `multiple_choice`, `exact_match`). This determines how model outputs are parsed and scored.
+
+The sections below list all currently supported values for these parameters.
+
 ## Dataset Table
 
 | Task | Task Type | Reference | Description |
@@ -35,7 +44,7 @@ This document describes the evaluation datasets and task types supported by MoCo
 | `pubmedqa`* | `exact_match` | [Jin et al., 2019](https://arxiv.org/pdf/1909.06146) | Biomedical research question answering |
 | `theoremqa`* | `exact_match` | [Chen et al., 2023](https://arxiv.org/pdf/2305.12524) | Theorem proving and mathematical reasoning |
 
-\* Asterisks mark datasets where the `general_verifier` mode is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
+\* Asterisks mark datasets where the `general_verifier` task_types is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
 
 ---
 
