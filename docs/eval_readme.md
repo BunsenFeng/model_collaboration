@@ -10,7 +10,7 @@ This document describes the evaluation datasets and task types supported by MoCo
 | `arc_challenge`* | `multiple_choice` | [Clark et al., 2018](https://arxiv.org/pdf/1803.05457) | Science exam questions requiring complex reasoning |
 | `mmlu_redux`* | `multiple_choice` | [Gema et al., 2024](https://arxiv.org/pdf/2406.04127) | Curated subset of MMLU with error corrections |
 | `bbh`* | `exact_match` | [Suzgun et al., 2022](https://arxiv.org/pdf/2210.09261) | BIG-Bench Hard tasks requiring multi-step reasoning |
-| `gsm8k`* | `exact_match` | [Cobbe et al., 2021](https://arxiv.org/pdf/2110.14168) | Grade school math word problems* |
+| `gsm8k`* | `exact_match` | [Cobbe et al., 2021](https://arxiv.org/pdf/2110.14168) | Grade school math word problems |
 | `math`* | `exact_match` | [Hendrycks et al., 2021](https://arxiv.org/pdf/2009.03300) | Competition-level mathematics problems |
 | `wikidyk`* | `f1_match` | [Zhang et al., 2025](https://arxiv.org/pdf/2505.12306) | Wikipedia "Did You Know" trivia questions |
 | `sciencemeter`* | `multiple_choice` | [Wang et al., 2025](https://arxiv.org/pdf/2505.24302) | Scientific knowledge evaluation |
@@ -20,7 +20,7 @@ This document describes the evaluation datasets and task types supported by MoCo
 | `coconot` | `noncompliance` | [Brahman et al., 2024](https://arxiv.org/pdf/2407.12043) | Requests requiring appropriate non-compliance |
 | `alpacaeval` | `reward_model` | [Dubois et al., 2023](https://proceedings.neurips.cc/paper_files/paper/2023/file/5fc47800ee5b30b8777fdd30abcaaf3b-Paper-Conference.pdf) | Instruction-following evaluation |
 | `wildchat` | `reward_model` | [Zhao et al., 2024](https://arxiv.org/pdf/2405.01470) | Real-world user conversations |
-| `sciriff`* | `exact_match` | [Wadden et al., 2024](https://arxiv.org/abs/2406.07835) | Scientific information retrieval and filtering* |
+| `sciriff`* | `exact_match` | [Wadden et al., 2024](https://arxiv.org/abs/2406.07835) | Scientific information retrieval and filtering |
 | `culturebench`* | `exact_match` | [Chiu et al., 2024](https://arxiv.org/pdf/2410.02677) | Cultural reasoning and knowledge |
 | `human_interest` | `reward_model` | [Feng et al., 2025](https://arxiv.org/pdf/2410.11163) | Diverse human-interest instructions |
 | `tablemwp_multiple_choice`* | `multiple_choice` | [Lu et al., 2023](https://arxiv.org/pdf/2209.14610) | Answer multiple-choice questions about tables |
