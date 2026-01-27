@@ -632,7 +632,7 @@ class MultiAgentSystem:
             # Fallback: use all entries from last iteration
             text_list = [entry.text.strip() for entry in final_entries]
             if len(text_list) == 0:
-                return ["No conclusion reached."]
+                return ["No conclusion."]
             return text_list
         
         conclusions = [text.split("FINAL:")[-1].strip() for text in text_list]

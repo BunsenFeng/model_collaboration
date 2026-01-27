@@ -104,7 +104,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     os.chdir(script_dir)
 
     # 1. extract the hyperparameters from the hyperparameters dict
-    num_rounds = hyperparameters.get("num_rounds", None)
+    num_rounds = hyperparameters.get("num_rounds", 3)
     assert type(num_rounds) == int and num_rounds > 0, "Please provide num_rounds (positive integer) in hyperparameters."
     if num_rounds == 1:
         print("Warning: num_rounds is 1, which means no interaction between models will happen.")

@@ -11,7 +11,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     os.chdir(script_dir)
 
     # method-specific hyperparameters
-    exclude_self = hyperparameters.get("exclude_self", True)
+    exclude_self = hyperparameters.get("exclude_self", False)
 
     # selecting a model as the final response generator based on performance on the dev set
     dev_input_list = eval.prepare_inputs(task, task_type, "dev")
