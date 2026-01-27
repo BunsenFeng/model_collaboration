@@ -1,19 +1,18 @@
 {
-    "method": "text_multiagent_refine",
+    "method": "weight_lorahub",
     "task": "agieval_tiny",
     "task_type": "multiple_choice",
-    "gpu_ids": [0,1,2,3],
+    "gpu_ids": [0,1,2],
     "model_names": [
-        "chtmp223/Qwen2.5-7B-CLIPPER",
-        "chengq9/ToolRL-Qwen2.5-3B",
-        "AgentFlow/agentflow-planner-7b",
-        "bunsenfeng/parti_3_full"
+        "bunsenfeng/parti_0_lora",
+        "bunsenfeng/parti_1_lora",
+        "bunsenfeng/parti_2_lora"
     ],
     "hyperparameters": {
         "max_response_length": 512,
         "temperature": 0.7,
         "top_p": 0.9,
         "batch_size": 32,
-        "round": 1
+        "lorahub_dev_samples": 100
     }
 }

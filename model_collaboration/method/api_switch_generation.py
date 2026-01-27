@@ -148,11 +148,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     batch_size = hyperparameters.get("batch_size")
 
     # method-specific hyperparameters
-    patch_size = hyperparameters.get("patch_size", 50)
+    patch_size = hyperparameters.get("patch_size", 25)
     selector_model_name = hyperparameters.get("selector_model_name", None)
     selector_base_model = hyperparameters.get("selector_base_model", "Qwen/Qwen2.5-7B-Instruct")
     objective_flag = hyperparameters.get("objective_flag", False)
-    training_instance_num = hyperparameters.get("training_instance_num", 250)
+    training_instance_num = hyperparameters.get("training_instance_num", 500)
     rollout_per_instance = hyperparameters.get("rollout_per_instance", 16)
     reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", gpu_ids[0])
     reward_model_name = hyperparameters.get("reward_model_name", "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2")

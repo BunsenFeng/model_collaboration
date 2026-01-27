@@ -1,5 +1,5 @@
 {
-    "method": "text_multiagent_refine",
+    "method": "text_multiagent_feedback",
     "task": "agieval_tiny",
     "task_type": "multiple_choice",
     "gpu_ids": [0,1,2,3],

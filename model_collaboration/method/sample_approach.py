@@ -151,7 +151,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # after that, you can use "method": "your_approach_name" in the config file to run your approach
     # if you ever saves anything other than the final log, make sure to save it in `model_collaboration/logs/<your_method_name>/`!
     # hooray, that's pretty much it!
-    # for documentation of all the helper functions we provide, see `method/developer_readme.md`
+    # for documentation of all the helper functions we provide, see `docs/developer_readme.md`
 
 if __name__ == "__main__":
     run_method()
