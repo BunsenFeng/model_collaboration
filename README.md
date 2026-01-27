@@ -23,4 +23,4 @@ You will see the outputs and evaluation results in the `model_collaboration/logs
 
 | **Method** | **Core Idea** | **Code** | **Sample Config** | **Doc** |
 |------------|---------------|----------|-------------------|---------|
-| API: Nudging | one model guides the coding of another | [link](model_collaboration/methods/api_nudging.py) | [link](examples/api_nudging.json) | [link](docs/user_readme.md#api-level-nudging) |
+| API: Nudging | one model guides the coding of another | [link](model_collaboration/method/api_nudging.py) | [link](examples/api_nudging.json) | [link](docs/user_readme.md#api-level-nudging) |
