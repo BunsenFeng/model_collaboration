@@ -1,9 +1,0 @@
-models:
-  - model: model_collaboration/logs/parti_2_lora_full
-    parameters:
-      weight: 0.5
-  - model: model_collaboration/logs/parti_1_lora_full
-    parameters:
-      weight: 0.5
-merge_method: linear
-dtype: float16
