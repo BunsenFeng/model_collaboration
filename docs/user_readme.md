@@ -212,7 +212,7 @@ Without further ado, a complete list of all supported methods and configurations
 
 ### Text-level collaboration
 
-#### Text-level: Multiagent Refine/Debate
+#### Text-level: Multiagent Refine
 - file: `text_multiagent_refine.py`
 - description: multiple LLMs collaborate to refine the answers of each other. First, evaluate all models on the dev set to select a final summarizer. At each round, each LLM sees the answers of all LLMs from the previous round and refines its own answer. After several rounds, the final answers are aggregated by the summarizer LLM.
 - related paper(s):
