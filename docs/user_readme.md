@@ -156,7 +156,7 @@ Without further ado, a complete list of all supported methods and configurations
     - try `["meta-llama/Llama-3.1-8B", "Qwen/Qwen3-14B"]` with `mode: "free"` first. For "train" mode, ensure the generator model is in the supported list. 
     - supported generator list for "train" mode: `["Qwen/Qwen3-1.7B", "Qwen/Qwen3-8B-Base", "meta-llama/Llama-3.1-8B", "meta-llama/Llama-3.2-3B-Instruct", "google/gemma-3-4b-it", "google/gemma-3-4b-pt"]`
 
-#### API-level: Co-LLM (Collaborative Decoding with Deferral)
+#### API-level: CoLLM
 - file: `api_collm.py`
 - description: trains a small generator model to defer to a large mentor model when uncertain. The method uses a special deferral token (`<|defer|>`) whose probability indicates when the generator should seek help from the mentor. The training pipeline includes: (1) scoring data with both generator and mentor models, (2) creating deferral labels based on prediction differences, (3) two-phase training (deferral token initialization search + main training with marginal likelihood loss), and (4) collaborative inference where the trained model dynamically defers to the mentor during generation.
 - related paper(s):
@@ -212,7 +212,7 @@ Without further ado, a complete list of all supported methods and configurations
 
 ### Text-level collaboration
 
-#### Text-level: Multiagent Refine/Debate
+#### Text-level: Multiagent Refine
 - file: `text_multiagent_refine.py`
 - description: multiple LLMs collaborate to refine the answers of each other. First, evaluate all models on the dev set to select a final summarizer. At each round, each LLM sees the answers of all LLMs from the previous round and refines its own answer. After several rounds, the final answers are aggregated by the summarizer LLM.
 - related paper(s):

@@ -44,7 +44,7 @@ The sections below list all currently supported values for these parameters.
 | `pubmedqa`* | `exact_match` | [Jin et al., 2019](https://arxiv.org/pdf/1909.06146) | Biomedical research question answering |
 | `theoremqa`* | `exact_match` | [Chen et al., 2023](https://arxiv.org/pdf/2305.12524) | Theorem proving and mathematical reasoning |
 
-\* Asterisks mark datasets where the `general_verifier` task_types is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
+\* Asterisks mark datasets where the `general_verifier` task_type is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
 
 ---
 
