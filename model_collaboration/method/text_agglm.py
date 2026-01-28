@@ -56,11 +56,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     learning_rate = hyperparameters.get("learning_rate", 1e-4)
     weight_decay = hyperparameters.get("weight_decay", 1e-5)
     lr_scheduler = hyperparameters.get("lr_scheduler", 'cosine')
-    max_epoches = hyperparameters.get("max_epoches", 1)
+    max_epochs = hyperparameters.get("max_epochs", 1)
     max_response_length = hyperparameters.get("max_response_length", 512)
     temperature = hyperparameters.get("temperature", 1.0)
     batch_size = hyperparameters.get("train_batch_size", 4)
-    s = hyperparameters.get("simple_size", 2)
+    s = hyperparameters.get("sample_size", 2)
     m = len(model_names)
 
     # prepare training data
@@ -141,7 +141,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             learning_rate=learning_rate,
             lr_scheduler_type=lr_scheduler,
             weight_decay=weight_decay,
-            num_train_epochs=max_epoches,
+            num_train_epochs=max_epochs,
             warmup_ratio=0.1,
             dataloader_pin_memory=False,
             remove_unused_columns=False,

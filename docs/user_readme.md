@@ -138,7 +138,7 @@ Without further ado, a complete list of all supported methods and configurations
     - [FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance](https://arxiv.org/pdf/2305.05176)
     - [Language Model Cascades: Token-level uncertainty and beyond](https://arxiv.org/pdf/2404.10136)
 - method-specific hyperparameters:
-    - `mode`, default `logit`: the mode for judge model confidence. Mode `logit` average token probability in response as model confidence. If confidence less than threshold, then deferred. Mode `just_ask` ask model to mention it is unconfident of its answer. If unconfident is in output, then deferred.
+    - `mode`, default `logit`: the mode for judge model confidence. Mode `logit` average token probability in response as model confidence. If confidence less than threshold, then deferred. Mode `just_ask` asks model to mention it is unconfident of its answer. If unconfident is in output, then deferred.
     - `percentage`, default 0.5: the percentage to select deferral threshold in `logit` mode. For each model except last model, calculate responses' scores on dev set. For each model, select its threshold as top `percentage` value in its dev set responses scores.
     - (suggested) `model_names`: arrange model names from weak to strong, from cheap to expensive. For instance, `["Qwen/Qwen2.5-3B-Instruct","Qwen/Qwen2.5-7B-Instruct"]`
 
@@ -275,7 +275,7 @@ Without further ado, a complete list of all supported methods and configurations
 - method-specific hyperparameters:
     - `population`, default 5: the population size for particle swarm optimization, essentially how many graph structures to explore in each iteration.
     - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization.
-    - `ratio`, default 0.25: what fraction of the dev set to use for optimizåtion.
+    - `ratio`, default 0.25: what fraction of the dev set to use for optimization.
     - There are more hyperparameters for particle swarm optimization, please refer to `text_heterogeneous_swarms.py`. Only change them if you know what you are doing.
 - warning: this could be slow with large `population` and `max_iterations`. Reduce them to save computation.
 
@@ -367,7 +367,7 @@ Without further ado, a complete list of all supported methods and configurations
         - `learning_rate`, default 1e-4: learning rate for GRPO optimization.
         - `weight_decay`, default 1e-5: weight decay for regularization.
         - `lr_scheduler`, default `cosine`: learning rate scheduler type (e.g., `cosine`, `linear`).
-        - `max_epoches`, default 1: number of training epochs.
+        - `max_epochs`, default 1: number of training epochs.
         - `train_batch_size`, default 4: batch size for both GRPO training (per_device_train_batch_size and num_generations).
         - `sample_size`, default 2: number of solution sets (each containing m solutions) to sample per training problem for diversity. Increasing this introduces more variety in answer combinations but increases training data size linearly.
         - `max_response_length`, default 512. If you are using a thinking model, have a large max_response_length of at least 1024.
@@ -381,7 +381,7 @@ Without further ado, a complete list of all supported methods and configurations
         - max_prompt_length: 4096
         - warmup_ratio: 0.1
 - workflow:
-    1. **Training data generation**: For each problem in the dev set, sample `sample_size * m` solutions from the `model_names` solution models (m = number of models). Group them into `simple_size` sets of m solutions each.
+    1. **Training data generation**: For each problem in the dev set, sample `sample_size * m` solutions from the `model_names` solution models (m = number of models). Group them into `sample_size` sets of m solutions each.
     2. **Hard/easy classification**: Evaluate each solution set. A set is "hard" if the majority answer (most frequent) is incorrect; otherwise it's "easy".
     3. **Balanced mixing**: Keep all hard examples and randomly sample an equal number of easy examples (50% by default) to create the final training dataset. This prevents overfitting to either always trusting majority vote or always ignoring it.
     4. **RL training**: Train the aggregator using GRPO with binary rewards (1 if aggregated answer matches ground truth, 0 otherwise) and the aggregation prompt template.
@@ -415,7 +415,7 @@ Without further ado, a complete list of all supported methods and configurations
 ### Weight-level collaboration
 #### Weight-level: Greedy Soup
 - file: `weight_greedy_soup.py`
-- description: average the weights of multiple LLMs in a greedy manner. **All LLMs must share the same architecture.** First, evaluate all LLMs on the dev set and sort them by performance. Then, starting from the best model, iteratively add one model at a time to the soup if it improves performance on the dev set. We provide a bridge to the MergeKit implmementation.
+- description: average the weights of multiple LLMs in a greedy manner. **All LLMs must share the same architecture.** First, evaluate all LLMs on the dev set and sort them by performance. Then, starting from the best model, iteratively add one model at a time to the soup if it improves performance on the dev set. We provide a bridge to the MergeKit implementation.
 - related paper(s):
     - [Model soups: averaging weights of multiple fine-tuned models improves accuracy without increasing inference time](https://arxiv.org/abs/2203.05482)
 - method-specific hyperparameters:
@@ -423,7 +423,7 @@ Without further ado, a complete list of all supported methods and configurations
 
 #### Weight-level: Dare Ties
 - file: `weight_dare_ties.py`
-- description: average the weights of multiple LLMs with DARE-TIES. **All LLMs must share the same architecture.** Two modes: the average mode, where models have equal weight, the optimized mode, where weights are optimized on the dev set by particle swarm optimization. We provide a bridge to the MergeKit implmementation.
+- description: average the weights of multiple LLMs with DARE-TIES. **All LLMs must share the same architecture.** Two modes: the average mode, where models have equal weight, the optimized mode, where weights are optimized on the dev set by particle swarm optimization. We provide a bridge to the MergeKit implementation.
 - related paper(s):
     - [Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch](https://arxiv.org/abs/2311.03099)
     - [TIES-Merging: Resolving Interference When Merging Models](https://arxiv.org/abs/2306.01708)
