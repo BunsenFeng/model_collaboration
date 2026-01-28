@@ -60,7 +60,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     max_response_length = hyperparameters.get("max_response_length", 512)
     temperature = hyperparameters.get("temperature", 1.0)
     batch_size = hyperparameters.get("train_batch_size", 4)
-    s = hyperparameters.get("simple_size", 2)
+    s = hyperparameters.get("sample_size", 2)
     m = len(model_names)
 
     # prepare training data
