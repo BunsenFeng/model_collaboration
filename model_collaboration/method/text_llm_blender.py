@@ -10,7 +10,7 @@ from model_collaboration.utils import distributed_sft
 
 
 METHOD_NAME = "text_llm_blender"
-METHOD_LOG_DIR = os.path.join("logs", METHOD_NAME)
+METHOD_LOG_DIR = os.path.join("model_collaboration/logs", METHOD_NAME)
 
 
 def _build_ranking_prompt(
@@ -607,7 +607,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     script_dir = script_path.parent.parent.parent
     os.chdir(script_dir)
 
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs("model_collaboration/logs", exist_ok=True)
     os.makedirs(METHOD_LOG_DIR, exist_ok=True)
 
     # Optional training on dev set
