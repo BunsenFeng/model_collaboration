@@ -38,7 +38,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     in_edges = hyperparameters.get("in_edges", 3)  # cost and effect
     learning_rate = hyperparameters.get("learning_rate", 1e-4)
     weight_decay = hyperparameters.get("weight_decay", 1e-4)
-    train_epochs = hyperparameters.get("train_epochs", 50)
+    train_epochs = hyperparameters.get("train_epochs", 500)
     batch_size = hyperparameters.get("batch_size", 32)
     train_mask_rate = hyperparameters.get("train_mask_rate", 0.5)
     split_ratio = hyperparameters.get("split_ratio", [0.7, 0.15, 0.15])  # train, val, test
