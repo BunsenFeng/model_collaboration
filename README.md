@@ -2,7 +2,7 @@
   <img src="docs/MoCo.png" alt="MoCo Logo" width="200">
 </div>
 
-# MoCo: A One-Stop Shop for Model Collaboration Research
+## MoCo: A One-Stop Shop for Model Collaboration Research
 
 `MoCo` is a toolkit for **Mo**del **Co**llaboration research, where multiple language models collaborate and complement each other for compositional AI systems.
 
