@@ -1,4 +1,8 @@
-# MoCo
+<div align="center">
+  <img src="docs/MoCo.png" alt="MoCo Logo" width="200">
+</div>
+
+<h1 align="center">MoCo: A One-Stop Shop for Model Collaboration Research</h1>
 
 `MoCo` is a toolkit for **Mo**del **Co**llaboration research, where multiple language models collaborate and complement each other for compositional AI systems.
 
@@ -19,11 +23,11 @@ python -m model_collaboration.main -c model_collaboration/test_config.json
 You will see the outputs and evaluation results in the `model_collaboration/logs/` folder.
 
 ## Supported Methods
-`MoCo` currently supports the following model collaboration algorithms, across [API-level, text-level, logit-level, and weight-level collaboration](https://arxiv.org/abs/2502.04506). We provide a sample config for each method in `examples/` and please check out `docs/user_readme.md` for more details about writing configs and different collaboration methods implemented.
+`MoCo` currently supports the following model collaboration algorithms, across [API-level, text-level, logit-level, and weight-level collaboration](https://arxiv.org/abs/2502.04506). We provide a sample config for each method in `examples/` and please check out `docs/user_readme.md` for more details about writing configs and the different collaboration methods implemented.
 
 | **Method** | **Core Idea** | **Code** | **Sample Config** | **Doc** |
 |------------|---------------|----------|-------------------|---------|
-| API: Nudging | one model guides the coding of another | [link](model_collaboration/method/api_nudging.py) | [link](examples/api_nudging.json) | [link](docs/user_readme.md#api-level-nudging) |
+| API: Nudging | one model guides the decoding of another | [link](model_collaboration/method/api_nudging.py) | [link](examples/api_nudging.json) | [link](docs/user_readme.md#api-level-nudging) |
 | API: Prompt Routing | prompt an LM to decide which model to use based on model descriptions | [link](model_collaboration/method/api_prompt_routing.py) | [link](examples/api_prompt_routing.json) | [link](docs/user_readme.md#api-level-prompt-routing) |
 | API: Switch Generation | multiple LMs take turns to generate parts of the response | [link](model_collaboration/method/api_switch_generation.py) | [link](examples/api_switch_generation.json) | [link](docs/user_readme.md#api-level-switch-generation) |
 | API: Trained Router | train an LM to route based on the dev set | [link](model_collaboration/method/api_trained_router.py) | [link](examples/api_trained_router.json) | [link](docs/user_readme.md#api-level-trained-router) |
@@ -79,3 +83,5 @@ If `MoCo` is helpful for you, please consider citing:
 ```
 
 Also, please cite the related papers for the methods you employed, as listed in `docs/user_readme.md`.
+
+Have a nice day.
