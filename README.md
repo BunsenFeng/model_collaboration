@@ -22,6 +22,12 @@ python -m model_collaboration.main -c model_collaboration/test_config.json
 
 You will see the outputs and evaluation results in the `model_collaboration/logs/` folder.
 
+You can also directly use the PyPI package version:
+
+```
+moco -c model_collaboration/test_config.json --log_dir model_collaboration/logs/
+```
+
 ## Supported Methods
 `MoCo` currently supports the following model collaboration algorithms, across [API-level, text-level, logit-level, and weight-level collaboration](https://arxiv.org/abs/2502.04506). We provide a sample config for each method in `examples/` and please check out `docs/user_readme.md` for more details about writing configs and the different collaboration methods implemented.
 
