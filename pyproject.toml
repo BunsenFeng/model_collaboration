@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelco"
-version = "0.0.1.6"
+version = "1.0.0"
 authors = [
   { name="Shangbin Feng", email="shangbin@cs.washington.edu" },
 ]
