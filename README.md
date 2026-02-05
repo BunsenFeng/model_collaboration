@@ -87,7 +87,12 @@ If `MoCo` is helpful for you, please consider citing:
   year={2025}
 }
 
-// MoCo reference pending
+@article{feng2026moco,
+  title={MoCo: A One-Stop Shop for Model Collaboration Research},
+  author={Feng, Shangbin and Bai, Yuyang and Yang, Ziyuan and Wang, Yike and Tan, Zhaoxuan and Yan, Jiajie and Lei, Zhenyu and Ding, Wenxuan and Shi, Weijia and Wang, Haojin and others},
+  journal={arXiv preprint arXiv:2601.21257},
+  year={2026}
+}
 ```
 
 Also, please cite the related papers for the methods you employed, as listed in `docs/user_readme.md`.
