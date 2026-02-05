@@ -6,7 +6,7 @@
 
 `MoCo` is a toolkit for **Mo**del **Co**llaboration research, where multiple language models collaborate and complement each other for compositional AI systems.
 
-Technical report: [link](./)
+Technical report: [link]([./](https://arxiv.org/abs/2601.21257))
 
 ## Quick Start
 
