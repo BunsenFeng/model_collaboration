@@ -76,6 +76,12 @@ If you are interested in contributing new datasets, check out [link](docs/eval_r
 
 If you have any suggestions, please open an issue.
 
+## MoCo-supported projects
+
+Safety of model collaboration systems: what if one of the models is malicious? [link](https://arxiv.org/abs/2602.05176)
+
+The single-multi evolution loop: multiple LMs collaborate, distill the collaborative system back into each individual model, and repeat for multi-LLM self-evolution. [link](https://arxiv.org/abs/2602.05182)
+
 ## Citation
 If `MoCo` is helpful for you, please consider citing:
 
