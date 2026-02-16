@@ -44,7 +44,7 @@ def lora_merge(weights, lora_name_list, output_path, gpu_id, directly_load_safet
     # the slow merge
     if not directly_load_safetensors:
         # mergekit implementation
-        with open("logs/mergekit_args.yml", "w") as f:
+        with open("model_collaboration/logs/mergekit_args.yml", "w") as f:
             f.write("models:\n")
             for i in range(len(lora_name_list)):
                 f.write("  - model: " + lora_name_list[i] + "\n")
@@ -54,7 +54,7 @@ def lora_merge(weights, lora_name_list, output_path, gpu_id, directly_load_safet
             f.write("dtype: float16\n")
         
         # executing it
-        os.system("mergekit-yaml logs/mergekit_args.yml " + output_name + " --cuda --device cuda:" + str(gpu_id))
+        os.system("mergekit-yaml model_collaboration/logs/mergekit_args.yml " + output_name + " --cuda --device cuda:" + str(gpu_id))
 
         # lora_state_dict_list = []
         # for lora_name in lora_name_list:
