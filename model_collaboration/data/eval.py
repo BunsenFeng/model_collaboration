@@ -10,13 +10,15 @@ import subprocess
 import tempfile
 import sys
 import signal
+import numpy as np
 from tqdm import tqdm
 from torch import _dynamo
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from openai import AzureOpenAI
 from collections import Counter
 from multiprocessing import Pool
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification
+from sklearn.metrics.pairwise import cosine_similarity
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification, pipeline
 
 
 # Disable tokenizer thread parallelism to avoid fork warnings emitted during evaluation.
@@ -546,7 +548,7 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
                     input_list.append(item["question"])
             else:
                 input_list.append(item.get("prompt", ""))
-    elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation":
+    elif task_type == "noncompliance" or task_type == "reward_model" or task_type == "text_generation" or task_type == "generation_diversity":
         for item in data:
             input_list.append(item["input"])
     elif task_type == "coding":
@@ -574,6 +576,29 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
 
     scores = []
     parsed_outputs = []
+
+    if task_type == "generation_diversity":
+        feature_extractor = pipeline("feature-extraction", framework="pt", model="FacebookAI/roberta-base", device=0)
+
+        assert len(outputs) == len(data), "Length of outputs must match length of data for generation diversity evaluation."
+        for i in range(len(outputs)):
+            output = outputs[i]
+            references = data[i]["reference"]
+            output_vector = feature_extractor(output, truncation=True, max_length=512, padding="max_length", return_tensors="pt")[0].numpy().mean(axis=0)
+
+            reference_vectors = []
+            for reference in references:
+                reference_vector = feature_extractor(reference, truncation=True, max_length=512, padding="max_length", return_tensors="pt")[0].numpy().mean(axis=0)
+                reference_vectors.append(reference_vector)
+
+            pairwise_similarities = []
+            for ref_vector in reference_vectors:
+                similarity = cosine_similarity(output_vector.reshape(1, -1), ref_vector.reshape(1, -1))
+                pairwise_similarities.append(similarity[0][0])
+
+            diversity_score = float(1 - np.mean(pairwise_similarities))
+            scores.append(diversity_score)
+            parsed_outputs.append(output)
 
     if task_type == "general_verifier":
         parsed_outputs = outputs
