@@ -43,6 +43,10 @@ The sections below list all currently supported values for these parameters.
 | `medqa`* | `multiple_choice` | [Jin et al., 2021](https://arxiv.org/pdf/2009.13081) | Medical licensing exam questions |
 | `pubmedqa`* | `exact_match` | [Jin et al., 2019](https://arxiv.org/pdf/1909.06146) | Biomedical research question answering |
 | `theoremqa`* | `exact_match` | [Chen et al., 2023](https://arxiv.org/pdf/2305.12524) | Theorem proving and mathematical reasoning |
+| `culturalbench_hard`* | `multiple_choice` | [Chiu et al., 2024](https://arxiv.org/pdf/2410.02677) | Cultural reasoning and knowledge |
+| `kaleidoscope`* | `multiple_choice` | [Sorensen et al., 2023](https://arxiv.org/abs/2309.00779) | Identifying the relationship between values and situations |
+| `infinite_chat_open`* | `reward_model` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Open-ended user queries |
+| `infinite_chat_diversity` | `generation_diversity` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Average distance of generated responses to references (generations by existing models) |
 
 \* Asterisks mark datasets where the `general_verifier` task_type is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
 
