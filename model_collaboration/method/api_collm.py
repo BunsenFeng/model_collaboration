@@ -607,9 +607,21 @@ class CoLLMInference:
         Returns:
             Generated text (str)
         """
-        # Tokenize prompt
-        prompt_token_ids = self.tokenizer_base(prompt, return_tensors="pt")["input_ids"][0].tolist()
-
+        messages = [
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },
+            {
+                "role": "user",
+                "content": f"Problem: {prompt}"
+            }
+        ]
+        chat_prompt = self.tokenizer_base.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        
+        prompt_token_ids = self.tokenizer_base(chat_prompt, return_tensors="pt")["input_ids"][0].tolist()
         vocab_size_base = len(self.tokenizer_base)
         vocab_size_ref = len(self.tokenizer_ref)
         eos_token_id = self.tokenizer_base.eos_token_id
