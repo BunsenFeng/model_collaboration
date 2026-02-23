@@ -939,7 +939,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             output_dir=f"{collm_dir}/generator_scored_data",
             max_seq_length=max_sequence_length,
             use_flash_attn=False,
-            use_completion_format=True,
+            use_completion_format=False,
+            preprocessing_format="qwen_chat",
             use_slow_tokenizer=True,
             preprocessing_num_workers=16
         )
@@ -954,7 +955,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             output_dir=f"{collm_dir}/mentor_scored_data",
             max_seq_length=max_sequence_length,
             use_flash_attn=False,
-            use_completion_format=True,
+            use_completion_format=False,
+            preprocessing_format="qwen_chat",
             use_slow_tokenizer=True,
             preprocessing_num_workers=16
         )
