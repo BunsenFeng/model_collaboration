@@ -138,6 +138,80 @@ def encode_with_messages_format(example, tokenizer, max_seq_length):
     }
 
 
+def encode_with_messages_qwen_chat_format(example, tokenizer, max_seq_length):
+    """
+    Here we assume each example has a 'messages' field Each message is a dict with 'role' and 'content' fields.
+    We concatenate all messages with the roles as delimiters and tokenize them together for Qwen chat format.
+    """
+    messages = example["messages"]
+    if len(messages) == 0:
+        raise ValueError("messages field is empty.")
+
+    def _concat_messages(messages):
+        message_text = ""
+        for message in messages:
+            if message["role"] == "system":
+                message_text += "<|im_start|>system\n" + message["content"].strip() + "<|im_end|>\n"
+            elif message["role"] == "user":
+                message_text += "<|im_start|>user\n" + message["content"].strip() + "<|im_end|>\n"
+            elif message["role"] == "assistant":
+                message_text += (
+                    "<|im_start|>assistant\n"
+                    + message["content"].strip()
+                    + "<|im_end|>\n"
+                )
+            else:
+                raise ValueError("Invalid role: {}".format(message["role"]))
+        return message_text
+
+    example_text = _concat_messages(messages).strip()
+    tokenized_example = tokenizer(
+        example_text, return_tensors="pt", max_length=max_seq_length, truncation=True
+    )
+    input_ids = tokenized_example.input_ids
+    labels = input_ids.clone()
+
+    # mask the non-assistant part for avoiding loss
+    for message_idx, message in enumerate(messages):
+        if message["role"] != "assistant":
+            if message_idx == 0:
+                message_start_idx = 0
+            else:
+                message_start_idx = tokenizer(
+                    _concat_messages(messages[:message_idx]),
+                    return_tensors="pt",
+                    max_length=max_seq_length,
+                    truncation=True,
+                ).input_ids.shape[1]
+            if (
+                message_idx < len(messages) - 1
+                and messages[message_idx + 1]["role"] == "assistant"
+            ):
+                # here we also ignore the role of the assistant
+                messages_so_far = (
+                    _concat_messages(messages[: message_idx + 1]) + "<|im_start|>assistant\n"
+                )
+            else:
+                messages_so_far = _concat_messages(messages[: message_idx + 1])
+            message_end_idx = tokenizer(
+                messages_so_far,
+                return_tensors="pt",
+                max_length=max_seq_length,
+                truncation=True,
+            ).input_ids.shape[1]
+            labels[:, message_start_idx:message_end_idx] = -100
+
+            if message_end_idx >= max_seq_length:
+                break
+
+    attention_mask = torch.ones_like(input_ids)
+    return {
+        "input_ids": input_ids.flatten(),
+        "labels": labels.flatten(),
+        "attention_mask": attention_mask.flatten(),
+    }
+
+
 def create_prompt_with_llama2_chat_format(
     messages, bos="<s>", eos="</s>", add_bos=True
 ):
@@ -515,6 +589,8 @@ class CoLLMScorer:
         """
         if use_completion_format:
             if "messages" in raw_datasets.column_names:
+                # the 0-th messages can be either system or user, here we should make sure that only user messages will be viewed as the prompt.
+                assert raw_datasets[0]["messages"][0]["role"] == "user", "When use_completion_format is True, the first message must be user message to ensure correct prompt-completion split."
                 raw_datasets = raw_datasets.map(
                     lambda example: {
                         "prompt": example["messages"][0]["content"].strip() + "\n",
@@ -535,7 +611,13 @@ class CoLLMScorer:
                 max_seq_length=self.max_seq_length,
             )
         elif "messages" in raw_datasets.column_names:
-            if self.preprocessing_format == "tulu_chat":
+            if self.preprocessing_format == "qwen_chat":
+                encode_function = partial(
+                    encode_with_messages_qwen_chat_format,
+                    tokenizer=self.tokenizer,
+                    max_seq_length=self.max_seq_length,
+                )
+            elif self.preprocessing_format == "tulu_chat":
                 encode_function = partial(
                     encode_with_messages_format,
                     tokenizer=self.tokenizer,

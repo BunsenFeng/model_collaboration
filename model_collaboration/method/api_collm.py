@@ -607,9 +607,21 @@ class CoLLMInference:
         Returns:
             Generated text (str)
         """
-        # Tokenize prompt
-        prompt_token_ids = self.tokenizer_base(prompt, return_tensors="pt")["input_ids"][0].tolist()
-
+        messages = [
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },
+            {
+                "role": "user",
+                "content": f"Problem: {prompt}"
+            }
+        ]
+        chat_prompt = self.tokenizer_base.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        
+        prompt_token_ids = self.tokenizer_base(chat_prompt, return_tensors="pt")["input_ids"][0].tolist()
         vocab_size_base = len(self.tokenizer_base)
         vocab_size_ref = len(self.tokenizer_ref)
         eos_token_id = self.tokenizer_base.eos_token_id
@@ -927,7 +939,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             output_dir=f"{collm_dir}/generator_scored_data",
             max_seq_length=max_sequence_length,
             use_flash_attn=False,
-            use_completion_format=True,
+            use_completion_format=False,
+            preprocessing_format="qwen_chat",
             use_slow_tokenizer=True,
             preprocessing_num_workers=16
         )
@@ -942,7 +955,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             output_dir=f"{collm_dir}/mentor_scored_data",
             max_seq_length=max_sequence_length,
             use_flash_attn=False,
-            use_completion_format=True,
+            use_completion_format=False,
+            preprocessing_format="qwen_chat",
             use_slow_tokenizer=True,
             preprocessing_num_workers=16
         )
