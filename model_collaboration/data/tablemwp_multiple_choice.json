@@ -1,0 +1,2456 @@
+{
+  "name": "tablemwp_multiple_choice",
+  "task_type": "multiple_choice",
+  "dev": [
+    {
+      "id": "54",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$155 | 22,600 | 5,800\n$275 | 20,500 | 9,400\n$395 | 18,400 | 13,000\n$515 | 16,300 | 16,600\n$635 | 14,200 | 20,200\nQuestion: Look at the table. Then answer the question. At a price of $155, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "246",
+      "question": "Table:\n[TITLE]: None\nblender | $14.02\nCD | $18.35\ncomputer mouse | $10.65\nCD player | $21.84\nDVD player | $53.57\nradio | $15.42\nQuestion: Roxanne has $32.50. Does she have enough to buy a CD and a blender?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "416",
+      "question": "Table:\n[TITLE]: None\nbook about hiking | $9.00\nbook about outer space | $2.00\nbook about animals | $5.00\nbook about music | $2.00\nQuestion: Vijay has $9.00. Does he have enough to buy a book about music and a book about hiking?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "529",
+      "question": "Table:\n[TITLE]: None\nDog | Weight change (oz.)\nSprinkles | 5\nChamp | -6\nQuestion: Jordan has two dogs, Sprinkles and Champ. He is concerned because Sprinkles keeps eating Champ's food. Jordan asks their vet how much each dog's weight has changed since their last visit. Which dog's weight has changed the most?",
+      "choices": {
+        "A": "Sprinkles",
+        "B": "Champ"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "620",
+      "question": "Table:\n[TITLE]: None\nbar of soap | $0.98\ncomb | $0.75\nnail file | $0.51\nhair tie | $0.94\nbottle of hand lotion | $0.93\nQuestion: Emma has $1.72. Does she have enough to buy a hair tie and a comb?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "972",
+      "question": "Table:\n[TITLE]: Computer lab schedule\nClass | Begin | End\nIntroduction to Typing | 8:05 A.M. | 9:10 A.M.\nAdvanced Typing | 9:15 A.M. | 10:25 A.M.\nComputer Finance | 10:30 A.M. | 11:00 A.M.\nWord Processing | 11:10 A.M. | 11:50 A.M.\nComputer Science | 11:55 A.M. | 12:25 P.M.\nComputer Graphics | 12:40 P.M. | 1:45 P.M.\nBeginning Programming | 1:55 P.M. | 3:15 P.M.\nWeb Page Design | 3:20 P.M. | 4:25 P.M.\nQuestion: Look at the following schedule. Which class begins at 3.20 P.M.?",
+      "choices": {
+        "A": "Word Processing class",
+        "B": "Computer Finance class",
+        "C": "Web Page Design class",
+        "id": "Computer Graphics class"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "1237",
+      "question": "Table:\n[TITLE]: Club membership\nClub | Number of members\nFrench club | 186\nmath club | 181\nJapanese club | 168\nSpanish club | 116\nQuestion: The local high school found out how many members each club had. Which club has the fewest members?",
+      "choices": {
+        "A": "French club",
+        "B": "math club",
+        "C": "Japanese club",
+        "id": "Spanish club"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "1247",
+      "question": "Table:\n[TITLE]: Trivia game scores\nName | Score\nTamir | 81\nDillon | 82\nLuna | 87\nWayne | 86\nQuestion: Some friends played a trivia game and recorded their scores. Who had the highest score?",
+      "choices": {
+        "A": "Tamir",
+        "B": "Dillon",
+        "C": "Luna",
+        "id": "Wayne"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "1318",
+      "question": "Table:\n[TITLE]: Tractors made\nMonth | Number of tractors\nDecember | 885\nJanuary | 859\nFebruary | 895\nMarch | 898\nQuestion: A farm equipment company kept a record of the number of tractors made each month. In which month did the company make the most tractors?",
+      "choices": {
+        "A": "December",
+        "B": "January",
+        "C": "February",
+        "id": "March"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "1434",
+      "question": "Table:\n[TITLE]: None\nplay ticket | $24.00\ncomedy show ticket | $49.00\nboat show ticket | $23.00\nsoccer ticket | $50.00\nQuestion: Dominic has $72.00. Does he have enough to buy a play ticket and a soccer ticket?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "1492",
+      "question": "Table:\n[TITLE]: None\nx | y\n12 | 3\n13 | 5\n14 | 15\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "1529",
+      "question": "Table:\n[TITLE]: Newspapers sold\nDay | Number of newspapers\nTuesday | 337\nWednesday | 375\nThursday | 357\nFriday | 353\nQuestion: The staff of a newspaper examined the number of copies sold over the past 4 days. On which day were the fewest copies sold?",
+      "choices": {
+        "A": "Tuesday",
+        "B": "Wednesday",
+        "C": "Thursday",
+        "id": "Friday"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "1597",
+      "question": "Table:\n[TITLE]: Chocolate consumption per capita (kg)\nCountry | 2002 | 2005\nBelgium | 8 | 11\nSwitzerland | 11 | 10\nAustralia | 4 | 5\nGermany | 10 | 11\nAustria | 8 | 9\nQuestion: Lucia's Candies has been studying how much chocolate people have been eating in different countries. Which country consumed the least chocolate per capita in 2002?",
+      "choices": {
+        "A": "Switzerland",
+        "B": "Belgium",
+        "C": "Austria",
+        "id": "Australia"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "1816",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$545 | 19,000 | 3,200\n$625 | 14,500 | 7,500\n$705 | 10,000 | 11,800\n$785 | 5,500 | 16,100\n$865 | 1,000 | 20,400\nQuestion: Look at the table. Then answer the question. At a price of $625, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "1847",
+      "question": "Table:\n[TITLE]: Minutes spent practicing\nDay | Minutes\nMonday | 118\nTuesday | 142\nWednesday | 169\nThursday | 146\nQuestion: Rosa jotted down how many minutes she spent practicing volleyball in the past 4 days. On which day did Rosa practice the most?",
+      "choices": {
+        "A": "Monday",
+        "B": "Tuesday",
+        "C": "Wednesday",
+        "id": "Thursday"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "1849",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$960 | 17,500 | 3,100\n$1,010 | 16,700 | 6,800\n$1,060 | 15,900 | 10,500\n$1,110 | 15,100 | 14,200\n$1,160 | 14,300 | 17,900\nQuestion: Look at the table. Then answer the question. At a price of $1,010, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "2274",
+      "question": "Table:\n[TITLE]: None\njar of salsa | $0.99\nbottle of ketchup | $0.98\nbottle of vinegar | $0.57\nbottle of hot sauce | $0.86\nQuestion: Cindy has $1.50. Does she have enough to buy a bottle of ketchup and a bottle of vinegar?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "2307",
+      "question": "Table:\n[TITLE]: None\nx | y\n12 | 8\n13 | 15\n14 | 16\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "2410",
+      "question": "Table:\n[TITLE]: Class schedule\nSubject | Begin | End\nHistory | 8:30 A.M. | 9:35 A.M.\nEnglish | 9:45 A.M. | 10:30 A.M.\nMusic | 10:35 A.M. | 11:55 A.M.\nArt | 12:05 P.M. | 1:00 P.M.\nChemistry | 1:05 P.M. | 2:25 P.M.\nMath | 2:35 P.M. | 3:50 P.M.\nGym | 4:00 P.M. | 4:40 P.M.\nQuestion: Look at the following schedule. When does Math class begin?",
+      "choices": {
+        "A": "2:25 P.M.",
+        "B": "3:50 P.M.",
+        "C": "2:35 P.M.",
+        "id": "4:00 P.M."
+      },
+      "answer": "C"
+    },
+    {
+      "id": "2492",
+      "question": "Table:\n[TITLE]: None\nx | y\n15 | 18\n16 | 9\n17 | 0\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "2766",
+      "question": "Table:\n[TITLE]: Bus schedule\nthe kickball field | 8:45 A.M. | 9:15 A.M. | 10:15 A.M. | 10:30 A.M. | 10:45 A.M.\nthe library | 9:00 A.M. | 9:30 A.M. | 10:30 A.M. | 10:45 A.M. | 11:00 A.M.\nthe school | 9:30 A.M. | 10:00 A.M. | 11:00 A.M. | 11:15 A.M. | 11:30 A.M.\nthe mall | 10:30 A.M. | 11:00 A.M. | 12:00 P.M. | 12:15 P.M. | 12:30 P.M.\nthe zoo | 11:30 A.M. | 12:00 P.M. | 1:00 P.M. | 1:15 P.M. | 1:30 P.M.\nthe playground | 12:00 P.M. | 12:30 P.M. | 1:30 P.M. | 1:45 P.M. | 2:00 P.M.\nthe doctor's office | 12:30 P.M. | 1:00 P.M. | 2:00 P.M. | 2:15 P.M. | 2:30 P.M.\nthe post office | 12:45 P.M. | 1:15 P.M. | 2:15 P.M. | 2:30 P.M. | 2:45 P.M.\nthe science museum | 1:00 P.M. | 1:30 P.M. | 2:30 P.M. | 2:45 P.M. | 3:00 P.M.\nQuestion: Look at the following schedule. Ruth just missed the 11.00 A.M. bus at the mall. How long does she have to wait until the next bus?",
+      "choices": {
+        "A": "15 minutes",
+        "B": "30 minutes",
+        "C": "45 minutes",
+        "id": "1 hour"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "2772",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$885 | 19,000 | 10,100\n$925 | 16,000 | 12,400\n$965 | 13,000 | 14,700\n$1,005 | 10,000 | 17,000\n$1,045 | 7,000 | 19,300\nQuestion: Look at the table. Then answer the question. At a price of $1,005, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "3111",
+      "question": "Table:\n[TITLE]: None\nHawaiian vacation package | $4,866.00\nJamaican vacation package | $2,625.00\nAustralian vacation package | $3,635.00\nCaribbean vacation package | $1,398.00\nAfrican safari vacation package | $4,371.00\nEuropean vacation package | $6,510.00\nQuestion: Jackson has $9,489.00. Does he have enough to buy a European vacation package and a Jamaican vacation package?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "3258",
+      "question": "Table:\n[TITLE]: Web pages visited\nPerson | Number of Web pages\nBrendan | 265\nShawn | 259\nAdam | 256\nTess | 226\nQuestion: Several people compared how many Web pages they had visited. Who visited the most Web pages?",
+      "choices": {
+        "A": "Brendan",
+        "B": "Shawn",
+        "C": "Adam",
+        "id": "Tess"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "3671",
+      "question": "Table:\n[TITLE]: Train schedule\nCedarburg | 7:45 A.M. | 8:30 A.M. | 9:30 A.M. | 10:30 A.M.\nStafford | 9:30 A.M. | 10:15 A.M. | 11:15 A.M. | 12:15 P.M.\nNorwood | 10:00 A.M. | 10:45 A.M. | 11:45 A.M. | 12:45 P.M.\nDanville | 11:00 A.M. | 11:45 A.M. | 12:45 P.M. | 1:45 P.M.\nHillsboro | 11:45 A.M. | 12:30 P.M. | 1:30 P.M. | 2:30 P.M.\nLanberry | 12:30 P.M. | 1:15 P.M. | 2:15 P.M. | 3:15 P.M.\nCenterville | 2:15 P.M. | 3:00 P.M. | 4:00 P.M. | 5:00 P.M.\nQuestion: Look at the following schedule. Malia is at Hillsboro at 2.15 P.M. How soon can she get to Lanberry?",
+      "choices": {
+        "A": "10:30 A.M.",
+        "B": "1:15 P.M.",
+        "C": "3:15 P.M.",
+        "id": "12:15 P.M."
+      },
+      "answer": "C"
+    },
+    {
+      "id": "4039",
+      "question": "Table:\n[TITLE]: Trees planted\nOrganization | Number of trees planted\nMake it Green | 565\nDreaming Green | 552\nAcorns to Oaks | 526\nNew Planet | 562\nQuestion: An environmental agency examined how many trees were planted by different organizations. Which organization planted the fewest trees?",
+      "choices": {
+        "A": "Make it Green",
+        "B": "Dreaming Green",
+        "C": "Acorns to Oaks",
+        "id": "New Planet"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "4117",
+      "question": "Table:\n[TITLE]: Winter Olympics schedule\nEvent | Begin | End\ncross-country skiing | 10:55 A.M. | 12:10 P.M.\nfigure skating | 11:10 A.M. | 12:35 P.M.\nbobsled | 12:10 P.M. | 1:10 P.M.\nice hockey | 12:25 P.M. | 3:50 P.M.\nluge | 3:10 P.M. | 7:25 P.M.\nsnowboarding | 6:30 P.M. | 9:55 P.M.\nQuestion: Look at the following schedule. When does the bobsled event end?",
+      "choices": {
+        "A": "12:10 P.M.",
+        "B": "1:10 P.M.",
+        "C": "9:55 P.M.",
+        "id": "3:50 P.M."
+      },
+      "answer": "B"
+    },
+    {
+      "id": "4287",
+      "question": "Table:\n[TITLE]: None\nx | y\n13 | 3\n14 | 7\n15 | 13\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "4546",
+      "question": "Table:\n[TITLE]: None\nMixture | Temperature (°C)\nBromine mixture | -4\nAcetone mixture | 5\nQuestion: In science class, Brooke is measuring the temperature of different chemical mixtures. The temperatures of two mixtures are shown in the table. Which mixture's temperature is closest to zero?",
+      "choices": {
+        "A": "bromine mixture",
+        "B": "acetone mixture"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "4640",
+      "question": "Table:\n[TITLE]: Donations received\nCause | April | May\nMedical research | $4 | $18\nParks | $13 | $19\nHunger | $7 | $17\nQuestion: A county agency recorded the money donated to several charitable causes over time. Which cause raised less money in April, hunger or medical research?",
+      "choices": {
+        "A": "hunger",
+        "B": "medical research"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "4730",
+      "question": "Table:\n[TITLE]: None\ndeep-sea fishing package | $987.00\nsurfing adventure package | $904.00\nsailing trip package | $744.00\ncamping adventure package | $641.00\nparachuting adventure package | $738.00\nwhale-watching adventure package | $608.00\nQuestion: Kenneth has $1,614.00. Does he have enough to buy a surfing adventure package and a camping adventure package?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "4791",
+      "question": "Table:\n[TITLE]: None\nx | y\n4 | 8\n5 | 10\n6 | 18\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "4827",
+      "question": "Table:\n[TITLE]: None\nbearded dragon | $36\nhedgehog | $79\ncockatoo | $89\npot-bellied pig | $25\nQuestion: Tara has $110. Does she have enough to buy a cockatoo and a pot-bellied pig?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "4988",
+      "question": "Table:\n[TITLE]: Ferry schedule\nLocation | Arrive | Depart\nSandy Shores | 8:00 A.M. | 8:05 A.M.\nStarfish City | 8:30 A.M. | 9:00 A.M.\nCliff View | 9:50 A.M. | 10:10 A.M.\nBeach Town | 10:55 A.M. | 11:05 A.M.\nBay Harbor | 12:20 P.M. | 12:25 P.M.\nWindy Sands | 1:50 P.M. | 1:55 P.M.\nFoggy Port | 3:35 P.M. | 3:50 P.M.\nGrassy Beach | 4:15 P.M. | 4:45 P.M.\nGreen Harbor | 5:35 P.M. | 5:45 P.M.\nPebble Town | 6:10 P.M. | 6:35 P.M.\nQuestion: Look at the following schedule. At which stop does the ferry arrive at 6.10 P.M.?",
+      "choices": {
+        "A": "Sandy Shores",
+        "B": "Pebble Town",
+        "C": "Bay Harbor",
+        "id": "Grassy Beach"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "5083",
+      "question": "Table:\n[TITLE]: None\nMonth | Change in water level (in.)\nApril | -6\nMay | 4\nQuestion: The houses in Tanvi's town get their water from a local reservoir. Tanvi and a group of engineers monitor the water level for safety and health reasons. The change in water level over two months is shown in the table. During which month did the water level change more?",
+      "choices": {
+        "A": "April",
+        "B": "May"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "5182",
+      "question": "Table:\n[TITLE]: Trivia game scores\nName | Score\nRoger | 28\nBrennan | 29\nManny | 27\nEdward | 25\nQuestion: Some friends played a trivia game and recorded their scores. Who had the lowest score?",
+      "choices": {
+        "A": "Roger",
+        "B": "Brennan",
+        "C": "Manny",
+        "id": "Edward"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "5216",
+      "question": "Table:\n[TITLE]: None\nbook about basketball | $18.00\nbook about the Olympics | $15.00\nbook about sharks | $19.00\nbook about cats | $24.00\nbook about hiking | $14.00\nbook about trains | $17.00\nQuestion: Erin has $39.00. Does she have enough to buy a book about sharks and a book about basketball?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "5269",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$540 | 21,300 | 8,100\n$590 | 18,700 | 10,600\n$640 | 16,100 | 13,100\n$690 | 13,500 | 15,600\n$740 | 10,900 | 18,100\nQuestion: Look at the table. Then answer the question. At a price of $690, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "5381",
+      "question": "Table:\n[TITLE]: Sports team membership\nTeam | Number of members\nbaseball team | 38\nfootball team | 37\nwater polo team | 34\nvolleyball team | 35\nQuestion: Grace's school reported how many members each sports team had. Which team has the most members?",
+      "choices": {
+        "A": "baseball team",
+        "B": "football team",
+        "C": "water polo team",
+        "id": "volleyball team"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "5419",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$430 | 17,800 | 5,000\n$480 | 14,200 | 8,700\n$530 | 10,600 | 12,400\n$580 | 7,000 | 16,100\n$630 | 3,400 | 19,800\nQuestion: Look at the table. Then answer the question. At a price of $580, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "5509",
+      "question": "Table:\n[TITLE]: None\nx | y\n3 | 16\n19 | 2\n19 | 4\n13 | 18\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "5609",
+      "question": "Table:\n[TITLE]: None\nMonth | Change in water level (in.)\nApril | -6\nMay | 4\nQuestion: The houses in Krysta's town get their water from a local reservoir. Krysta and a group of engineers monitor the water level for safety and health reasons. The change in water level over two months is shown in the table. During which month did the water level change more?",
+      "choices": {
+        "A": "April",
+        "B": "May"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "5752",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$80 | 20,200 | 15,300\n$180 | 15,400 | 17,200\n$280 | 10,600 | 19,100\n$380 | 5,800 | 21,000\n$480 | 1,000 | 22,900\nQuestion: Look at the table. Then answer the question. At a price of $380, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "5914",
+      "question": "Table:\n[TITLE]: Cheese consumption per capita (kg)\nCountry | 1996 | 2006\nGermany | 12 | 20\nGreat Britain | 9 | 10\nCanada | 10 | 11\nAustralia | 10 | 10\nArgentina | 11 | 11\nQuestion: An agricultural agency is researching how much cheese people have been eating in different parts of the world. Which country consumed the most cheese per capita in 2006?",
+      "choices": {
+        "A": "Germany",
+        "B": "Canada",
+        "C": "Great Britain",
+        "id": "Argentina"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "6067",
+      "question": "Table:\n[TITLE]: Nobel Prize winners\nCountry | 1970s | 1980s\nGermany | 9 | 11\nCanada | 2 | 3\nRussia | 5 | 1\nFrance | 3 | 5\nQuestion: For an assignment, Stefan looked at which countries got the most Nobel Prizes in various decades. Which country had more Nobel Prize winners in the 1970s, Russia or Germany?",
+      "choices": {
+        "A": "Russia",
+        "B": "Germany"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "6257",
+      "question": "Table:\n[TITLE]: Zoo schedule\nEvent | Begin | End\ngiraffe feeding | 10:00 A.M. | 11:05 A.M.\nbear lecture | 11:40 A.M. | 12:30 P.M.\ninsect show | 1:10 P.M. | 1:40 P.M.\nkoala feeding | 2:10 P.M. | 2:40 P.M.\nreptile show | 3:10 P.M. | 4:00 P.M.\ntiger lecture | 3:30 P.M. | 4:50 P.M.\nbird show | 5:40 P.M. | 6:25 P.M.\nQuestion: Look at the following schedule. When does the koala feeding begin?",
+      "choices": {
+        "A": "3:10 P.M.",
+        "B": "1:10 P.M.",
+        "C": "2:10 P.M.",
+        "id": "5:40 P.M."
+      },
+      "answer": "C"
+    },
+    {
+      "id": "6271",
+      "question": "Table:\n[TITLE]: None\nMixture | Temperature (°C)\nBromine mixture | -4\nAcetone mixture | 5\nQuestion: In science class, Alana is measuring the temperature of different chemical mixtures. The temperatures of two mixtures are shown in the table. Which mixture's temperature is closest to zero?",
+      "choices": {
+        "A": "bromine mixture",
+        "B": "acetone mixture"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "6386",
+      "question": "Table:\n[TITLE]: Bus schedule\nthe mall | 9:45 A.M. | 10:00 A.M. | 10:30 A.M. | 11:00 A.M.\nthe post office | 10:45 A.M. | 11:00 A.M. | 11:30 A.M. | 12:00 P.M.\nthe school | 11:45 A.M. | 12:00 P.M. | 12:30 P.M. | 1:00 P.M.\nthe playground | 12:30 P.M. | 12:45 P.M. | 1:15 P.M. | 1:45 P.M.\nthe library | 1:00 P.M. | 1:15 P.M. | 1:45 P.M. | 2:15 P.M.\nQuestion: Look at the following schedule. Jayla got on the bus at the mall at 10.30 A.M. What time will she get to the playground?",
+      "choices": {
+        "A": "1:15 P.M.",
+        "B": "1:45 P.M.",
+        "C": "11:00 A.M.",
+        "id": "10:45 A.M."
+      },
+      "answer": "A"
+    },
+    {
+      "id": "6480",
+      "question": "Table:\n[TITLE]: None\nx | y\n7 | 17\n8 | 10\n9 | 5\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "6551",
+      "question": "Table:\n[TITLE]: Hotel shuttle bus schedule\namusement park | 9:45 A.M. | 10:00 A.M. | 10:15 A.M. | 10:30 A.M. | 11:00 A.M.\ncollege campus | 10:45 A.M. | 11:00 A.M. | 11:15 A.M. | 11:30 A.M. | 12:00 P.M.\nart museum | 11:45 A.M. | 12:00 P.M. | 12:15 P.M. | 12:30 P.M. | 1:00 P.M.\nairport | 12:15 P.M. | 12:30 P.M. | 12:45 P.M. | 1:00 P.M. | 1:30 P.M.\npark | 1:00 P.M. | 1:15 P.M. | 1:30 P.M. | 1:45 P.M. | 2:15 P.M.\nQuestion: Look at the following schedule. Rick just missed the 10.00 A.M. bus at the amusement park. How long does he have to wait until the next bus?",
+      "choices": {
+        "A": "45 minutes",
+        "B": "15 minutes",
+        "C": "1 hour",
+        "id": "30 minutes"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "6575",
+      "question": "Table:\n[TITLE]: Smoothies sold\nDay | Number of smoothies\nSunday | 69\nMonday | 64\nTuesday | 61\nWednesday | 65\nQuestion: A juice shop tracked how many smoothies it sold in the past 4 days. On which day did the shop sell the most smoothies?",
+      "choices": {
+        "A": "Sunday",
+        "B": "Monday",
+        "C": "Tuesday",
+        "id": "Wednesday"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "6712",
+      "question": "Table:\n[TITLE]: School picnic schedule\nEvent | Begin | End\nsoftball game | 10:15 A.M. | 11:00 A.M.\npie-eating contest | 11:15 A.M. | 12:10 P.M.\nsoccer game | 12:25 P.M. | 12:55 P.M.\ndance competition | 12:35 P.M. | 1:35 P.M.\nswimming competition | 1:30 P.M. | 2:05 P.M.\nobstacle course | 2:05 P.M. | 2:45 P.M.\nlunch | 2:50 P.M. | 3:15 P.M.\nQuestion: Look at the following schedule. Which event ends at 1.35 P.M.?",
+      "choices": {
+        "A": "soccer game",
+        "B": "dance competition",
+        "C": "obstacle course",
+        "id": "swimming competition"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "6723",
+      "question": "Table:\n[TITLE]: None\nshiny metal bead | $0.16\ntiny gold bead | $0.15\nbrown cat's eye bead | $0.95\nshiny red bead | $0.77\noval turquoise bead | $0.75\nQuestion: Pedro has $1.00. Does he have enough to buy a tiny gold bead and a brown cat's eye bead?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "6738",
+      "question": "Table:\n[TITLE]: Tour bus schedule\nskyscraper | 9:30 A.M. | 10:15 A.M. | 10:45 A.M.\ndowntown | 10:30 A.M. | 11:15 A.M. | 11:45 A.M.\ncity hall | 11:15 A.M. | 12:00 P.M. | 12:30 P.M.\nart museum | 12:15 P.M. | 1:00 P.M. | 1:30 P.M.\nthe zoo | 1:15 P.M. | 2:00 P.M. | 2:30 P.M.\nQuestion: Look at the following schedule. Sharon got on the bus at downtown at 11.45 A.M. What time will she get to the art museum?",
+      "choices": {
+        "A": "1:30 P.M.",
+        "B": "12:30 P.M.",
+        "C": "1:15 P.M.",
+        "id": "12:15 P.M."
+      },
+      "answer": "A"
+    },
+    {
+      "id": "7361",
+      "question": "Table:\n[TITLE]: None\nx | y\n18 | 2\n7 | 15\n7 | 16\n7 | 19\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "7376",
+      "question": "Table:\n[TITLE]: Train schedule\nPleasant River Campground | 2:30 A.M. | 10:15 A.M. | 12:00 A.M.\nMagician Village | 3:15 A.M. | 11:00 A.M. | 12:45 A.M.\nSkyscraper City | 3:45 A.M. | 11:30 A.M. | 1:15 A.M.\nComfy Pillows Resort | 4:30 A.M. | 12:15 P.M. | 2:00 A.M.\nHappy Cow Farm | 5:00 A.M. | 12:45 P.M. | 2:30 A.M.\nSnowy Mountain | 6:00 A.M. | 1:45 P.M. | 3:30 A.M.\nRocky Ravine Town | 6:30 A.M. | 2:15 P.M. | 4:00 A.M.\nCity of Green Trees | 7:00 A.M. | 2:45 P.M. | 4:30 A.M.\nQuestion: Look at the following schedule. Tyrone just missed the 3.45 A.M. train at Skyscraper City. What time is the next train?",
+      "choices": {
+        "A": "2:15 P.M.",
+        "B": "3:45 A.M.",
+        "C": "1:15 A.M.",
+        "id": "11:30 A.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "7466",
+      "question": "Table:\n[TITLE]: None\nsilver coat rack | $88.00\ncrystal sculpture | $85.00\ncrystal vase | $51.00\nchandelier | $50.00\nQuestion: Emmett has $172.00. Does he have enough to buy a silver coat rack and a crystal sculpture?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "7602",
+      "question": "Table:\n[TITLE]: None\nOption | Change in phone price\nAdd an upgrade | $60\nBuy a used phone | -$75\nQuestion: Lena is looking at the price of new cell phones online. Her favorite company, OrangeTech, has a special this weekend. Lena can add an upgrade to a phone for an additional cost, or she can buy a used phone to get a discount. The change in price for each option is shown in the table. Which option results in a greater change in price?",
+      "choices": {
+        "A": "adding an upgrade",
+        "B": "buying a used phone"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "7777",
+      "question": "Table:\n[TITLE]: Gymnastics meet schedule\nEvent | Begin | End\nwomen's floor exercise | 10:05 A.M. | 10:45 A.M.\nmen's vault | 10:35 A.M. | 11:20 A.M.\nmen's rings | 11:25 A.M. | 12:20 P.M.\nmen's parallel bars | 12:15 P.M. | 12:55 P.M.\nwomen's balance beam | 12:35 P.M. | 1:05 P.M.\nwomen's uneven bars | 12:50 P.M. | 1:15 P.M.\nmen's high bar | 1:00 P.M. | 1:30 P.M.\nwomen's vault | 1:45 P.M. | 2:10 P.M.\nmen's pommel horse | 2:20 P.M. | 2:45 P.M.\nmen's floor exercise | 2:40 P.M. | 3:30 P.M.\nQuestion: Look at the following schedule. Which event ends at 2.45 P.M.?",
+      "choices": {
+        "A": "men's vault event",
+        "B": "men's parallel bars event",
+        "C": "men's pommel horse event",
+        "id": "women's vault event"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "7905",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$230 | 11,700 | 2,600\n$380 | 10,200 | 6,600\n$530 | 8,700 | 10,600\n$680 | 7,200 | 14,600\n$830 | 5,700 | 18,600\nQuestion: Look at the table. Then answer the question. At a price of $530, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "8608",
+      "question": "Table:\n[TITLE]: Sticker collections\nName | Number of stickers\nTina | 778\nEmma | 796\nRobert | 767\nJamie | 769\nQuestion: Some friends compared the sizes of their sticker collections. Who has the fewest stickers?",
+      "choices": {
+        "A": "Tina",
+        "B": "Emma",
+        "C": "Robert",
+        "id": "Jamie"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "8615",
+      "question": "Table:\n[TITLE]: Festival schedule\nEvent | Begin | End\ndance performance | 10:15 A.M. | 12:45 P.M.\nchoir concert | 12:55 P.M. | 2:40 P.M.\ndrumming performance | 2:50 P.M. | 3:50 P.M.\naward ceremony | 3:10 P.M. | 4:30 P.M.\nkeynote speech | 4:20 P.M. | 6:00 P.M.\nQuestion: Look at the following schedule. When does the dance performance begin?",
+      "choices": {
+        "A": "2:50 P.M.",
+        "B": "3:10 P.M.",
+        "C": "10:15 A.M.",
+        "id": "12:55 P.M."
+      },
+      "answer": "C"
+    },
+    {
+      "id": "8736",
+      "question": "Table:\n[TITLE]: None\nx | y\n11 | 16\n12 | 9\n13 | 1\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "8802",
+      "question": "Table:\n[TITLE]: None\nyellow skirt | $10.76\npair of brown pants | $13.56\ngreen dress | $11.44\nred sweater | $26.64\nQuestion: Emilia has $40.50. Does she have enough to buy a pair of brown pants and a red sweater?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "8878",
+      "question": "Table:\n[TITLE]: None\nteapot | $38.09\nset of forks | $18.08\ncookbook | $13.24\nsoup pot | $50.93\nQuestion: Valeria has $52.00. Does she have enough to buy a teapot and a cookbook?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "9064",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$980 | 11,000 | 7,100\n$1,130 | 9,300 | 8,600\n$1,280 | 7,600 | 10,100\n$1,430 | 5,900 | 11,600\n$1,580 | 4,200 | 13,100\nQuestion: Look at the table. Then answer the question. At a price of $1,280, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "9401",
+      "question": "Table:\n[TITLE]: None\nmop | $3\nwrench | $5\nbroom | $8\nwatering can | $5\nbucket | $3\nQuestion: Rose has $6. Does she have enough to buy a wrench and a bucket?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "9539",
+      "question": "Table:\n[TITLE]: Planet Volume (km3) Primary composition\nMercury | 6.08 x | 1010 rock\nVenus | 9.28 x | 1011 rock\nEarth | 1.08 x | 1012 rock\nMars | 1.63 x | 1011 rock\nJupiter | 1.43 x | 1015 gas\nSaturn | 8.27 x | 1014 gas\nUranus | 6.83 x | 1013 ice\nNeptune | 6.25 x | 1013 ice\nQuestion: Use the data to answer the question below. Is the following statement about our solar system true or false? Earth is the largest planet that is made mainly of rock.",
+      "choices": {
+        "A": "true",
+        "B": "false"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "9866",
+      "question": "Table:\n[TITLE]: Gym schedule\nActivity | Begin | End\ngymnastics | 7:50 A.M. | 8:20 A.M.\nline dancing | 8:25 A.M. | 9:30 A.M.\nyoga | 9:35 A.M. | 10:50 A.M.\nfitness class | 11:00 A.M. | 12:05 P.M.\nfloor hockey | 12:20 P.M. | 1:10 P.M.\nbadminton | 1:15 P.M. | 2:35 P.M.\nindoor soccer | 2:45 P.M. | 4:00 P.M.\nQuestion: Look at the following schedule. Which activity ends at 12.05 P.M.?",
+      "choices": {
+        "A": "badminton",
+        "B": "fitness class",
+        "C": "floor hockey",
+        "id": "indoor soccer"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "9888",
+      "question": "Table:\n[TITLE]: None\nbag of peanuts | $0.79\nice cream cone | $0.95\nbag of pretzels | $0.96\nglass of lemonade | $0.51\npickle | $0.67\ncup of coffee | $0.77\nQuestion: Deb has $1.66. Does she have enough to buy a pickle and an ice cream cone?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "9999",
+      "question": "Table:\n[TITLE]: Quiz show scores\nName | Score\nColette | 81\nVijay | 89\nKeenan | 88\nStefan | 82\nQuestion: The players on a quiz show received the following scores. Who had the lowest score?",
+      "choices": {
+        "A": "Colette",
+        "B": "Vijay",
+        "C": "Keenan",
+        "id": "Stefan"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "10146",
+      "question": "Table:\n[TITLE]: Pages read\nDay | Number of pages\nFriday | 118\nSaturday | 138\nSunday | 131\nMonday | 189\nQuestion: Maddie wrote down how many pages she read over the past 4 days. On which day did Maddie read the fewest pages?",
+      "choices": {
+        "A": "Friday",
+        "B": "Saturday",
+        "C": "Sunday",
+        "id": "Monday"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "10240",
+      "question": "Table:\n[TITLE]: Ferry fares\nFerry | Bicycle | Car\nSeattle-Bremerton | $8 | $12\nSouthport-Fort Fisher | $2 | $5\nFauntleroy-Vashon | $5 | $15\nMukilteu-Clinton | $5 | $7\nOcracoke | $3 | $15\nQuestion: For an economics project, Kate determined the cost of ferry rides for bicycles and cars. Of the ferries shown, which charges the least for a bicycle?",
+      "choices": {
+        "A": "Seattle-Bremerton",
+        "B": "Ocracoke",
+        "C": "Southport-Fort Fisher",
+        "id": "Fauntleroy-Vashon"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "10512",
+      "question": "Table:\n[TITLE]: None\nLocation | Elevation (m)\nTop of the skyscraper | 275\nBottom of the mine | -260\nQuestion: Eve likes watching the show Engineering Marvels. In last night's episode, the engineering team visited a tall skyscraper and a deep mine. A banner at the bottom of the screen showed the elevation of each location the team visited. Which location is closer to sea level?",
+      "choices": {
+        "A": "top of the skyscraper",
+        "B": "bottom of the mine"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "11006",
+      "question": "Table:\n[TITLE]: None\nflannel sheet | $13\nquilt | $24\nbeach towel | $11\npillow | $14\nbeach blanket | $11\nQuestion: Wendy has $27. Does she have enough to buy a beach blanket and a pillow?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "11025",
+      "question": "Table:\n[TITLE]: Chocolate consumption per capita (kg)\nCountry | 2002 | 2005\nNorway | 8 | 9\nDenmark | 9 | 8\nAustria | 8 | 9\nGermany | 10 | 11\nQuestion: Ruth's Candies has been studying how much chocolate people have been eating in different countries. Which country consumed less chocolate per capita in 2005, Austria or Germany?",
+      "choices": {
+        "A": "Austria",
+        "B": "Germany"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "12051",
+      "question": "Table:\n[TITLE]: New cable customers\nDay | Number of new customers\nWednesday | 131\nThursday | 114\nFriday | 141\nSaturday | 134\nQuestion: A cable company analyst paid attention to how many new customers it had each day. On which day did the cable company have the fewest new customers?",
+      "choices": {
+        "A": "Wednesday",
+        "B": "Thursday",
+        "C": "Friday",
+        "id": "Saturday"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "12090",
+      "question": "Table:\n[TITLE]: None\nx | y\n11 | 6\n5 | 13\n20 | 15\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "12316",
+      "question": "Table:\n[TITLE]: Cars sold\nMonth | Number of cars\nMay | 249\nJune | 245\nJuly | 254\nAugust | 225\nQuestion: A car dealership tracked the number of cars sold each month. In which month did the dealership sell the fewest cars?",
+      "choices": {
+        "A": "May",
+        "B": "June",
+        "C": "July",
+        "id": "August"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "12419",
+      "question": "Table:\n[TITLE]: Train schedule\nLocation | Arrive | Depart\nHillsboro | 9:55 A.M. | 10:20 A.M.\nCampbell | 11:20 A.M. | 11:50 A.M.\nLexington | 1:30 P.M. | 1:45 P.M.\nWestminster | 3:00 P.M. | 3:30 P.M.\nWinchester | 5:05 P.M. | 5:25 P.M.\nDayton | 6:40 P.M. | 6:55 P.M.\nKensington | 8:30 P.M. | 8:55 P.M.\nManchester | 10:35 P.M. | 10:55 P.M.\nLowell | 12:15 A.M. | 12:40 A.M.\nWeston | 1:35 A.M. | 2:05 A.M.\nQuestion: Look at the following schedule. When does the train depart from Winchester?",
+      "choices": {
+        "A": "8:55 P.M.",
+        "B": "5:05 P.M.",
+        "C": "5:25 P.M.",
+        "id": "3:30 P.M."
+      },
+      "answer": "C"
+    },
+    {
+      "id": "12500",
+      "question": "Table:\n[TITLE]: Light rail train schedule\ncity hall | 10:15 A.M. | 10:45 A.M. | 11:00 A.M.\nshopping mall | 10:30 A.M. | 11:00 A.M. | 11:15 A.M.\nswimming pool | 11:00 A.M. | 11:30 A.M. | 11:45 A.M.\nart museum | 11:15 A.M. | 11:45 A.M. | 12:00 P.M.\nhospital | 11:30 A.M. | 12:00 P.M. | 12:15 P.M.\nlibrary | 11:45 A.M. | 12:15 P.M. | 12:30 P.M.\npost office | 12:00 P.M. | 12:30 P.M. | 12:45 P.M.\nsoccer field | 12:30 P.M. | 1:00 P.M. | 1:15 P.M.\nuniversity | 1:00 P.M. | 1:30 P.M. | 1:45 P.M.\nQuestion: Look at the following schedule. How long does it take to get from the shopping mall to the hospital?",
+      "choices": {
+        "A": "1 hour",
+        "B": "15 minutes",
+        "C": "45 minutes",
+        "id": "30 minutes"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "12809",
+      "question": "Table:\n[TITLE]: None\nshiny gold shell | $0.01\nwhole sand dollar | $0.08\nscallop shell | $0.05\nbeautiful yellow shell | $0.05\nwhite spindle shell | $0.06\nQuestion: Donald has $0.07. Does he have enough to buy a scallop shell and a shiny gold shell?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "12988",
+      "question": "Table:\n[TITLE]: Minutes spent rehearsing\nDay | Minutes\nThursday | 172\nFriday | 127\nSaturday | 117\nSunday | 122\nQuestion: Logan recalled how many minutes he had spent at theater rehearsal in the past 4 days. On which day did Logan rehearse the most?",
+      "choices": {
+        "A": "Thursday",
+        "B": "Friday",
+        "C": "Saturday",
+        "id": "Sunday"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "13345",
+      "question": "Table:\n[TITLE]: None\nx | y\n8 | 20\n9 | 10\n10 | 0\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "13380",
+      "question": "Table:\n[TITLE]: Dance studio schedule\nClass | Begin | End\nsalsa dance | 9:05 A.M. | 9:35 A.M.\nwestern dance | 9:45 A.M. | 11:05 A.M.\nbeginning ballet | 11:15 A.M. | 11:55 A.M.\nintermediate ballet | 12:00 P.M. | 1:10 P.M.\nhip hop dance | 1:25 P.M. | 2:05 P.M.\nswing dance | 2:10 P.M. | 3:15 P.M.\nQuestion: Look at the following schedule. Which class begins at 2.10 P.M.?",
+      "choices": {
+        "A": "swing dance class",
+        "B": "hip hop dance class",
+        "C": "beginning ballet class",
+        "id": "western dance class"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "13454",
+      "question": "Table:\n[TITLE]: People on the bus\nDay | Number of people\nSaturday | 97\nSunday | 94\nMonday | 91\nTuesday | 93\nQuestion: A bus driver paid attention to how many passengers her bus had each day. On which day did the bus have the most passengers?",
+      "choices": {
+        "A": "Saturday",
+        "B": "Sunday",
+        "C": "Monday",
+        "id": "Tuesday"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "13603",
+      "question": "Table:\n[TITLE]: Vacant apartments\nApartment complex | August | September\nAlameda Apartments | 11 | 17\nCity Apartments | 16 | 20\nDowntown Apartments | 14 | 13\nShadyside Apartments | 5 | 5\nUniversity Apartments | 9 | 12\nQuestion: Livingston Property Management reviewed the number of vacant apartments at each its apartment complexes over time. In September, which complex had the most vacant apartments?",
+      "choices": {
+        "A": "City Apartments",
+        "B": "Downtown Apartments",
+        "C": "University Apartments",
+        "id": "Alameda Apartments"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "13815",
+      "question": "Table:\n[TITLE]: Club membership\nClub | Number of members\ngeology club | 185\nphotography club | 118\nart club | 158\nSpanish club | 159\nQuestion: The local high school found out how many members each club had. Which club has the fewest members?",
+      "choices": {
+        "A": "geology club",
+        "B": "photography club",
+        "C": "art club",
+        "id": "Spanish club"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "13861",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$140 | 16,900 | 12,400\n$190 | 13,000 | 13,600\n$240 | 9,100 | 14,800\n$290 | 5,200 | 16,000\n$340 | 1,300 | 17,200\nQuestion: Look at the table. Then answer the question. At a price of $190, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "14090",
+      "question": "Table:\n[TITLE]: Soccer tournament schedule\nGame | Begin | End\nWaves versus Alligators | 10:00 A.M. | 11:30 A.M.\nDolphins versus Bears | 10:40 A.M. | 12:10 P.M.\nThunder versus Eagles | 11:15 A.M. | 12:45 P.M.\nSharks versus Storm | 11:30 A.M. | 1:00 P.M.\nLions versus Blue Jays | 11:45 A.M. | 1:15 P.M.\nLightning versus Coyotes | 12:10 P.M. | 1:40 P.M.\nFire versus Blizzard | 1:05 P.M. | 2:35 P.M.\nHawks versus Jaguars | 1:30 P.M. | 3:00 P.M.\nCardinals versus Cobras | 2:25 P.M. | 3:55 P.M.\nQuestion: Look at the following schedule. Which game ends at 11.30 A.M.?",
+      "choices": {
+        "A": "Waves versus Alligators game",
+        "B": "Fire versus Blizzard game",
+        "C": "Thunder versus Eagles game",
+        "id": "Dolphins versus Bears game"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "14504",
+      "question": "Table:\n[TITLE]: Class schedule\nSubject | Begin | End\nRussian | 8:10 A.M. | 9:40 A.M.\nAncient Civilizations | 10:20 A.M. | 11:45 A.M.\nPlant Biology | 12:20 P.M. | 1:45 P.M.\nAdvanced Algebra | 2:10 P.M. | 3:00 P.M.\nJapanese | 3:40 P.M. | 5:00 P.M.\nEuropean History | 5:10 P.M. | 5:45 P.M.\nQuestion: Look at the following schedule. Which class ends at 5.45 P.M.?",
+      "choices": {
+        "A": "Plant Biology class",
+        "B": "Russian class",
+        "C": "Japanese class",
+        "id": "European History class"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "15130",
+      "question": "Table:\n[TITLE]: Pizza sales\nRestaurant | Cheese pizzas | Vegetarian pizzas\nNew York Slice | $10 | $19\nThe Real Chicago | $17 | $19\nDan's Deep Dish | $6 | $12\nThe Big Cheese | $6 | $16\nQuestion: A food industry researcher compiled the revenues of several pizzerias. Which restaurant made more from pizzas, New York Slice or The Real Chicago?",
+      "choices": {
+        "A": "The Real Chicago",
+        "B": "New York Slice"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "15271",
+      "question": "Table:\n[TITLE]: Library schedule\nClass | Begin | End\nMr. Harper's class | 7:25 A.M. | 8:20 A.M.\nMrs. Suzuki's class | 8:25 A.M. | 9:30 A.M.\nMrs. Carlson's class | 9:50 A.M. | 10:20 A.M.\nMs. Dyer's class | 10:30 A.M. | 11:10 A.M.\nMr. Mason's class | 11:20 A.M. | 11:55 A.M.\nMrs. McCoy's class | 12:00 P.M. | 12:45 P.M.\nMs. Mueller's class | 1:05 P.M. | 1:55 P.M.\nMs. Hampton's class | 2:00 P.M. | 2:50 P.M.\nQuestion: Look at the following schedule. When does Ms. Hampton's class begin?",
+      "choices": {
+        "A": "2:50 P.M.",
+        "B": "1:55 P.M.",
+        "C": "9:50 A.M.",
+        "id": "2:00 P.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "15381",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$35 | 21,100 | 12,300\n$45 | 18,400 | 14,600\n$55 | 15,700 | 16,900\n$65 | 13,000 | 19,200\n$75 | 10,300 | 21,500\nQuestion: Look at the table. Then answer the question. At a price of $65, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "15397",
+      "question": "Table:\n[TITLE]: Quiz show scores\nName | Score\nVince | 445\nHerman | 425\nTom | 422\nWesley | 452\nQuestion: The players on a quiz show received the following scores. Who had the highest score?",
+      "choices": {
+        "A": "Vince",
+        "B": "Herman",
+        "C": "Tom",
+        "id": "Wesley"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "15542",
+      "question": "Table:\n[TITLE]: None\nx | y\n15 | 3\n5 | 18\n13 | 0\n11 | 4\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "15561",
+      "question": "Table:\n[TITLE]: None\nx | y\n15 | 2\n11 | 8\n1 | 4\n12 | 13\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "15646",
+      "question": "Table:\n[TITLE]: None\nbreakfast burrito | $9\nfried eggs | $3\nbowl of melon | $1\nwaffle with berries | $1\nQuestion: Nora has $11. Does she have enough to buy fried eggs and a breakfast burrito?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "15674",
+      "question": "Table:\n[TITLE]: None\nx | y\n12 | 7\n13 | 10\n14 | 13\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "15751",
+      "question": "Table:\n[TITLE]: Cars sold\nMonth | Number of cars\nNovember | 268\nDecember | 286\nJanuary | 289\nFebruary | 226\nQuestion: A car dealership tracked the number of cars sold each month. In which month did the dealership sell the most cars?",
+      "choices": {
+        "A": "November",
+        "B": "December",
+        "C": "January",
+        "id": "February"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "15857",
+      "question": "Table:\n[TITLE]: None\nx | y\n0 | 20\n1 | 12\n2 | 4\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "15883",
+      "question": "Table:\n[TITLE]: None\ncoffee mug | $2.93\nglass measuring cup | $5.81\ncookie jar | $5.92\nserving platter | $8.06\nglass bowl | $6.97\nQuestion: Eddie has $9.50. Does he have enough to buy a coffee mug and a glass bowl?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "15918",
+      "question": "Table:\n[TITLE]: None\nx | y\n5 | 0\n6 | 1\n7 | 4\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "15957",
+      "question": "Table:\n[TITLE]: Train schedule\nSpringfield | 11:00 A.M. | 11:15 A.M. | 6:30 P.M. | 8:45 P.M. | 9:00 P.M.\nAshland | 12:00 P.M. | 12:15 P.M. | 7:30 P.M. | 9:45 P.M. | 10:00 P.M.\nLexington | 1:15 P.M. | 1:30 P.M. | 8:45 P.M. | 11:00 P.M. | 11:15 P.M.\nBurlington | 2:45 P.M. | 3:00 P.M. | 10:15 P.M. | 12:30 A.M. | 12:45 A.M.\nNewberry | 4:15 P.M. | 4:30 P.M. | 11:45 P.M. | 2:00 A.M. | 2:15 A.M.\nLancaster | 4:45 P.M. | 5:00 P.M. | 12:15 A.M. | 2:30 A.M. | 2:45 A.M.\nCedarburg | 5:15 P.M. | 5:30 P.M. | 12:45 A.M. | 3:00 A.M. | 3:15 A.M.\nMorristown | 6:00 P.M. | 6:15 P.M. | 1:30 A.M. | 3:45 A.M. | 4:00 A.M.\nNewberg | 7:00 P.M. | 7:15 P.M. | 2:30 A.M. | 4:45 A.M. | 5:00 A.M.\nQuestion: Look at the following schedule. Nina just missed the 12.15 P.M. train at Ashland. What time is the next train?",
+      "choices": {
+        "A": "3:15 A.M.",
+        "B": "12:45 A.M.",
+        "C": "10:15 P.M.",
+        "id": "7:30 P.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "15968",
+      "question": "Table:\n[TITLE]: Soccer practice\nMonth | Number of practices\nNovember | 24\nMarch | 23\nApril | 28\nMay | 22\nQuestion: Josh looked over his calendar to see how many times he had soccer practice each month. In which month did Josh have the most soccer practices?",
+      "choices": {
+        "A": "November",
+        "B": "March",
+        "C": "April",
+        "id": "May"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "15992",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$280 | 18,300 | 2,400\n$450 | 16,400 | 3,700\n$620 | 14,500 | 5,000\n$790 | 12,600 | 6,300\n$960 | 10,700 | 7,600\nQuestion: Look at the table. Then answer the question. At a price of $960, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "16053",
+      "question": "Table:\n[TITLE]: None\nbead with green and blue swirls | $0.52\nstar-shaped silver bead | $0.47\nshiny metal bead | $0.28\nlong red bead | $0.72\nthick gray bead | $0.44\nwhite bead with black spots | $0.27\nQuestion: Elena has $0.74. Does she have enough to buy a shiny metal bead and a thick gray bead?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "16102",
+      "question": "Table:\n[TITLE]: None\napricot | $0.40\nnectarine | $0.33\ntangerine | $0.69\npear | $0.51\nQuestion: Tammy has $1.06. Does she have enough to buy a tangerine and a nectarine?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "16278",
+      "question": "Table:\n[TITLE]: Circus schedule\nPerformer | Begin | End\nthe jugglers | 4:10 P.M. | 4:15 P.M.\nthe trapeze artists | 4:25 P.M. | 4:45 P.M.\nthe strongman | 5:00 P.M. | 5:05 P.M.\nthe stuntman | 5:15 P.M. | 5:55 P.M.\nthe tightrope walkers | 6:00 P.M. | 6:35 P.M.\nthe magician | 6:40 P.M. | 7:20 P.M.\nthe clowns | 7:35 P.M. | 8:05 P.M.\nthe unicycle rider | 8:10 P.M. | 8:35 P.M.\nQuestion: Look at the following schedule. When does the unicycle rider's performance begin?",
+      "choices": {
+        "A": "8:10 P.M.",
+        "B": "5:00 P.M.",
+        "C": "8:35 P.M.",
+        "id": "8:05 P.M."
+      },
+      "answer": "A"
+    },
+    {
+      "id": "16891",
+      "question": "Table:\n[TITLE]: Donations received\nCause | April | May\nHunger | $17 | $2\nParks | $17 | $4\nEducation | $12 | $7\nMedical research | $18 | $9\nQuestion: A county agency recorded the money donated to several charitable causes over time. In May, which cause raised the least money?",
+      "choices": {
+        "A": "education",
+        "B": "hunger",
+        "C": "medical research",
+        "id": "parks"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "17140",
+      "question": "Table:\n[TITLE]: Number of birds seen\nMonth | Number of birds\nOctober | 125\nNovember | 115\nDecember | 152\nJanuary | 121\nQuestion: The bird-watching club recorded how many birds its members saw each month. In which month did the club see the most birds?",
+      "choices": {
+        "A": "October",
+        "B": "November",
+        "C": "December",
+        "id": "January"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "17301",
+      "question": "Table:\n[TITLE]: Swimming pool schedule\nActivity | Begin | End\nfamily swim | 6:45 A.M. | 7:15 A.M.\nswim team practice | 7:25 A.M. | 8:50 A.M.\nintermediate swimming class | 9:00 A.M. | 9:40 A.M.\nbeginning swimming class | 9:50 A.M. | 10:25 A.M.\ndiving club practice | 10:30 A.M. | 11:00 A.M.\nwater polo practice | 11:15 A.M. | 12:50 P.M.\nadvanced swimming class | 1:00 P.M. | 2:20 P.M.\nlap swim | 2:25 P.M. | 3:35 P.M.\nQuestion: Look at the following schedule. When does lap swim end?",
+      "choices": {
+        "A": "10:25 A.M.",
+        "B": "8:50 A.M.",
+        "C": "2:25 P.M.",
+        "id": "3:35 P.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "17409",
+      "question": "Table:\n[TITLE]: None\nOption | Change in phone price\nAdd an upgrade | $60\nBuy a used phone | -$75\nQuestion: Eliana is looking at the price of new cell phones online. Her favorite company, OrangeTech, has a special this weekend. Eliana can add an upgrade to a phone for an additional cost, or she can buy a used phone to get a discount. The change in price for each option is shown in the table. Which option results in a greater change in price?",
+      "choices": {
+        "A": "adding an upgrade",
+        "B": "buying a used phone"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "17774",
+      "question": "Table:\n[TITLE]: Tractors made\nMonth | Number of tractors\nJuly | 353\nAugust | 332\nSeptember | 375\nOctober | 357\nQuestion: A farm equipment company kept a record of the number of tractors made each month. In which month did the company make the most tractors?",
+      "choices": {
+        "A": "July",
+        "B": "August",
+        "C": "September",
+        "id": "October"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "18008",
+      "question": "Table:\n[TITLE]: None\nx | y\n17 | 0\n10 | 11\n6 | 7\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "18091",
+      "question": "Table:\n[TITLE]: Phone calls received\nDay | Number of calls\nMonday | 454\nTuesday | 442\nWednesday | 452\nThursday | 425\nQuestion: A technical support line tracked how many calls it received each day. On which day did the support line receive the fewest calls?",
+      "choices": {
+        "A": "Monday",
+        "B": "Tuesday",
+        "C": "Wednesday",
+        "id": "Thursday"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "18261",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$140 | 14,900 | 5,400\n$150 | 13,700 | 8,800\n$160 | 12,500 | 12,200\n$170 | 11,300 | 15,600\n$180 | 10,100 | 19,000\nQuestion: Look at the table. Then answer the question. At a price of $160, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "18457",
+      "question": "Table:\n[TITLE]: None\nsoftball glove | $21.00\nswimsuit | $15.00\nbowling ball | $40.00\nbicycle helmet | $16.00\nbicycle | $43.00\nQuestion: Sue has $54.00. Does she have enough to buy a bicycle and a swimsuit?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "18492",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$20 | 21,900 | 6,400\n$180 | 21,000 | 6,700\n$340 | 20,100 | 7,000\n$500 | 19,200 | 7,300\n$660 | 18,300 | 7,600\nQuestion: Look at the table. Then answer the question. At a price of $20, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "18727",
+      "question": "Table:\n[TITLE]: Hours of babysitting\nMonth | Hours\nDecember | 23\nJanuary | 22\nFebruary | 29\nMarch | 26\nQuestion: Helen looked at her calendar to figure out how much time she spent babysitting each month. In which month did Helen babysit the most?",
+      "choices": {
+        "A": "December",
+        "B": "January",
+        "C": "February",
+        "id": "March"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "18789",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$640 | 21,600 | 2,000\n$690 | 20,200 | 5,700\n$740 | 18,800 | 9,400\n$790 | 17,400 | 13,100\n$840 | 16,000 | 16,800\nQuestion: Look at the table. Then answer the question. At a price of $840, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "18875",
+      "question": "Table:\n[TITLE]: Hotel shuttle bus schedule\nairport | 9:45 A.M. | 10:00 A.M. | 10:30 A.M. | 10:45 A.M. | 11:00 A.M.\nboat docks | 10:30 A.M. | 10:45 A.M. | 11:15 A.M. | 11:30 A.M. | 11:45 A.M.\npizza place | 11:15 A.M. | 11:30 A.M. | 12:00 P.M. | 12:15 P.M. | 12:30 P.M.\namusement park | 12:00 P.M. | 12:15 P.M. | 12:45 P.M. | 1:00 P.M. | 1:15 P.M.\ncollege campus | 12:15 P.M. | 12:30 P.M. | 1:00 P.M. | 1:15 P.M. | 1:30 P.M.\nfootball stadium | 12:30 P.M. | 12:45 P.M. | 1:15 P.M. | 1:30 P.M. | 1:45 P.M.\nsoftball field | 1:00 P.M. | 1:15 P.M. | 1:45 P.M. | 2:00 P.M. | 2:15 P.M.\ntrain station | 1:30 P.M. | 1:45 P.M. | 2:15 P.M. | 2:30 P.M. | 2:45 P.M.\nbus station | 2:30 P.M. | 2:45 P.M. | 3:15 P.M. | 3:30 P.M. | 3:45 P.M.\nQuestion: Look at the following schedule. How long does it take to get from the pizza place to the train station?",
+      "choices": {
+        "A": "2 hours and 15 minutes",
+        "B": "2 hours",
+        "C": "1 hour and 45 minutes",
+        "id": "1 hour and 30 minutes"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "18883",
+      "question": "Table:\n[TITLE]: None\nPattern A | add | 3 3 | 6 | 9 | 12\nPattern B | add | 30 30 | 60 | 90 | 120\nQuestion: Compare pattern A to pattern B. Which statement is true? ",
+      "choices": {
+        "A": "Each term in pattern B is 27 more than the corresponding term in pattern A.",
+        "B": "Each term in pattern B is 10 times the corresponding term in pattern A."
+      },
+      "answer": "B"
+    },
+    {
+      "id": "19023",
+      "question": "Table:\n[TITLE]: Web pages visited\nPerson | Number of Web pages\nKenji | 141\nAlexis | 119\nJosh | 147\nSofia | 174\nQuestion: Several people compared how many Web pages they had visited. Who visited the most Web pages?",
+      "choices": {
+        "A": "Kenji",
+        "B": "Alexis",
+        "C": "Josh",
+        "id": "Sofia"
+      },
+      "answer": "id"
+    }
+  ],
+  "test": [
+    {
+      "id": "19229",
+      "question": "Table:\n[TITLE]: Absences\nStudent | 2005 | 2006\nValentina | 2 | 18\nPreston | 13 | 3\nLiz | 14 | 4\nQuestion: A teacher at Mills Middle School studied the absence rates of her students over the course of a few years. In 2006, which student had the most absences?",
+      "choices": {
+        "A": "Preston",
+        "B": "Liz",
+        "C": "Valentina"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "19582",
+      "question": "Table:\n[TITLE]: None\npiece of gum | $0.17\npiece of mint chocolate | $0.24\ngumball | $0.16\npeanut butter cup | $0.24\nbutterscotch candy | $0.13\nQuestion: Caleb has $0.34. Does he have enough to buy a piece of mint chocolate and a butterscotch candy?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "19709",
+      "question": "Table:\n[TITLE]: None\ndenim jacket | $17.18\npair of shorts | $27.55\npair of brown pants | $19.92\nblack jacket | $10.33\nQuestion: Percy has $49.50. Does he have enough to buy a pair of brown pants and a pair of shorts?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "19870",
+      "question": "Table:\n[TITLE]: Watermelons harvested\nDay | Number of watermelons\nThursday | 40\nFriday | 49\nSaturday | 42\nSunday | 46\nQuestion: A farmer recalled how many watermelons were harvested in the past 4 days. On which day were the fewest watermelons harvested?",
+      "choices": {
+        "A": "Thursday",
+        "B": "Friday",
+        "C": "Saturday",
+        "id": "Sunday"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "20317",
+      "question": "Table:\n[TITLE]: None\nx | y\n16 | 2\n17 | 11\n18 | 18\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "20590",
+      "question": "Table:\n[TITLE]: Reptiles in zoos\nZoo | Turtles | Lizards\nNorthside Zoo | 8 | 12\nEastern Zoo | 14 | 5\nWilderness Zoo | 13 | 18\nSouth Zoo | 5 | 7\nPacific Zoo | 13 | 15\nQuestion: A zoologist counted the number of reptiles at each of the state's zoos. Are there more reptiles at the Eastern Zoo or the Northside Zoo?",
+      "choices": {
+        "A": "Northside Zoo",
+        "B": "Eastern Zoo"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "20591",
+      "question": "Table:\n[TITLE]: None\nbottle of vinegar | $0.81\njar of tomato sauce | $0.94\njar of salsa | $0.95\nbottle of hot sauce | $0.85\nbottle of soy sauce | $0.84\nbottle of mustard | $0.79\nQuestion: Anna has $2.00. Does she have enough to buy a jar of tomato sauce and a bottle of hot sauce?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "20672",
+      "question": "Table:\n[TITLE]: Zoo ticket prices\nZoo | Adult | Child\nCentral Park | $10 | $5\nSouthern Nevada | $8 | $6\nCentral Florida | $11 | $7\nBronx | $15 | $11\nBoise | $6 | $3\nQuestion: Dr. Pratt, a zoo director, researched ticket prices at other zoos around the country. Of the zoos shown, which charges the most for a child ticket?",
+      "choices": {
+        "A": "Bronx",
+        "B": "Central Florida",
+        "C": "Central Park",
+        "id": "Boise"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "20848",
+      "question": "Table:\n[TITLE]: None\nshirt signed by a famous soccer player | $1,906.00\npainting signed by a famous artist | $1,914.00\nbat signed by a famous baseball player | $6,338.00\nphotograph signed by a famous television star | $4,057.00\njersey signed by a famous basketball player | $3,096.00\nQuestion: Chloe has $7,949.00. Does she have enough to buy a painting signed by a famous artist and a bat signed by a famous baseball player?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "20909",
+      "question": "Table:\n[TITLE]: Movie schedule\nMovie | Begin | End\nTwo Funny Guys in a Big City | 7:50 A.M. | 10:50 A.M.\nA Mysterious Mystery | 10:20 A.M. | 11:55 A.M.\nWitches and Wizards on Broomsticks | 11:25 A.M. | 12:45 P.M.\nTime Traveler II | 12:10 P.M. | 1:50 P.M.\nCartoon Penguin Adventure | 1:10 P.M. | 4:05 P.M.\nAliens from Outer Space | 3:20 P.M. | 4:45 P.M.\nReturn to Tumbleweed City | 3:50 P.M. | 6:20 P.M.\nQuestion: Look at the following schedule. Which movie ends at 6.20 P.M.?",
+      "choices": {
+        "A": "Witches and Wizards on Broomsticks",
+        "B": "A Mysterious Mystery",
+        "C": "Time Traveler II",
+        "id": "Return to Tumbleweed City"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "20947",
+      "question": "Table:\n[TITLE]: None\nOption | Change in phone price\nAdd an upgrade | $60\nBuy a used phone | -$75\nQuestion: Becky is looking at the price of new cell phones online. Her favorite company, OrangeTech, has a special this weekend. Becky can add an upgrade to a phone for an additional cost, or she can buy a used phone to get a discount. The change in price for each option is shown in the table. Which option results in a greater change in price?",
+      "choices": {
+        "A": "adding an upgrade",
+        "B": "buying a used phone"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "21095",
+      "question": "Table:\n[TITLE]: None\nLocation | Elevation (m)\nTop of the skyscraper | 275\nBottom of the mine | -260\nQuestion: Mabel likes watching the show Engineering Marvels. In last night's episode, the engineering team visited a tall skyscraper and a deep mine. A banner at the bottom of the screen showed the elevation of each location the team visited. Which location is closer to sea level?",
+      "choices": {
+        "A": "top of the skyscraper",
+        "B": "bottom of the mine"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "21163",
+      "question": "Table:\n[TITLE]: Quiz show scores\nName | Score\nBarbara | 48\nHanson | 45\nEzra | 46\nPatrick | 43\nQuestion: The players on a quiz show received the following scores. Who had the lowest score?",
+      "choices": {
+        "A": "Barbara",
+        "B": "Hanson",
+        "C": "Ezra",
+        "id": "Patrick"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "21246",
+      "question": "Table:\n[TITLE]: Stuffed animal collections\nName | Number of stuffed animals\nMeg | 263\nBecky | 232\nSavannah | 226\nEvelyn | 236\nQuestion: Some friends compared the sizes of their stuffed animal collections. Who has the most stuffed animals?",
+      "choices": {
+        "A": "Meg",
+        "B": "Becky",
+        "C": "Savannah",
+        "id": "Evelyn"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "21351",
+      "question": "Table:\n[TITLE]: Ice cream cones sold\nDay | Number of ice cream cones\nTuesday | 848\nWednesday | 847\nThursday | 887\nFriday | 878\nQuestion: An ice cream shop kept track of how many ice cream cones it sold in the past 4 days. On which day did the shop sell the most ice cream cones?",
+      "choices": {
+        "A": "Tuesday",
+        "B": "Wednesday",
+        "C": "Thursday",
+        "id": "Friday"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "21571",
+      "question": "Table:\n[TITLE]: Biking last week\nName | Miles\nPaul | 18\nAnthony | 16\nKeith | 12\nLauren | 19\nQuestion: The members of the cycling club compared how many miles they biked last week. Who biked the fewest miles?",
+      "choices": {
+        "A": "Paul",
+        "B": "Anthony",
+        "C": "Keith",
+        "id": "Lauren"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "21816",
+      "question": "Table:\n[TITLE]: Pages read\nMonth | Number of pages\nJune | 60\nJuly | 69\nAugust | 64\nSeptember | 61\nQuestion: Dalton kept a log of how many pages he read each month. In which month did Dalton read the most pages?",
+      "choices": {
+        "A": "June",
+        "B": "July",
+        "C": "August",
+        "id": "September"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "21925",
+      "question": "Table:\n[TITLE]: Charity donations\nMonth | Number of donations\nJuly | 353\nAugust | 331\nSeptember | 358\nOctober | 385\nQuestion: A charity recorded how many donations it received each month. In which month did the charity receive the most donations?",
+      "choices": {
+        "A": "July",
+        "B": "August",
+        "C": "September",
+        "id": "October"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "21983",
+      "question": "Table:\n[TITLE]: None\nfunnel cake stand | $5,293.00\npopsicle stand | $7,784.00\nhot dog stand | $9,372.00\nshaved ice cart | $5,576.00\nice cream truck | $6,382.00\nQuestion: Amanda has $11,631.00. Does she have enough to buy a funnel cake stand and an ice cream truck?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "22070",
+      "question": "Table:\n[TITLE]: None\npopsicle stand | $5,600\npeanut cart | $6,730\nshaved ice cart | $7,510\npretzel stand | $8,591\npopcorn cart | $8,947\nQuestion: Paula has $13,967. Does she have enough to buy a pretzel stand and a popsicle stand?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "22188",
+      "question": "Table:\n[TITLE]: None\nx | y\n17 | 2\n18 | 11\n19 | 20\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "22198",
+      "question": "Table:\n[TITLE]: None\nbarbecue grill | $548.00\nfountain | $965.00\nwooden bench | $291.00\niron bench | $140.00\npicnic table | $598.00\nlawn mower | $145.00\nQuestion: Shelley has $272.00. Does she have enough to buy a lawn mower and an iron bench?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "22714",
+      "question": "Table:\n[TITLE]: Tickets sold\nDay | Number of tickets\nTuesday | 317\nWednesday | 371\nThursday | 313\nFriday | 337\nQuestion: Martin tracked the attendance at the school play. On which day did the fewest people attend the play?",
+      "choices": {
+        "A": "Tuesday",
+        "B": "Wednesday",
+        "C": "Thursday",
+        "id": "Friday"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "22772",
+      "question": "Table:\n[TITLE]: Stuffed animal collections\nName | Number of stuffed animals\nIsaac | 281\nEdgar | 221\nJustin | 282\nKatie | 218\nQuestion: Some friends compared the sizes of their stuffed animal collections. Who has the fewest stuffed animals?",
+      "choices": {
+        "A": "Isaac",
+        "B": "Edgar",
+        "C": "Justin",
+        "id": "Katie"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "22819",
+      "question": "Table:\n[TITLE]: None\nballet ticket | $15\ncar show ticket | $21\norchestra ticket | $38\nopera ticket | $65\nQuestion: Pedro has $82. Does he have enough to buy a ballet ticket and an opera ticket?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "22825",
+      "question": "Table:\n[TITLE]: Dance studio schedule\nClass | Begin | End\nhip hop dance | 8:45 A.M. | 9:15 A.M.\nswing dance | 9:25 A.M. | 10:35 A.M.\nmodern dance | 10:40 A.M. | 11:50 A.M.\nballroom dance | 12:05 P.M. | 1:00 P.M.\nadvanced ballet | 1:05 P.M. | 2:15 P.M.\ntap dance | 2:25 P.M. | 3:30 P.M.\nsalsa dance | 3:40 P.M. | 5:15 P.M.\nwestern dance | 5:20 P.M. | 6:55 P.M.\nQuestion: Look at the following schedule. Which class ends at 3.30 P.M.?",
+      "choices": {
+        "A": "salsa dance class",
+        "B": "hip hop dance class",
+        "C": "tap dance class",
+        "id": "ballroom dance class"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "22907",
+      "question": "Table:\n[TITLE]: Bus schedule\nthe grocery store | 9:00 A.M. | 9:15 A.M. | 9:30 A.M. | 9:45 A.M. | 10:30 A.M.\nthe library | 9:15 A.M. | 9:30 A.M. | 9:45 A.M. | 10:00 A.M. | 10:45 A.M.\nthe doctor's office | 10:15 A.M. | 10:30 A.M. | 10:45 A.M. | 11:00 A.M. | 11:45 A.M.\nthe zoo | 10:45 A.M. | 11:00 A.M. | 11:15 A.M. | 11:30 A.M. | 12:15 P.M.\nthe movie theater | 11:45 A.M. | 12:00 P.M. | 12:15 P.M. | 12:30 P.M. | 1:15 P.M.\nthe science museum | 12:15 P.M. | 12:30 P.M. | 12:45 P.M. | 1:00 P.M. | 1:45 P.M.\nthe playground | 1:00 P.M. | 1:15 P.M. | 1:30 P.M. | 1:45 P.M. | 2:30 P.M.\nQuestion: Look at the following schedule. How long does it take to get from the doctor's office to the playground?",
+      "choices": {
+        "A": "15 minutes",
+        "B": "2 hours and 30 minutes",
+        "C": "1 hour and 45 minutes",
+        "id": "2 hours and 45 minutes"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "23016",
+      "question": "Table:\n[TITLE]: Company sizes\nCompany | Number of employees\nDavidson Insurance | 668\nMadison Corporation | 646\nABC Electronics | 648\nBenson and Blakely | 684\nQuestion: The board of commerce recorded how many employees work at each company. Which company has the fewest employees?",
+      "choices": {
+        "A": "Davidson Insurance",
+        "B": "Madison Corporation",
+        "C": "ABC Electronics",
+        "id": "Benson and Blakely"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "23229",
+      "question": "Table:\n[TITLE]: None\norange envelope | $0.03\npiece of pink paper | $0.08\npiece of elegant stationery | $0.05\nwhite note card | $0.04\npiece of floral stationery | $0.02\nQuestion: Mike has $0.04. Does he have enough to buy a piece of floral stationery and a white note card?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "23262",
+      "question": "Table:\n[TITLE]: Planet Volume (km3) Primary composition\nMercury | 6.08 x | 1010 rock\nVenus | 9.28 x | 1011 rock\nEarth | 1.08 x | 1012 rock\nMars | 1.63 x | 1011 rock\nJupiter | 1.43 x | 1015 gas\nSaturn | 8.27 x | 1014 gas\nUranus | 6.83 x | 1013 ice\nNeptune | 6.25 x | 1013 ice\nQuestion: Use the data to answer the question below. Is the following statement about our solar system true or false? Three-quarters of the planets are larger than Earth.",
+      "choices": {
+        "A": "true",
+        "B": "false"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "23449",
+      "question": "Table:\n[TITLE]: Olympic medals\nCountry | 2000 | 2004\nBrazil | 12 | 10\nSweden | 12 | 7\nFinland | 4 | 2\nQuestion: A sports fan decided to examine the pattern of medals won by certain countries at several Olympic games. Which country won fewer medals in 2004, Brazil or Finland?",
+      "choices": {
+        "A": "Finland",
+        "B": "Brazil"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "23521",
+      "question": "Table:\n[TITLE]: None\nx | y\n17 | 20\n18 | 12\n19 | 4\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "23572",
+      "question": "Table:\n[TITLE]: Tractors made\nMonth | Number of tractors\nOctober | 887\nNovember | 848\nDecember | 847\nJanuary | 878\nQuestion: A farm equipment company kept a record of the number of tractors made each month. In which month did the company make the most tractors?",
+      "choices": {
+        "A": "October",
+        "B": "November",
+        "C": "December",
+        "id": "January"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "23615",
+      "question": "Table:\n[TITLE]: None\nx | y\n3 | 8\n4 | 12\n5 | 16\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "23672",
+      "question": "Table:\n[TITLE]: None\nx | y\n0 | 5\n7 | 18\n0 | 9\n19 | 7\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "24053",
+      "question": "Table:\n[TITLE]: Furniture\nType of Wood | Beds | Bookcases\nMaple | 6 | 7\nOak | 10 | 20\nPine | 2 | 18\nMahogany | 19 | 9\nQuestion: Kim Furniture Exports is shipping pieces of furniture made out of different types of wood. Of which type of wood are the fewest bookcases made?",
+      "choices": {
+        "A": "maple",
+        "B": "mahogany",
+        "C": "pine",
+        "id": "oak"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "24111",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$575 | 17,700 | 15,300\n$695 | 14,300 | 16,800\n$815 | 10,900 | 18,300\n$935 | 7,500 | 19,800\n$1,055 | 4,100 | 21,300\nQuestion: Look at the table. Then answer the question. At a price of $815, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "24281",
+      "question": "Table:\n[TITLE]: Planet Volume (billions of km3) Primary composition\nMercury | 60 rock\nVenus | 930 rock\nEarth | 1,090 rock\nMars | 160 rock\nJupiter | 1,431,280 gas\nSaturn | 827,130 gas\nUranus | 68,330 ice\nNeptune | 62,530 ice\nQuestion: Use the data to answer the question below. Is the following statement about our solar system true or false? 50% of the planets are made mainly of gas.",
+      "choices": {
+        "A": "true",
+        "B": "false"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "24514",
+      "question": "Table:\n[TITLE]: Band instruments\nInstrument | Girls | Boys\nSaxophone | 18 | 17\nClarinet | 15 | 6\nDrums | 6 | 20\nFlute | 19 | 18\nTrumpet | 19 | 9\nQuestion: Mr. Khan, the band director, counted the number of instruments played by each member of the band. Which instrument do the fewest boys play?",
+      "choices": {
+        "A": "trumpet",
+        "B": "flute",
+        "C": "clarinet",
+        "id": "saxophone"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "24604",
+      "question": "Table:\n[TITLE]: None\nx | y\n7 | 8\n8 | 7\n9 | 3\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "24786",
+      "question": "Table:\n[TITLE]: Swimming pool schedule\nActivity | Begin | End\ndiving club practice | 8:50 A.M. | 9:20 A.M.\nwater polo practice | 9:30 A.M. | 11:05 A.M.\nwater aerobics | 11:20 A.M. | 12:50 P.M.\nintermediate swimming class | 1:00 P.M. | 2:20 P.M.\nlap swim | 2:25 P.M. | 3:50 P.M.\nQuestion: Look at the following schedule. Which activity ends at 3.50 P.M.?",
+      "choices": {
+        "A": "water polo practice",
+        "B": "water aerobics",
+        "C": "lap swim",
+        "id": "diving club practice"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "25329",
+      "question": "Table:\n[TITLE]: Field day schedule\nEvent | Begin | End\nparachute ball toss | 11:45 A.M. | 12:15 P.M.\npotato sack race | 12:30 P.M. | 12:55 P.M.\nthree-legged race | 1:00 P.M. | 2:00 P.M.\nobstacle course | 2:15 P.M. | 2:35 P.M.\nhurdles | 2:45 P.M. | 3:10 P.M.\njump rope race | 3:15 P.M. | 3:30 P.M.\nrelay race | 3:45 P.M. | 4:00 P.M.\negg relay | 4:05 P.M. | 4:35 P.M.\nQuestion: Look at the following schedule. Which event ends at 12.15 P.M.?",
+      "choices": {
+        "A": "relay race",
+        "B": "jump rope race",
+        "C": "parachute ball toss",
+        "id": "egg relay"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "25695",
+      "question": "Table:\n[TITLE]: Number of cars\nDay | Number of cars\nThursday | 324\nFriday | 323\nSaturday | 342\nSunday | 334\nQuestion: Sue's family went on a road trip and counted the number of cars they saw each day. On which day did they see the fewest cars?",
+      "choices": {
+        "A": "Thursday",
+        "B": "Friday",
+        "C": "Saturday",
+        "id": "Sunday"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "25852",
+      "question": "Table:\n[TITLE]: None\nroll of electrical tape | $0.39\nbrass clip | $0.17\nspool of gold wire | $0.40\nshort steel screw | $0.17\nelastic band | $0.17\ngold tack | $0.18\nQuestion: Naomi has $0.50. Does she have enough to buy an elastic band and a spool of gold wire?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "25931",
+      "question": "Table:\n[TITLE]: None\nx | y\n1 | 16\n2 | 6\n3 | 5\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "26134",
+      "question": "Table:\n[TITLE]: Zoo schedule\nEvent | Begin | End\nreptile show | 9:10 A.M. | 9:50 A.M.\npenguin feeding | 9:55 A.M. | 11:15 A.M.\ntiger lecture | 11:05 A.M. | 12:10 P.M.\npanda lecture | 12:50 P.M. | 1:20 P.M.\nkoala feeding | 1:50 P.M. | 3:10 P.M.\nbear lecture | 3:15 P.M. | 4:20 P.M.\nbird show | 4:15 P.M. | 4:55 P.M.\ngiraffe feeding | 5:00 P.M. | 6:20 P.M.\nzebra feeding | 6:15 P.M. | 6:55 P.M.\nQuestion: Look at the following schedule. When does the zebra feeding end?",
+      "choices": {
+        "A": "9:10 A.M.",
+        "B": "4:55 P.M.",
+        "C": "6:15 P.M.",
+        "id": "6:55 P.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "26213",
+      "question": "Table:\n[TITLE]: None\nblue glass bead | $0.08\nbead with green and blue swirls | $0.08\npurple and red clay bead | $0.02\nwhite bead with black spots | $0.06\nQuestion: Jason has $0.15. Does he have enough to buy a bead with green and blue swirls and a white bead with black spots?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "26275",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$475 | 14,400 | 1,000\n$555 | 11,400 | 5,800\n$635 | 8,400 | 10,600\n$715 | 5,400 | 15,400\n$795 | 2,400 | 20,200\nQuestion: Look at the table. Then answer the question. At a price of $635, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "26621",
+      "question": "Table:\n[TITLE]: Phone calls received\nDay | Number of calls\nFriday | 139\nSaturday | 193\nSunday | 192\nMonday | 113\nQuestion: A technical support line tracked how many calls it received each day. On which day did the support line receive the most calls?",
+      "choices": {
+        "A": "Friday",
+        "B": "Saturday",
+        "C": "Sunday",
+        "id": "Monday"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "26626",
+      "question": "Table:\n[TITLE]: None\nshiny red bead | $0.05\norange glass bead | $0.06\nsquare yellow bead | $0.06\nbrown cat's eye bead | $0.08\nshiny metal bead | $0.07\nQuestion: Tracy has $0.14. Does she have enough to buy a brown cat's eye bead and a shiny red bead?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "27112",
+      "question": "Table:\n[TITLE]: Festival schedule\nEvent | Begin | End\nbanquet | 10:55 A.M. | 12:35 P.M.\nband concert | 12:40 P.M. | 2:00 P.M.\nchoir concert | 1:45 P.M. | 3:55 P.M.\naward ceremony | 3:20 P.M. | 4:30 P.M.\ndance performance | 4:20 P.M. | 5:25 P.M.\ndrumming performance | 5:35 P.M. | 7:55 P.M.\nQuestion: Look at the following schedule. When does the banquet end?",
+      "choices": {
+        "A": "12:35 P.M.",
+        "B": "7:55 P.M.",
+        "C": "5:25 P.M.",
+        "id": "2:00 P.M."
+      },
+      "answer": "A"
+    },
+    {
+      "id": "27236",
+      "question": "Table:\n[TITLE]: None\nx | y\n4 | 18\n7 | 17\n8 | 4\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "27261",
+      "question": "Table:\n[TITLE]: None\nx | y\n0 | 7\n1 | 11\n2 | 15\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "27569",
+      "question": "Table:\n[TITLE]: Train schedule\nComfy Pillows Resort | 2:30 A.M. | 11:15 A.M. | 9:00 P.M.\nPleasant River Campground | 3:30 A.M. | 12:15 P.M. | 10:00 P.M.\nFloral Gardens | 4:15 A.M. | 1:00 P.M. | 10:45 P.M.\nMagician Village | 5:00 A.M. | 1:45 P.M. | 11:30 P.M.\nSkyscraper City | 5:45 A.M. | 2:30 P.M. | 12:15 A.M.\nGecko Paradise | 6:30 A.M. | 3:15 P.M. | 1:00 A.M.\nRocky Ravine Town | 7:30 A.M. | 4:15 P.M. | 2:00 A.M.\nQuestion: Look at the following schedule. Gabby is at Comfy Pillows Resort. If she wants to arrive at Magician Village at 11.30 P.M., what time should she get on the train?",
+      "choices": {
+        "A": "11:30 P.M.",
+        "B": "4:15 P.M.",
+        "C": "12:15 A.M.",
+        "id": "9:00 P.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "27697",
+      "question": "Table:\n[TITLE]: None\npair of shorts | $18.00\npair of khaki pants | $13.00\nwinter jacket | $29.00\npair of jeans | $19.00\nQuestion: Scott has $31.00. Does he have enough to buy a pair of khaki pants and a pair of jeans?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "27706",
+      "question": "Table:\n[TITLE]: Field day schedule\nEvent | Begin | End\nthree-legged race | 9:15 A.M. | 9:25 A.M.\nballoon stomp | 9:35 A.M. | 10:30 A.M.\njump rope race | 10:35 A.M. | 11:15 A.M.\nwater balloon toss | 11:25 A.M. | 12:00 P.M.\nobstacle course | 12:15 P.M. | 12:40 P.M.\nrelay race | 12:50 P.M. | 1:05 P.M.\nbean bag toss | 1:10 P.M. | 1:25 P.M.\nhula hoop contest | 1:30 P.M. | 2:10 P.M.\nhurdles | 2:15 P.M. | 2:25 P.M.\ntug-of-war | 2:30 P.M. | 3:20 P.M.\nQuestion: Look at the following schedule. Which event begins at 12.50 P.M.?",
+      "choices": {
+        "A": "jump rope race",
+        "B": "balloon stomp",
+        "C": "relay race",
+        "id": "tug-of-war"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "27791",
+      "question": "Table:\n[TITLE]: None\nx | y\n7 | 8\n8 | 4\n9 | 0\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "27981",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$555 | 14,200 | 1,800\n$675 | 13,200 | 3,100\n$795 | 12,200 | 4,400\n$915 | 11,200 | 5,700\n$1,035 | 10,200 | 7,000\nQuestion: Look at the table. Then answer the question. At a price of $915, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "28300",
+      "question": "Table:\n[TITLE]: Tickets sold\nDay | Number of tickets\nTuesday | 70\nWednesday | 71\nThursday | 72\nFriday | 75\nQuestion: The aquarium's records showed how many tickets were sold in the past 4 days. On which day did the aquarium sell the most tickets?",
+      "choices": {
+        "A": "Tuesday",
+        "B": "Wednesday",
+        "C": "Thursday",
+        "id": "Friday"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "28365",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$305 | 18,000 | 17,300\n$365 | 14,400 | 18,300\n$425 | 10,800 | 19,300\n$485 | 7,200 | 20,300\n$545 | 3,600 | 21,300\nQuestion: Look at the table. Then answer the question. At a price of $485, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "28527",
+      "question": "Table:\n[TITLE]: None\nrabbit | $105\nchameleon | $136\npot-bellied pig | $230\ncockatoo | $124\niguana | $138\nQuestion: Akira has $271. Does she have enough to buy a cockatoo and an iguana?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "28771",
+      "question": "Table:\n[TITLE]: None\nx | y\n18 | 19\n19 | 11\n20 | 3\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "29358",
+      "question": "Table:\n[TITLE]: Bottles collected\nName | Number of bottles\nSharon | 798\nDarren | 747\nJayce | 779\nRichard | 749\nQuestion: Sharon's class paid attention to how many bottles each student collected for their recycling project. Who collected the fewest bottles?",
+      "choices": {
+        "A": "Sharon",
+        "B": "Darren",
+        "C": "Jayce",
+        "id": "Richard"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "29370",
+      "question": "Table:\n[TITLE]: Ice cream cones sold\nDay | Number of ice cream cones\nThursday | 52\nFriday | 59\nSaturday | 51\nSunday | 54\nQuestion: An ice cream shop kept track of how many ice cream cones it sold in the past 4 days. On which day did the shop sell the most ice cream cones?",
+      "choices": {
+        "A": "Thursday",
+        "B": "Friday",
+        "C": "Saturday",
+        "id": "Sunday"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "29449",
+      "question": "Table:\n[TITLE]: Balloons sold\nDay | Number of balloons\nThursday | 888\nFriday | 838\nSaturday | 843\nSunday | 834\nQuestion: The manager of a party supply store researched how many balloons it sold in the past 4 days. On which day did the store sell the fewest balloons?",
+      "choices": {
+        "A": "Thursday",
+        "B": "Friday",
+        "C": "Saturday",
+        "id": "Sunday"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "29581",
+      "question": "Table:\n[TITLE]: None\nsteamed broccoli | $7\ngrilled eggplant | $4\npasta with tomato sauce | $5\npasta with white sauce | $4\nQuestion: Caleb has $8. Does he have enough to buy pasta with white sauce and grilled eggplant?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "29844",
+      "question": "Table:\n[TITLE]: None\ncoyote stamp | $0.05\nrobot stamp | $0.01\nbutterfly stamp | $0.01\nflag stamp | $0.09\nQuestion: Oliver has $0.05. Does he have enough to buy a robot stamp and a coyote stamp?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "29852",
+      "question": "Table:\n[TITLE]: None\nx | y\n12 | 11\n13 | 15\n14 | 19\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "29886",
+      "question": "Table:\n[TITLE]: None\nwater heater | $599\nbarbecue grill | $202\nwashing machine | $145\nclothes dryer | $645\nQuestion: Isaiah has $836. Does he have enough to buy a clothes dryer and a barbecue grill?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "29996",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$15 | 21,700 | 1,000\n$145 | 20,900 | 1,800\n$275 | 20,100 | 2,600\n$405 | 19,300 | 3,400\n$535 | 18,500 | 4,200\nQuestion: Look at the table. Then answer the question. At a price of $15, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "30477",
+      "question": "Table:\n[TITLE]: None\nsailboat | $528.00\nmotorcycle | $932.00\ncanoe | $774.00\nsnowmobile | $664.00\nkayak | $308.00\nQuestion: Keenan has $1,482.00. Does he have enough to buy a motorcycle and a sailboat?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "30491",
+      "question": "Table:\n[TITLE]: High school schedule\nEvent | Begin | End\nwomen's soccer practice | 2:25 P.M. | 3:35 P.M.\nstudent government meeting | 3:10 P.M. | 4:50 P.M.\nmen's soccer practice | 4:10 P.M. | 5:35 P.M.\nwater polo practice | 5:20 P.M. | 6:10 P.M.\nmarching band practice | 6:00 P.M. | 7:30 P.M.\nchoir concert | 7:15 P.M. | 8:00 P.M.\nQuestion: Look at the following schedule. Which event ends at 4.50 P.M.?",
+      "choices": {
+        "A": "choir concert",
+        "B": "marching band practice",
+        "C": "student government meeting",
+        "id": "men's soccer practice"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "30694",
+      "question": "Table:\n[TITLE]: None\nx | y\n11 | 9\n12 | 6\n13 | 3\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "30841",
+      "question": "Table:\n[TITLE]: High school attendance\nSchool | Number of students\nTruman High | 776\nOak High | 764\nHillcrest High | 746\nWatson High | 747\nQuestion: A city's school board compared how many students attend each high school. Which school has the most students?",
+      "choices": {
+        "A": "Truman High",
+        "B": "Oak High",
+        "C": "Hillcrest High",
+        "id": "Watson High"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "30876",
+      "question": "Table:\n[TITLE]: None\nx | y\n4 | 20\n5 | 11\n6 | 2\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "30919",
+      "question": "Table:\n[TITLE]: None\nboa constrictor | $1,483.00\nalpaca | $3,992.00\npython | $5,924.00\nllama | $2,255.00\nQuestion: Krysta has $5,311.00. Does she have enough to buy a boa constrictor and an alpaca?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "31787",
+      "question": "Table:\n[TITLE]: Train schedule\nLocation | Arrive | Depart\nPrinceton | 2:25 A.M. | 2:45 A.M.\nWestminster | 3:15 A.M. | 3:30 A.M.\nNewberg | 5:00 A.M. | 5:30 A.M.\nBelleville | 6:15 A.M. | 6:25 A.M.\nStamford | 7:30 A.M. | 7:55 A.M.\nOakland | 9:35 A.M. | 10:00 A.M.\nSalem | 11:30 A.M. | 12:00 P.M.\nOakdale | 1:00 P.M. | 1:15 P.M.\nLakeside | 2:30 P.M. | 2:45 P.M.\nQuestion: Look at the following schedule. Which stop does the train depart from at 2.45 A.M.?",
+      "choices": {
+        "A": "Newberg",
+        "B": "Lakeside",
+        "C": "Princeton",
+        "id": "Oakland"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "31986",
+      "question": "Table:\n[TITLE]: None\nx | y\n18 | 0\n19 | 10\n20 | 20\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "32002",
+      "question": "Table:\n[TITLE]: None\nbright yellow highlighter | $0.29\nthick black marker | $0.72\nthin green highlighter | $0.14\nsmall box of paper clips | $0.25\nthin blue marker | $0.77\nQuestion: Reggie has $0.50. Does he have enough to buy a thin green highlighter and a small box of paper clips?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "32077",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$205 | 19,200 | 4,300\n$385 | 14,800 | 7,000\n$565 | 10,400 | 9,700\n$745 | 6,000 | 12,400\n$925 | 1,600 | 15,100\nQuestion: Look at the table. Then answer the question. At a price of $385, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "32284",
+      "question": "Table:\n[TITLE]: Computers in classrooms\nTeacher | Number of computers\nMrs. Rossi | 18\nMr. Watson | 19\nMrs. Tan | 11\nMs. Cohen | 17\nQuestion: The teachers at a middle school counted how many computers they had in their classrooms. Which teacher has the most computers?",
+      "choices": {
+        "A": "Mrs. Rossi",
+        "B": "Mr. Watson",
+        "C": "Mrs. Tan",
+        "id": "Ms. Cohen"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "32529",
+      "question": "Table:\n[TITLE]: Bridge tolls\nBridge | Truck | Car\nFort Madison | $4 | $1\nGolden Gate | $7 | $6\nSan Mateo | $6 | $4\nOakland Bay | $6 | $4\nQuestion: A transportation analyst compared various bridges' tolls. Which charges more for a car, the Golden Gate bridge or the Oakland Bay bridge?",
+      "choices": {
+        "A": "Golden Gate",
+        "B": "Oakland Bay"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "32607",
+      "question": "Table:\n[TITLE]: Phone calls received\nDay | Number of calls\nSunday | 434\nMonday | 435\nTuesday | 459\nWednesday | 445\nQuestion: A technical support line tracked how many calls it received each day. On which day did the support line receive the fewest calls?",
+      "choices": {
+        "A": "Sunday",
+        "B": "Monday",
+        "C": "Tuesday",
+        "id": "Wednesday"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "32634",
+      "question": "Table:\n[TITLE]: Sports team membership\nTeam | Number of members\nwrestling team | 27\nvolleyball team | 29\ntrack team | 21\nswimming team | 26\nQuestion: Shane's school reported how many members each sports team had. Which team has the most members?",
+      "choices": {
+        "A": "wrestling team",
+        "B": "volleyball team",
+        "C": "track team",
+        "id": "swimming team"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "32649",
+      "question": "Table:\n[TITLE]: None\nx | y\n18 | 3\n17 | 9\n14 | 12\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "32731",
+      "question": "Table:\n[TITLE]: None\npair of designer shoes | $7,759.00\ndesigner coat | $5,950.00\ndesigner handbag | $8,180.00\ndesigner ball gown | $8,585.00\ndesigner watch | $3,232.00\npair of designer boots | $5,839.00\nQuestion: Ava has $13,906.00. Does she have enough to buy a designer handbag and a designer coat?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "32940",
+      "question": "Table:\n[TITLE]: Hotel shuttle bus schedule\npark | 8:00 A.M. | 8:15 A.M. | 8:45 A.M. | 9:15 A.M. | 9:30 A.M.\nhotel | 8:30 A.M. | 8:45 A.M. | 9:15 A.M. | 9:45 A.M. | 10:00 A.M.\nbaseball stadium | 9:15 A.M. | 9:30 A.M. | 10:00 A.M. | 10:30 A.M. | 10:45 A.M.\ndowntown | 10:00 A.M. | 10:15 A.M. | 10:45 A.M. | 11:15 A.M. | 11:30 A.M.\nairport | 10:45 A.M. | 11:00 A.M. | 11:30 A.M. | 12:00 P.M. | 12:15 P.M.\nfootball stadium | 11:45 A.M. | 12:00 P.M. | 12:30 P.M. | 1:00 P.M. | 1:15 P.M.\nart museum | 12:45 P.M. | 1:00 P.M. | 1:30 P.M. | 2:00 P.M. | 2:15 P.M.\nsoftball field | 1:45 P.M. | 2:00 P.M. | 2:30 P.M. | 3:00 P.M. | 3:15 P.M.\nQuestion: Look at the following schedule. Jake got on the bus at the hotel at 8.45 A.M. What time will he get to the baseball stadium?",
+      "choices": {
+        "A": "9:15 A.M.",
+        "B": "1:00 P.M.",
+        "C": "11:00 A.M.",
+        "id": "9:30 A.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "33013",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$275 | 19,400 | 6,800\n$395 | 16,400 | 9,400\n$515 | 13,400 | 12,000\n$635 | 10,400 | 14,600\n$755 | 7,400 | 17,200\nQuestion: Look at the table. Then answer the question. At a price of $635, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "33024",
+      "question": "Table:\n[TITLE]: None\nx | y\n4 | 2\n5 | 11\n6 | 20\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "33186",
+      "question": "Table:\n[TITLE]: None\nGem color | Change in points\nGreen | 25\nRed | -40\nQuestion: Zach just downloaded the new game Gem Excavator on his phone. In the first level, Zach gains points for each green gem he finds. However, he loses points for each red gem he finds. The table shows how the gems affect Zach's points. Which color gem affects Zach's points less?",
+      "choices": {
+        "A": "green",
+        "B": "red"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "33190",
+      "question": "Table:\n[TITLE]: None\nMonth | Change in water level (in.)\nApril | -6\nMay | 4\nQuestion: The houses in Myra's town get their water from a local reservoir. Myra and a group of engineers monitor the water level for safety and health reasons. The change in water level over two months is shown in the table. During which month did the water level change more?",
+      "choices": {
+        "A": "April",
+        "B": "May"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "33200",
+      "question": "Table:\n[TITLE]: None\nx | y\n13 | 1\n14 | 10\n15 | 19\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "33405",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$380 | 20,700 | 1,900\n$540 | 16,600 | 6,500\n$700 | 12,500 | 11,100\n$860 | 8,400 | 15,700\n$1,020 | 4,300 | 20,300\nQuestion: Look at the table. Then answer the question. At a price of $1,020, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "33549",
+      "question": "Table:\n[TITLE]: None\nticket for an Atlantic cruise | $6,795.00\nticket for a Caribbean cruise | $1,581.00\nticket for a Mexican cruise | $3,769.00\nticket for a South American cruise | $6,109.00\nticket for a Mediterranean cruise | $6,138.00\nQuestion: Oscar has $12,538.00. Does he have enough to buy a ticket for a Mediterranean cruise and a ticket for an Atlantic cruise?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "34025",
+      "question": "Table:\n[TITLE]: None\nx | y\n6 | 16\n7 | 6\n8 | 0\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "34068",
+      "question": "Table:\n[TITLE]: Chocolate consumption per capita (kg)\nCountry | 2002 | 2005\nAustria | 8 | 9\nAustralia | 4 | 5\nBelgium | 8 | 11\nSweden | 8 | 7\nDenmark | 9 | 8\nQuestion: Justin's Candies has been studying how much chocolate people have been eating in different countries. Which country consumed less chocolate per capita in 2005, Australia or Sweden?",
+      "choices": {
+        "A": "Sweden",
+        "B": "Australia"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "34232",
+      "question": "Table:\n[TITLE]: Subway train schedule\nLocation | Time\nSpruce Boulevard | 10:40 A.M.\nChurch Road | 11:30 A.M.\nMeadow Road | 12:00 P.M.\nCenter Boulevard | 12:10 P.M.\nHickory Road | 12:40 P.M.\nLee Avenue | 1:15 P.M.\nFranklin Boulevard | 2:05 P.M.\nQuestion: Look at the following schedule. At which stop does the train arrive at 1.15 P.M.?",
+      "choices": {
+        "A": "Hickory Road",
+        "B": "Lee Avenue",
+        "C": "Church Road",
+        "id": "Center Boulevard"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "34461",
+      "question": "Table:\n[TITLE]: Bears in zoos\nZoo | Sun bears | Brown bears\nAtlantic Zoo | 3 | 5\nMountain Zoo | 3 | 16\nPacific Zoo | 5 | 4\nEastern Zoo | 10 | 15\nQuestion: Some students visited nearby zoos to record the number of bears kept there. Which zoo has the fewest bears?",
+      "choices": {
+        "A": "Pacific Zoo",
+        "B": "Atlantic Zoo",
+        "C": "Mountain Zoo",
+        "id": "Eastern Zoo"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "34630",
+      "question": "Table:\n[TITLE]: Apples picked\nDay | Number of apples\nTuesday | 314\nWednesday | 331\nThursday | 341\nFriday | 313\nQuestion: The owner of an orchard kept records about how many apples were picked in the past 4 days. On which day were the fewest apples picked?",
+      "choices": {
+        "A": "Tuesday",
+        "B": "Wednesday",
+        "C": "Thursday",
+        "id": "Friday"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "34882",
+      "question": "Table:\n[TITLE]: None\nfunnel cake stand | $6,964\nshaved ice cart | $7,649\npopsicle stand | $6,324\npeanut cart | $9,406\nQuestion: Ben has $17,781. Does he have enough to buy a shaved ice cart and a peanut cart?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "35185",
+      "question": "Table:\n[TITLE]: None\nx | y\n7 | 15\n8 | 16\n9 | 17\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "35289",
+      "question": "Table:\n[TITLE]: Number of books sold\nMonth | Number of books\nApril | 797\nMay | 796\nJune | 769\nJuly | 776\nQuestion: A bookstore employee looked up how many books were sold each month. In which month did the bookstore sell the fewest books?",
+      "choices": {
+        "A": "April",
+        "B": "May",
+        "C": "June",
+        "id": "July"
+      },
+      "answer": "C"
+    },
+    {
+      "id": "35382",
+      "question": "Table:\n[TITLE]: None\nMixture | Temperature (°C)\nBromine mixture | -4\nAcetone mixture | 5\nQuestion: In science class, Trisha is measuring the temperature of different chemical mixtures. The temperatures of two mixtures are shown in the table. Which mixture's temperature is closest to zero?",
+      "choices": {
+        "A": "bromine mixture",
+        "B": "acetone mixture"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "35535",
+      "question": "Table:\n[TITLE]: Ferry schedule\nBay Harbor | 7:00 A.M. | 7:15 A.M. | 7:30 A.M. | 7:45 A.M. | 8:00 A.M.\nSandy Shores | 8:30 A.M. | 8:45 A.M. | 9:00 A.M. | 9:15 A.M. | 9:30 A.M.\nSeagull Port | 10:15 A.M. | 10:30 A.M. | 10:45 A.M. | 11:00 A.M. | 11:15 A.M.\nCliff View | 12:00 P.M. | 12:15 P.M. | 12:30 P.M. | 12:45 P.M. | 1:00 P.M.\nGreen Harbor | 1:45 P.M. | 2:00 P.M. | 2:15 P.M. | 2:30 P.M. | 2:45 P.M.\nWindy Sands | 3:15 P.M. | 3:30 P.M. | 3:45 P.M. | 4:00 P.M. | 4:15 P.M.\nFoggy Port | 5:00 P.M. | 5:15 P.M. | 5:30 P.M. | 5:45 P.M. | 6:00 P.M.\nQuestion: Look at the following schedule. Betty got on the ferry at Windy Sands at 4.00 P.M. What time will she get to Foggy Port?",
+      "choices": {
+        "A": "5:00 P.M.",
+        "B": "8:00 A.M.",
+        "C": "5:15 P.M.",
+        "id": "5:45 P.M."
+      },
+      "answer": "id"
+    },
+    {
+      "id": "35718",
+      "question": "Table:\n[TITLE]: None\nx | y\n16 | 18\n17 | 11\n18 | 8\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "35781",
+      "question": "Table:\n[TITLE]: None\ncucumber | $1.30\npumpkin | $7.38\nwatermelon | $4.86\ngrapefruit | $1.20\nred pepper | $1.25\nQuestion: Ruben has $8.50. Does he have enough to buy a red pepper and a pumpkin?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "35819",
+      "question": "Table:\n[TITLE]: Light rail train schedule\nLocation | Time\nlibrary | 10:30 A.M.\nsoccer field | 10:35 A.M.\ntown square | 10:55 A.M.\nuniversity | 11:20 A.M.\ngrocery store | 11:40 A.M.\nswimming pool | 12:10 P.M.\nbaseball stadium | 12:30 P.M.\nart museum | 12:35 P.M.\nshopping mall | 12:55 P.M.\nscience museum | 1:10 P.M.\nQuestion: Look at the following schedule. At which stop does the train arrive at 12.30 P.M.?",
+      "choices": {
+        "A": "shopping mall",
+        "B": "science museum",
+        "C": "art museum",
+        "id": "baseball stadium"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "35899",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$25 | 20,200 | 5,700\n$55 | 16,300 | 7,600\n$85 | 12,400 | 9,500\n$115 | 8,500 | 11,400\n$145 | 4,600 | 13,300\nQuestion: Look at the table. Then answer the question. At a price of $55, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "35964",
+      "question": "Table:\n[TITLE]: None\nx | y\n3 | 3\n7 | 19\n10 | 18\n14 | 1\nQuestion: Look at this table. Is this relation a function?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "36141",
+      "question": "Table:\n[TITLE]: None\nx | y\n14 | 14\n15 | 13\n16 | 7\nQuestion: The table shows a function. Is the function linear or nonlinear?",
+      "choices": {
+        "A": "linear",
+        "B": "nonlinear"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "36335",
+      "question": "Table:\n[TITLE]: Gymnastics meet schedule\nEvent | Begin | End\nmen's parallel bars | 11:30 A.M. | 12:05 P.M.\nwomen's balance beam | 12:20 P.M. | 12:55 P.M.\nmen's floor exercise | 12:50 P.M. | 1:40 P.M.\nmen's vault | 1:45 P.M. | 2:30 P.M.\nmen's rings | 2:30 P.M. | 2:50 P.M.\nmen's pommel horse | 2:35 P.M. | 3:00 P.M.\nmen's high bar | 2:45 P.M. | 3:45 P.M.\nQuestion: Look at the following schedule. When does the men's vault event end?",
+      "choices": {
+        "A": "2:45 P.M.",
+        "B": "1:40 P.M.",
+        "C": "2:30 P.M.",
+        "id": "1:45 P.M."
+      },
+      "answer": "C"
+    },
+    {
+      "id": "36348",
+      "question": "Table:\n[TITLE]: None\nEuropean vacation package | $643.00\nCaribbean vacation package | $839.00\nAfrican safari vacation package | $962.00\nJamaican vacation package | $608.00\nQuestion: Bryant has $1,544.00. Does he have enough to buy an African safari vacation package and a Jamaican vacation package?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "36559",
+      "question": "Table:\n[TITLE]: None\nOption | Change in phone price\nAdd an upgrade | $60\nBuy a used phone | -$75\nQuestion: Ariel is looking at the price of new cell phones online. Her favorite company, OrangeTech, has a special this weekend. Ariel can add an upgrade to a phone for an additional cost, or she can buy a used phone to get a discount. The change in price for each option is shown in the table. Which option results in a greater change in price?",
+      "choices": {
+        "A": "adding an upgrade",
+        "B": "buying a used phone"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "36766",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$180 | 11,600 | 22,500\n$260 | 11,100 | 22,800\n$340 | 10,600 | 23,100\n$420 | 10,100 | 23,400\n$500 | 9,600 | 23,700\nQuestion: Look at the table. Then answer the question. At a price of $180, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "37028",
+      "question": "Table:\n[TITLE]: Science articles read\nName | Number of science articles\nIrma | 659\nRose | 635\nCarmen | 638\nHugo | 665\nQuestion: Irma's classmates revealed how many science articles they read. Who read the fewest science articles?",
+      "choices": {
+        "A": "Irma",
+        "B": "Rose",
+        "C": "Carmen",
+        "id": "Hugo"
+      },
+      "answer": "B"
+    },
+    {
+      "id": "37085",
+      "question": "Table:\n[TITLE]: Student council committees\nCommittee | Students | Teachers\nCafeteria | 13 | 7\nParty | 18 | 16\nSports | 13 | 8\nGraduation | 9 | 15\nQuestion: Sparrowtown High School's student council recruited teachers and students to serve on each of its committees. Are there fewer people on the party committee or the cafeteria committee?",
+      "choices": {
+        "A": "cafeteria",
+        "B": "party"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "37115",
+      "question": "Table:\n[TITLE]: None\nPattern A | add | 2 6 | 8 | 10 | 12\nPattern B | add | 8 22 | 30 | 38 | 46\nQuestion: Compare pattern A to pattern B. Which statement is true? ",
+      "choices": {
+        "A": "Each term in pattern B can be found by subtracting the corresponding term in pattern A from 28.",
+        "B": "Each term in pattern B can be found by multiplying the corresponding term in pattern A by 4 and then subtracting 2."
+      },
+      "answer": "B"
+    },
+    {
+      "id": "37476",
+      "question": "Table:\n[TITLE]: None\nbook about helicopters | $2.00\nbook about reptiles | $6.00\nbook about dinosaurs | $3.00\nbook about outer space | $1.00\nQuestion: Miguel has $6.00. Does he have enough to buy a book about dinosaurs and a book about helicopters?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "37708",
+      "question": "Table:\n[TITLE]: None\nPrice | Quantity demanded | Quantity supplied\n$130 | 14,500 | 3,600\n$180 | 11,500 | 6,000\n$230 | 8,500 | 8,400\n$280 | 5,500 | 10,800\n$330 | 2,500 | 13,200\nQuestion: Look at the table. Then answer the question. At a price of $180, is there a shortage or a surplus?",
+      "choices": {
+        "A": "shortage",
+        "B": "surplus"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "37722",
+      "question": "Table:\n[TITLE]: None\npurple clam shell | $0.07\nwhite spindle shell | $0.07\nspiral snail shell | $0.05\nscallop shell | $0.01\npink and white striped shell | $0.07\nQuestion: Derek has $0.13. Does he have enough to buy a spiral snail shell and a pink and white striped shell?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "37908",
+      "question": "Table:\n[TITLE]: Track meet schedule\nEvent | Begin | End\njavelin throw | 11:00 A.M. | 11:15 A.M.\nsteeplechase | 11:30 A.M. | 11:45 A.M.\nmen's relay | 11:50 A.M. | 12:40 P.M.\ndiscus throw | 12:45 P.M. | 1:45 P.M.\npole vault | 1:55 P.M. | 2:25 P.M.\nlong jump | 2:40 P.M. | 3:15 P.M.\nQuestion: Look at the following schedule. When does the discus throw end?",
+      "choices": {
+        "A": "11:45 A.M.",
+        "B": "2:25 P.M.",
+        "C": "1:45 P.M.",
+        "id": "12:40 P.M."
+      },
+      "answer": "C"
+    },
+    {
+      "id": "38091",
+      "question": "Table:\n[TITLE]: Cookies baked\nName | Number of cookies\nRiley | 71\nHannah | 75\nLayla | 78\nMadelyn | 79\nQuestion: The art club examined how many cookies each student baked for the bake sale. Who baked the most cookies?",
+      "choices": {
+        "A": "Riley",
+        "B": "Hannah",
+        "C": "Layla",
+        "id": "Madelyn"
+      },
+      "answer": "id"
+    },
+    {
+      "id": "38235",
+      "question": "Table:\n[TITLE]: None\nset of golf clubs | $390.00\nsnowboard | $910.00\nmountain bike | $763.00\nwetsuit | $660.00\nQuestion: Nolan has $1,425.00. Does he have enough to buy a wetsuit and a mountain bike?",
+      "choices": {
+        "A": "yes",
+        "B": "no"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "38312",
+      "question": "Table:\n[TITLE]: Stock prices\nCompany | Wednesday | Thursday\nWatson and Partners | $17 | $18\nWhite and Company | $19 | $16\nJonas Incorporated | $20 | $18\nQuestion: A stock broker followed the stock prices of a certain set of companies. Which company's stock cost more on Wednesday, Watson and Partners or White and Company?",
+      "choices": {
+        "A": "White and Company",
+        "B": "Watson and Partners"
+      },
+      "answer": "A"
+    },
+    {
+      "id": "38385",
+      "question": "Table:\n[TITLE]: Tour boat schedule\nSea Town | 8:00 A.M. | 8:15 A.M. | 8:30 A.M. | 9:30 A.M.\nFisherman's Cove | 9:45 A.M. | 10:00 A.M. | 10:15 A.M. | 11:15 A.M.\nStarfish Point | 10:30 A.M. | 10:45 A.M. | 11:00 A.M. | 12:00 P.M.\nRocky Cliffs | 11:45 A.M. | 12:00 P.M. | 12:15 P.M. | 1:15 P.M.\nPalm Tree Island | 1:15 P.M. | 1:30 P.M. | 1:45 P.M. | 2:45 P.M.\nQuestion: Look at the following schedule. Linda got on the boat at Fisherman's Cove at 9.45 A.M. What time will she get to Palm Tree Island?",
+      "choices": {
+        "A": "1:45 P.M.",
+        "B": "9:45 A.M.",
+        "C": "10:45 A.M.",
+        "id": "1:15 P.M."
+      },
+      "answer": "id"
+    }
+  ]
+}

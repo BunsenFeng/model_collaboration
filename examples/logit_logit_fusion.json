@@ -1,0 +1,16 @@
+{
+    "method": "logit_logit_fusion",
+    "task": "agieval_tiny",
+    "task_type": "multiple_choice",
+    "gpu_ids": [0,1],
+    "model_names": [
+        "allenai/Llama-3.1-Tulu-3-8B-SFT",
+        "allenai/Llama-3.1-Tulu-3-8B-DPO"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 1
+    }
+}

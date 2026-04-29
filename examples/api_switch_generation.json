@@ -1,0 +1,18 @@
+{
+    "method": "api_switch_generation",
+    "task": "agieval_tiny",
+    "task_type": "multiple_choice",
+    "gpu_ids": [0,1,2],
+    "model_names": [
+        "meta-llama/Llama-3.1-8B",
+        "allenai/Llama-3.1-Tulu-3-8B-SFT",
+        "allenai/Llama-3.1-Tulu-3-8B"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "selector_model_name": "bunsenfeng/PFA_switcher_1"
+    }
+}
