@@ -285,6 +285,19 @@ Without further ado, a complete list of all supported methods and configurations
 - method-specific hyperparameters:
     - `tie`, default "random": the tie-breaking strategy. Options are "random" (arbitrarily select one of the tied answers) or "dev-based" (evaluate the models that vote for tied answers on the dev set, then use the answer from the best-performing model).
 
+#### Text-level: SLM-MUX
+- file: `text_slm_mux.py`
+- description: A training-free, confidence-based router over a pool of (small) LMs. For each test question, every candidate model independently produces `samples_per_model` (k) samples; per-model confidence is the majority-vote consistency over its k extracted answers (`max_count / k`). The model with the highest confidence wins, and its majority answer is the final output. Ties on confidence are broken by validation accuracy on the dev set (the paper's default), or by model order / randomly. Unlike majority vote, which aggregates a single answer per model across models, SLM-MUX aggregates k samples *within* each model and then selects one model — which lets a single confident model override the rest. Applicable to "multiple_choice", "exact_match", and "f1_match" task types.
+- related paper(s):
+    - [SLM-MUX: Orchestrating Small Language Models for Reasoning](https://arxiv.org/abs/2510.05077)
+- method-specific hyperparameters:
+    - `samples_per_model`, default 5: number of independent samples (k) drawn from each model per question. Higher k gives a more reliable confidence estimate at the cost of more inference.
+    - `tie`, default "dev-based": tie-breaking when multiple models share the top confidence. Options are "dev-based" (evaluate every model once on the dev set and pick the one with the highest dev accuracy among the tied models — the paper's default), "model-order" (first model in `model_names` wins), or "random".
+    - `seed`, default 42: random seed used for tie-breaking inside the consistency vote.
+- note:
+    - Sampling diversity matters: with `temperature` near 0 every sample collapses to the same answer and confidence saturates at 1.0 for every model. The paper uses `temperature=0.3`; values in `[0.3, 0.7]` work well.
+    - Compute is roughly `samples_per_model x` what majority vote would take on the test set, plus one dev pass for tie-breaking.
+
 #### Text-level: Structured Interaction
 - file: `text_structure.py`
 - description: multiple LLMs interact and update their responses according to a specific communication topology (graph structure). First, all models generate initial responses to the query. Then, over multiple rounds, each LLM receives the most recent responses of its "neighboring" models (defined by the structure) as context to update its own answer. Finally, the responses from the last round are evaluated. This allows simulating different information flow patterns like stars, trees, or chains.
