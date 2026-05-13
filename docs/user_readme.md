@@ -354,6 +354,24 @@ Without further ado, a complete list of all supported methods and configurations
     - `freeze_ratings`, default false: if true, model ratings are not updated during the competition phase. Useful for testing or when you want to use fixed ratings.
     - `debug`, default false: if true, prints detailed rating update information (update count, K value, deviation changes) for debugging purposes.
 
+### Text-level: Stackelberg
+- file: `text_sparta_stackelberg.py`
+- description: extends the SPARTA alignment algorithm (see above) with an adversarial instruction selection mechanism. Rather than uniformly sampling instructions for models to duel on, the instruction selector acts as the leader in a Stackelberg game while the LLMs in the model pool act as followers. The instruction selector's action space is comprised of the prompts available in the training dataset, and Stackelberg updates the probability distribution of instruction selection depending on the models' performance on the prompts according to the EXP3 algorithm.
+- method-specific hyperparameters:
+    - See above: Stackelberg inherits all hyperparameters from Sparta Alignment
+    - `run_id`, default current datetime: the user must provide this to resume a run. If starting a new run, the date and time will be appended to `run_id` to avoid overwriting later.
+    - `instruction_selection`, default `exp3`: instruction sampling method. Can be either `uniform`, `exp3`, or `exp3_per_model`.
+    - `instr_sample_gamma`, default 0.2: probability of uniform sampling. This is relevant if `instruction_selection` is either `exp3` or `exp3_per_model`, since the algorithm necessitates a hyperparameter gamma that determines the probability of prompts bing sampled from a uniform vs. weighted distribution.
+    - `reward_method`, default `weighted`: how to calculate instruction selector reward. Can be either `weighted`, `difficulty_only`, or `preference_quality_only`.
+    - `difficulty_reward_weight`, default 0.3: weight of the difficulty component of the instruction selector reward. Must be positive. Only relevant if `reward_method` is `weighted`.
+    - `score_threshold`, default 3.0: minimum threshold for a nonzero weight. If models score below this value, the reward is 0 because the problem is too hard. A perfect difficulty reward score is achieved when models score exactly this value, then decreases from that point as models score above this value.
+    - `preference_quality_reward_weight`, default 0.7: weight of the preference quality component of the instruction selector reward. Must be positive. Only relevant if `reward_method` is `weighted`.
+    - `ideal_start_gap`, default 0.6: target ideal normalized preference gap in the first iteration. 
+    - `ideal_end_gap`, default 0.15: target ideal normalized preference gap in the last iteration. 
+    - `preference_gap_sigma`, default 0.15: determines how "forgiving" the reward for the preference quality component is.
+    - `opponent_selection`, default `schedule_decreasing`: determines which models are selected as opponents depending on reputation differences. Can be either `lowest_diff`, `highest_diff`, `schedule_decreasing`, or `schedule_increasing`.
+    - `reputation_gap_sigma`, default 0.15: determines probability distribution for sampling opponents. Relevant if `opponent_selection` is `schedule_decreasing` or `schedule_increasing`.
+
 #### Text-level: AggLM
 - file: `text_agglm.py`
 - description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.
