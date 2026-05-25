@@ -1665,8 +1665,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     num_iterations = int(hyperparameters.get("num_iterations", 3))  # Number of iterations to run
     start_iteration = int(hyperparameters.get("current_iteration", 0))  # Starting iteration number (for resuming)
     base_dir = hyperparameters.get("base_dir", os.path.join("model_collaboration/logs", "text_sparta_stackelberg"))
-    run_id = str(hyperparameters.get("run_id", None))
-    
+    run_id = hyperparameters.get("run_id", None)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if start_iteration > 0:
@@ -1675,7 +1674,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             raise ValueError(
                 "Resuming requires setting hyperparameters['run_id'] to the original run directory name."
             )
-        
+        run_id = str(run_id)
         base_dir = os.path.join(base_dir, run_id)
         if not os.path.isdir(base_dir):
             raise ValueError(
@@ -1683,7 +1682,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             )
     else:
         # New run mode. Append timestamp to avoid overwriting.
-        run_id = timestamp if run_id is None or run_id.strip() == "" else f"{run_id}_{timestamp}"
+        run_id = timestamp if run_id is None or str(run_id).strip() == "" else f"{run_id}_{timestamp}"
         base_dir = os.path.join(base_dir, run_id)
     
     os.makedirs(base_dir, exist_ok=True)
