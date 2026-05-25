@@ -19,6 +19,7 @@ model_collaboration/log.txt
 model_collaboration/*.txt
 model_collaboration/moco/
 wandb/
+model_collaboration/data/parti_*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
