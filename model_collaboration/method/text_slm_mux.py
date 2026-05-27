@@ -24,52 +24,6 @@ from pathlib import Path
 from model_collaboration.data import eval
 from model_collaboration.method import distributed_generation
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-
-
-def _load_split(task, split, ratio=1.0):
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-        data = json.load(f)[split]
-    return data[: int(len(data) * ratio)]
-
-
-def _extract_answers(task, task_type, split, outputs, ratio=1.0):
-    """Extract a discrete answer string from each raw model output."""
-    data = _load_split(task, split, ratio)
-    extracted = []
-    if task_type == "multiple_choice":
-        assert "choices" in data[0], "Are you sure this is a multiple choice task?"
-        for item, output in zip(data, outputs):
-            options = [item["choices"][k] for k in item["choices"].keys()]
-            chosen_letter, _ = eval.parse_model_response_mcq(output, options)
-            extracted.append(chosen_letter if chosen_letter is not None else "")
-    elif task_type in ("exact_match", "f1_match"):
-        for output in outputs:
-            extracted.append(eval.extract_answer_text(output) or "")
-    return extracted
-
-
-def _score_extracted(task, task_type, split, extracted_answers, ratio=1.0):
-    """Score a list of already-extracted answers against the gold labels."""
-    data = _load_split(task, split, ratio)
-    scores = []
-    if task_type == "multiple_choice":
-        for item, ans in zip(data, extracted_answers):
-            scores.append(1.0 if ans and item["answer"] == ans else 0.0)
-    elif task_type == "exact_match":
-        for item, ans in zip(data, extracted_answers):
-            scores.append(eval.calculate_exact_match(ans, item["output"]))
-    elif task_type == "f1_match":
-        if task == "popqa":
-            for item, ans in zip(data, extracted_answers):
-                opts = item["output"].replace("[", "").replace("]", "").replace("\"", "").replace("'", "")
-                opts = [o.strip() for o in opts.split(",")]
-                scores.append(max((eval.calculate_f1_score(ans, o) for o in opts), default=0.0))
-        else:
-            for item, ans in zip(data, extracted_answers):
-                scores.append(eval.calculate_f1_score(ans, item["output"]))
-    return scores
-
 
 def _consistency(extracted_k):
     """Consistency confidence for one model on one question.
@@ -109,10 +63,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     script_dir = Path(__file__).resolve().parent.parent.parent
     os.chdir(script_dir)
 
-    assert task_type in ("multiple_choice", "exact_match", "f1_match"), (
-        "text_slm_mux supports only multiple_choice, exact_match, and f1_match task types."
-    )
-
     samples_per_model = int(hyperparameters.get("samples_per_model", 5))
     assert samples_per_model >= 1, "samples_per_model must be >= 1"
     tie_breaking = hyperparameters.get("tie", "dev-based")
@@ -144,23 +94,29 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     samples = _generate_k_samples(model_names, test_inputs, gpu_ids, samples_per_model)
     # samples[model_idx][sample_idx][question_idx] = raw output string
 
-    # 3. Extract answers per (model, sample, question)
-    extracted = []  # extracted[model_idx][sample_idx] = list of extracted answers
+    # 3. Extract answers and scores per (model, sample, question)
+    extracted = []   # extracted[mi][s] = list of parsed answers per question
+    ext_scores = []  # ext_scores[mi][s] = list of scores per question
     for mi in range(len(model_names)):
-        per_sample = []
+        per_sample_ans, per_sample_scores = [], []
         for s in range(samples_per_model):
-            per_sample.append(_extract_answers(task, task_type, "test", samples[mi][s]))
-        extracted.append(per_sample)
+            sc, ps = eval.get_scores(task, task_type, "test", samples[mi][s], return_output=True)
+            per_sample_ans.append(ps)
+            per_sample_scores.append(sc)
+        extracted.append(per_sample_ans)
+        ext_scores.append(per_sample_scores)
 
     # 4. Per question: per-model consistency, pick winner, tie-break
     final_extracted = []
+    test_scores = []
     per_question_logs = []
     for qi in range(len(test_inputs)):
-        per_model = []  # list of (model_name, selected_answer, score, vote_counts)
+        per_model = []  # list of (model_name, selected_answer, confidence, vote_counts, score)
         for mi, name in enumerate(model_names):
             k_answers = [extracted[mi][s][qi] for s in range(samples_per_model)]
-            sel, score, counts = _consistency(k_answers)
-            per_model.append((name, sel, score, counts))
+            sel, conf, counts = _consistency(k_answers)
+            s_match = next((s for s in range(samples_per_model) if extracted[mi][s][qi] == sel), 0)
+            per_model.append((name, sel, conf, counts, ext_scores[mi][s_match][qi]))
 
         max_score = max(p[2] for p in per_model)
         tied = [p for p in per_model if abs(p[2] - max_score) < 1e-9]
@@ -174,6 +130,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             winner = max(tied, key=lambda p: model_accuracies.get(p[0], 0.0))
 
         final_extracted.append(winner[1])
+        test_scores.append(winner[4])
         per_question_logs.append({
             "selected_model": winner[0],
             "selected_answer": winner[1],
@@ -184,8 +141,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             "tied": len(tied) > 1,
         })
 
-    # 5. Score and log
-    test_scores = _score_extracted(task, task_type, "test", final_extracted)
     avg_test_score = sum(test_scores) / len(test_scores) if test_scores else 0.0
     print("[SLM-MUX] final test {} score: {:.4f}".format(task, avg_test_score))
 
