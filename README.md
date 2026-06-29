@@ -18,6 +18,7 @@ source moco/bin/activate
 uv pip install -r requirements.txt
 pip install git+https://github.com/Dao-AILab/causal-conv1d.git
 pip install git+https://github.com/state-spaces/mamba.git
+pip install mergekit
 pip install modelco
 ```
 
