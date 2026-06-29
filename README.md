@@ -23,7 +23,7 @@ uv pip install modelco
 Optionally, do these on a GPU node to support SSM-based models:
 ```
 uv pip install git+https://github.com/Dao-AILab/causal-conv1d.git
-uv pip install git+https://github.com/state-spaces/mamba.git
+uv pip install git+https://github.com/state-spaces/mamba.git --no-build-isolation
 ```
 
 Run your first model collaboration experiment (if you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):
