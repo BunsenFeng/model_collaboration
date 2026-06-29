@@ -16,6 +16,8 @@ We use [uv](https://github.com/astral-sh/uv) for package management. Install it 
 uv venv --python 3.10 moco
 source moco/bin/activate
 uv pip install -r requirements.txt
+pip install git+https://github.com/Dao-AILab/causal-conv1d.git
+pip install git+https://github.com/state-spaces/mamba.git
 pip install modelco
 ```
 

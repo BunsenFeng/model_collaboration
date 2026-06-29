@@ -6,8 +6,12 @@
 # (torch will use the system CUDA), or install torch via the PyTorch index instead:
 #   uv pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu126
 #
-# Some packages (causal-conv1d, mamba-ssm, mergekit, directsearch, annotated-doc)
-# may not be on PyPI or require a custom index / build from source.
+# Some packages (mergekit, directsearch, annotated-doc) may not be on PyPI or require a custom index / build from source.
+#
+# causal-conv1d and mamba-ssm must be installed from source AFTER this file,
+# because the PyPI releases conflict with torch's triton pin:
+#   pip install git+https://github.com/Dao-AILab/causal-conv1d.git
+#   pip install git+https://github.com/state-spaces/mamba.git
 
 accelerate==1.6.0
 aiohappyeyeballs==2.6.1
@@ -23,7 +27,6 @@ bayesian-optimization==1.4.0
 bitsandbytes==0.49.2
 boto3==1.39.3
 botocore==1.39.3
-causal-conv1d==1.6.2.post1
 certifi==2025.6.15
 charset-normalizer==3.4.2
 click==8.4.2
@@ -56,7 +59,6 @@ jiter==0.10.0
 jmespath==1.0.1
 joblib==1.5.3
 line-profiler==5.0.0
-mamba-ssm==2.3.2.post1
 markdown-it-py==4.2.0
 MarkupSafe==3.0.2
 mdurl==0.1.2
