@@ -13,7 +13,7 @@ Technical report: [paper](https://arxiv.org/abs/2601.21257)
 We use [uv](https://github.com/astral-sh/uv) for package management. Install it first if you haven't already.
 
 ```
-uv venv --python 3.10 moco
+uv venv --python 3.11 moco
 source moco/bin/activate
 uv pip install -r requirements.txt
 uv pip install mergekit
