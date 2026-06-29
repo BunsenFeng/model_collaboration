@@ -42,7 +42,13 @@ moco -c <path-to-config>.json -l ./
 
 Try to use <10B LLMs or anything that could fit onto a single of your GPU. If you are trying to run collaboration with one of the model being too large to fit onto a single GPU: add `"big_model_mode": true` to `"hyperparameters"`: it will use all provided GPUs for a single model in rotation. This will only work for some approaches.
 
+To reduce GPU memory usage, you can add `"load_in_8bit": true` to `"hyperparameters"`: models will be loaded with 8-bit quantization via `bitsandbytes`. Defaults to `false`. Note that a small set of models are incompatible with 8-bit quantization and will fall back to bf16 automatically.
+
 Reasoning LMs are supported! Please use much larger `"max_response_length"` to account for them: we will parse the text after `</think>` as the actual model output.
+
+Qwen3 models (`Qwen/Qwen3-*`) are supported and will automatically run in non-thinking mode (`enable_thinking=False`).
+
+DeepSeek-R1 distill models (e.g. `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`) are supported: `<think>...</think>` blocks are automatically stripped from outputs before evaluation.
 
 These are vibe implementations (and your future implementations can be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 

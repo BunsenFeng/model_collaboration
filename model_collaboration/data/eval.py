@@ -18,7 +18,7 @@ from openai import AzureOpenAI
 from collections import Counter
 from multiprocessing import Pool
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSequenceClassification
 
 
 # Disable tokenizer thread parallelism to avoid fork warnings emitted during evaluation.
@@ -578,6 +578,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
     parsed_outputs = []
 
     if task_type == "generation_diversity":
+        from transformers import pipeline
         feature_extractor = pipeline("feature-extraction", framework="pt", model="FacebookAI/roberta-base", device=0)
 
         assert len(outputs) == len(data), "Length of outputs must match length of data for generation diversity evaluation."
