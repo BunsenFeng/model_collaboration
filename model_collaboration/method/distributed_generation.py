@@ -4,7 +4,7 @@ import random
 from tqdm import tqdm
 from torch import _dynamo
 from multiprocessing import Pool
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 # global hyperparameters for generation
 MAX_RESPONSE_LENGTH = None
@@ -12,19 +12,45 @@ TEMPERATURE = None
 TOP_P = None
 BATCH_SIZE = None
 BIG_MODEL_MODE = None
+LOAD_IN_8BIT = False
 
-def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size, big_model_mode=False):
-    global MAX_RESPONSE_LENGTH, TEMPERATURE, TOP_P, BATCH_SIZE, BIG_MODEL_MODE
+# Models to exclude from 8-bit quantization (fall back to bf16 for these)
+NO_8BIT_MODELS = {
+    "openai/gpt-oss-20b",       # trust_remote_code conflicts with bitsandbytes
+    "google/gemma-3-12b-it",    # CUDA device-side assert with 8-bit
+}
+
+# Qwen3 models support enable_thinking=False in apply_chat_template
+QWEN3_MODELS = {
+    "Qwen/Qwen3-0.6B", "Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B",
+    "Qwen/Qwen3-8B", "Qwen/Qwen3-14B", "Qwen/Qwen3-32B",
+}
+
+def _load_model(model_name, device_map, load_in_8bit=False):
+    if load_in_8bit and model_name not in NO_8BIT_MODELS:
+        quant_config = BitsAndBytesConfig(load_in_8bit=True)
+        return AutoModelForCausalLM.from_pretrained(
+            model_name, quantization_config=quant_config,
+            device_map=device_map, trust_remote_code=True
+        )
+    return AutoModelForCausalLM.from_pretrained(
+        model_name, torch_dtype=torch.bfloat16,
+        device_map=device_map, trust_remote_code=True
+    )
+
+def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size, big_model_mode=False, load_in_8bit=False):
+    global MAX_RESPONSE_LENGTH, TEMPERATURE, TOP_P, BATCH_SIZE, BIG_MODEL_MODE, LOAD_IN_8BIT
     MAX_RESPONSE_LENGTH = max_response_length
     TEMPERATURE = temperature
     TOP_P = top_p
     BATCH_SIZE = batch_size
     BIG_MODEL_MODE = big_model_mode
+    LOAD_IN_8BIT = load_in_8bit
 
 def batch_generate_text(model_name, gpu_id, input_list, max_response_length, temperature, top_p, batch_size):
     # Load model and tokenizer
     if not BIG_MODEL_MODE:
-        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
+        model = _load_model(model_name, {"": gpu_id}, load_in_8bit=LOAD_IN_8BIT)
     else:
         # ensure that gpu_id is a list
         if not isinstance(gpu_id, list):
@@ -32,7 +58,7 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
         # set CUDA_VISIBLE_DEVICES
         gpu_id_str = ",".join([str(i) for i in gpu_id])
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
-        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True)
+        model = _load_model(model_name, "auto", load_in_8bit=LOAD_IN_8BIT)
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         tokenizer.pad_token = tokenizer.eos_token
@@ -48,6 +74,9 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
         # try to apply chat template
         try:
             chat_inputs = []
+            tmpl_kwargs = {"tokenize": False, "add_generation_prompt": True}
+            if model_name in QWEN3_MODELS:
+                tmpl_kwargs["enable_thinking"] = False
             for input in batch_inputs:
                 if "<begin>" in input:
                     question, partial_response = input.split("<begin>", 1)
@@ -55,7 +84,7 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
                         # {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": question},
                     ]
-                    chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+                    chat_input = tokenizer.apply_chat_template(chat, **tmpl_kwargs)
                     chat_input += partial_response
                     chat_inputs.append(chat_input)
                 else:
@@ -63,11 +92,11 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
                         # {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": input}
                     ]
-                    chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+                    chat_input = tokenizer.apply_chat_template(chat, **tmpl_kwargs)
                     chat_inputs.append(chat_input)
         except:
             chat_inputs = batch_inputs
-        
+
         inputs = tokenizer(chat_inputs, return_tensors="pt", padding=True, truncation=True).to(model.device)
         with torch.no_grad():
             outputs = model.generate(
@@ -167,7 +196,7 @@ def batch_generate_text_with_score(model_name, gpu_id, input_list, max_response_
 
     # Load model and tokenizer
     if not BIG_MODEL_MODE:
-        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map=f"cuda:{gpu_id}", trust_remote_code=True)
+        model = _load_model(model_name, {"": gpu_id}, load_in_8bit=LOAD_IN_8BIT)
     else:
         # ensure that gpu_id is a list
         if not isinstance(gpu_id, list):
@@ -175,7 +204,7 @@ def batch_generate_text_with_score(model_name, gpu_id, input_list, max_response_
         # set CUDA_VISIBLE_DEVICES
         gpu_id_str = ",".join([str(i) for i in gpu_id])
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
-        model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True)
+        model = _load_model(model_name, "auto", load_in_8bit=LOAD_IN_8BIT)
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         tokenizer.pad_token = tokenizer.eos_token
@@ -189,16 +218,19 @@ def batch_generate_text_with_score(model_name, gpu_id, input_list, max_response_
         # try to apply chat template
         try:
             chat_inputs = []
+            tmpl_kwargs = {"tokenize": False, "add_generation_prompt": True}
+            if model_name in QWEN3_MODELS:
+                tmpl_kwargs["enable_thinking"] = False
             for input in batch_inputs:
                 chat = [
                     # {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": input}
                 ]
-                chat_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+                chat_input = tokenizer.apply_chat_template(chat, **tmpl_kwargs)
                 chat_inputs.append(chat_input)
         except:
             chat_inputs = batch_inputs
-        
+
         inputs = tokenizer(chat_inputs, return_tensors="pt", padding=True, truncation=True).to(model.device)
         # generate response with logit information in each token
         with torch.no_grad():
