@@ -26,6 +26,18 @@ QWEN3_MODELS = {
     "Qwen/Qwen3-8B", "Qwen/Qwen3-14B", "Qwen/Qwen3-32B",
 }
 
+# gpt-oss-20b emits a spurious "assistantfinal" prefix before the answer due to chat template
+STRIP_ASSISTANT_FINAL_MODELS = {
+    "openai/gpt-oss-20b",
+}
+
+def _strip_assistant_final(text: str) -> str:
+    # gpt-oss-20b appends "assistantfinal<ANSWER>" at the end; extract just the answer
+    idx = text.lower().find("assistantfinal")
+    if idx >= 0:
+        return text[idx + len("assistantfinal"):].strip()
+    return text
+
 def _load_model(model_name, device_map, load_in_8bit=False):
     if load_in_8bit and model_name not in NO_8BIT_MODELS:
         quant_config = BitsAndBytesConfig(load_in_8bit=True)
@@ -114,6 +126,10 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
         for idx in range(len(decoded_outputs)):
             if "</think>" in decoded_outputs[idx]:
                 decoded_outputs[idx] = decoded_outputs[idx].split("</think>")[-1].strip()
+
+        # strip spurious "assistantfinal" prefix for gpt-oss-20b
+        if model_name in STRIP_ASSISTANT_FINAL_MODELS:
+            decoded_outputs = [_strip_assistant_final(o) for o in decoded_outputs]
 
         output_list.extend(decoded_outputs)
     del model

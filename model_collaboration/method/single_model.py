@@ -12,6 +12,11 @@ NO_8BIT_MODELS = {
     "google/gemma-3-12b-it",    # CUDA device-side assert with 8-bit
 }
 
+# Models that need a reduced batch size to avoid OOM in bf16
+SMALL_BATCH_MODELS = {
+    "openai/gpt-oss-20b": 16,
+}
+
 # Qwen3 models support enable_thinking=False in apply_chat_template
 QWEN3_MODELS = {
     "Qwen/Qwen3-0.6B", "Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B",
@@ -23,10 +28,22 @@ STRIP_THINK_MODELS = {
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
 }
 
+# gpt-oss-20b emits a spurious "assistantfinal" prefix before the answer due to chat template
+STRIP_ASSISTANT_FINAL_MODELS = {
+    "openai/gpt-oss-20b",
+}
+
 
 def strip_think_tags(text: str) -> str:
     import re
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+def strip_assistant_final(text: str) -> str:
+    # gpt-oss-20b appends "assistantfinal<ANSWER>" at the end; extract just the answer
+    idx = text.lower().find("assistantfinal")
+    if idx >= 0:
+        return text[idx + len("assistantfinal"):].strip()
+    return text
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
@@ -44,6 +61,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     assert len(model_names) == 1, "This method only supports a single model."
 
+    model_name = model_names[0]
+    if model_name in SMALL_BATCH_MODELS:
+        batch_size = min(batch_size, SMALL_BATCH_MODELS[model_name])
+
     # evaluate on the test set
     test_input_list = eval.prepare_inputs(task, task_type, "test")
 
@@ -56,8 +77,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # set to multiple devices in the list of gpu_ids
     # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(gpu_id) for gpu_id in gpu_ids])
-
-    model_name = model_names[0]
 
     if load_in_8bit and model_name not in NO_8BIT_MODELS:
         quant_config = BitsAndBytesConfig(load_in_8bit=True)
@@ -100,6 +119,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         decoded_outputs = tokenizer.batch_decode(outputs[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
         if model_name in STRIP_THINK_MODELS:
             decoded_outputs = [strip_think_tags(o) for o in decoded_outputs]
+        if model_name in STRIP_ASSISTANT_FINAL_MODELS:
+            decoded_outputs = [strip_assistant_final(o) for o in decoded_outputs]
         output_list.extend(decoded_outputs)
 
     test_scores = eval.get_scores(task, task_type, "test", output_list)
