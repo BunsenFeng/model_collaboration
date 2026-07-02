@@ -784,12 +784,16 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
             ref_src = item["input"]
             level = int(item["id"].split("_")[0][1:])  # "l1_42" -> 1
             custom_src = extract_code_block(output, "python")
-            result = eval_kernel_against_ref(
-                ref_src=ref_src,
-                custom_src=custom_src,
-                device=device,
-            )
-            score = score_kernel_result(result, level)
+            try:
+                result = eval_kernel_against_ref(
+                    ref_src=ref_src,
+                    custom_src=custom_src,
+                    device=device,
+                )
+                score = score_kernel_result(result, level)
+            except Exception as e:
+                print(f"[kernelbench] eval error on {item['id']}: {e}")
+                score = 0.0
             scores.append(score)
             parsed_outputs.append(custom_src)
 

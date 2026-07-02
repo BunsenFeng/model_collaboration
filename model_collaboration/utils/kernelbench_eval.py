@@ -248,7 +248,10 @@ def eval_kernel_against_ref(
     try:
         import ninja  # noqa: F401
     except ImportError:
-        raise RuntimeError("ninja is required for kernel evaluation: pip install ninja")
+        import subprocess, sys
+        print("[kernelbench] ninja not found, installing...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "ninja", "-q"])
+        import ninja  # noqa: F401
     torch.cuda.set_device(device)
 
     metadata = {
@@ -322,7 +325,10 @@ def eval_kernel_against_ref(
     )
 
     if not result.correctness:
-        torch.cuda.empty_cache()
+        try:
+            torch.cuda.empty_cache()
+        except Exception:
+            pass
         return result
 
     # --- Performance ---
@@ -345,7 +351,10 @@ def eval_kernel_against_ref(
     except Exception as e:
         result.metadata["perf_error"] = str(e)
 
-    torch.cuda.empty_cache()
+    try:
+        torch.cuda.empty_cache()
+    except Exception:
+        pass
     return result
 
 
