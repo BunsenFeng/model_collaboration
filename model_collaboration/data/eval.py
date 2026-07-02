@@ -558,6 +558,9 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
             # Support various field names for the problem description
             problem = item.get("input", item.get("question", item.get("prompt", "")))
             input_list.append(problem)
+    elif task_type == "gene_ranking":
+        for item in data:
+            input_list.append(item["input"])
     else:
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
@@ -681,6 +684,17 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
             score = evaluate_code_solution(code, test_code, CODE_EXECUTION_TIMEOUT, language)
             scores.append(score)
             parsed_outputs.append(code)
+
+    if task_type == "gene_ranking":
+        from model_collaboration.utils.assaybench_scoring import score_gene_ranking
+        for item, output in zip(data, outputs):
+            score = score_gene_ranking(
+                output,
+                item["relevance_genes"],
+                item["relevance_scores"],
+            )
+            scores.append(score)
+            parsed_outputs.append(output)
 
     if task == "culturebench":
         question_to_indices = {}
