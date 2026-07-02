@@ -661,6 +661,18 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
         return input_list[:int(len(input_list)*ratio)], id_list[:int(len(input_list)*ratio)]
     return input_list[:int(len(input_list)*ratio)]
 
+def _kernel_eval_worker(conn, ref_src, custom_src, device):
+    """Isolated subprocess worker: eval one kernel and send result back via Pipe."""
+    try:
+        from model_collaboration.utils.kernelbench_eval import eval_kernel_against_ref
+        result = eval_kernel_against_ref(ref_src=ref_src, custom_src=custom_src, device=device)
+        conn.send(("ok", result))
+    except Exception as e:
+        conn.send(("error", str(e)))
+    finally:
+        conn.close()
+
+
 def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, id_list=None):
 
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
@@ -777,23 +789,37 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
             parsed_outputs.append(code)
 
     if task_type == "kernel_bench":
-        from model_collaboration.utils.kernelbench_eval import eval_kernel_against_ref, score_kernel_result
+        import multiprocessing
+        from model_collaboration.utils.kernelbench_eval import score_kernel_result
         device = torch.cuda.current_device() if torch.cuda.is_available() else None
         assert device is not None, "kernel_bench evaluation requires a CUDA GPU"
+        _spawn_ctx = multiprocessing.get_context("spawn")
         for item, output in zip(data, outputs):
             ref_src = item["input"]
             level = int(item["id"].split("_")[0][1:])  # "l1_42" -> 1
             custom_src = extract_code_block(output, "python")
+            score = 0.0
             try:
-                result = eval_kernel_against_ref(
-                    ref_src=ref_src,
-                    custom_src=custom_src,
-                    device=device,
+                parent_conn, child_conn = _spawn_ctx.Pipe(duplex=False)
+                p = _spawn_ctx.Process(
+                    target=_kernel_eval_worker,
+                    args=(child_conn, ref_src, custom_src, device),
                 )
-                score = score_kernel_result(result, level)
+                p.start()
+                child_conn.close()
+                if parent_conn.poll(timeout=300):
+                    status, payload = parent_conn.recv()
+                    if status == "ok":
+                        score = score_kernel_result(payload, level)
+                    else:
+                        print(f"[kernelbench] eval error on {item['id']}: {payload}")
+                else:
+                    print(f"[kernelbench] timeout on {item['id']}, killing subprocess")
+                    p.kill()
+                parent_conn.close()
+                p.join()
             except Exception as e:
-                print(f"[kernelbench] eval error on {item['id']}: {e}")
-                score = 0.0
+                print(f"[kernelbench] subprocess error on {item['id']}: {e}")
             scores.append(score)
             parsed_outputs.append(custom_src)
 
