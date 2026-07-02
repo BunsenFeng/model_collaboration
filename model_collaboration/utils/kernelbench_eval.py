@@ -243,6 +243,10 @@ def eval_kernel_against_ref(
         KernelExecResult with compiled, correctness, runtime, ref_runtime fields populated
     """
     assert torch.cuda.is_available(), "CUDA required for kernel evaluation"
+    try:
+        import ninja  # noqa: F401
+    except ImportError:
+        raise RuntimeError("ninja is required for kernel evaluation: pip install ninja")
     torch.cuda.set_device(device)
 
     metadata = {
