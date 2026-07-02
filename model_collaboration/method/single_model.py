@@ -11,7 +11,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 NO_8BIT_MODELS = {
     "openai/gpt-oss-20b",                          # trust_remote_code conflicts with bitsandbytes
     "google/gemma-3-12b-it",                       # CUDA device-side assert with 8-bit
-    # NemotronH: 8-bit works fine in v6 (transformers 4.x); removed from this set
+    "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",       # 8-bit overhead too slow for SSM layers
+    "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",  # same
 }
 
 # Models that need a reduced batch size to avoid OOM in bf16
