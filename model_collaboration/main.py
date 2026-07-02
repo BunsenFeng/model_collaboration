@@ -41,7 +41,8 @@ def run_main():
         hyperparameters.get("temperature", 0.7),
         hyperparameters.get("top_p", 0.9),
         hyperparameters.get("batch_size", 32),
-        hyperparameters.get("big_model_mode", False)
+        hyperparameters.get("big_model_mode", False),
+        hyperparameters.get("load_in_8bit", False),
     )
 
     # execute the method
