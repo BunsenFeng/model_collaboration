@@ -58,7 +58,9 @@ def _get_tolerance(precision: torch.dtype) -> float:
 def _process_input(x, device, precision):
     if not isinstance(x, torch.Tensor):
         return x
-    return x.to(dtype=precision, device=device)
+    if x.is_floating_point():
+        return x.to(dtype=precision, device=device)
+    return x.to(device=device)  # keep integer/bool dtypes (e.g. cross_entropy targets)
 
 
 # ---------------------------------------------------------------------------
