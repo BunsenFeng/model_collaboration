@@ -17,7 +17,6 @@ uv venv --python 3.11 moco
 source moco/bin/activate
 uv pip install -r requirements.txt
 uv pip install mergekit
-uv pip install modelco
 ```
 
 Run your first model collaboration experiment (if you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):

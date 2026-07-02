@@ -15,6 +15,12 @@ NO_8BIT_MODELS = {
 # Models that need a reduced batch size to avoid OOM in bf16
 SMALL_BATCH_MODELS = {
     "openai/gpt-oss-20b": 16,
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": 16,
+}
+
+# Models that need more tokens to finish chain-of-thought before answering
+LONG_RESPONSE_MODELS = {
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": 4096,
 }
 
 # Qwen3 models support enable_thinking=False in apply_chat_template
@@ -64,6 +70,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     model_name = model_names[0]
     if model_name in SMALL_BATCH_MODELS:
         batch_size = min(batch_size, SMALL_BATCH_MODELS[model_name])
+    if model_name in LONG_RESPONSE_MODELS:
+        max_new_tokens = max(max_new_tokens, LONG_RESPONSE_MODELS[model_name])
 
     # evaluate on the test set
     test_input_list = eval.prepare_inputs(task, task_type, "test")
