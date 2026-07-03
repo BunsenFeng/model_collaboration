@@ -75,7 +75,7 @@ def _build_pairwise_ranking_prompt(
     return prompt
 
 
-def _collect_dev_candidates_and_scores(task, task_type, gpu_ids, model_names):
+def _collect_dev_candidates_and_scores(task, task_type, gpu_ids, model_names, ratio=1.0):
     """
     Generate dev-set candidates and task scores for each model.
     Returns:
@@ -83,7 +83,7 @@ def _collect_dev_candidates_and_scores(task, task_type, gpu_ids, model_names):
         dev_candidates: List[List[str]]  # per example: list over models
         dev_scores: List[List[float]]    # per example: list over models
     """
-    dev_inputs = eval.prepare_inputs(task, task_type, "dev")
+    dev_inputs = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     if not dev_inputs:
         return [], [], []
 
@@ -100,7 +100,7 @@ def _collect_dev_candidates_and_scores(task, task_type, gpu_ids, model_names):
     dev_scores_per_model = []
     for i in range(num_models):
         dev_outputs_i = list_of_output_list[i]
-        scores_i = eval.get_scores(task, task_type, "dev", dev_outputs_i)
+        scores_i = eval.get_scores(task, task_type, "dev", dev_outputs_i, ratio=ratio)
         dev_scores_per_model.append(scores_i)
 
     dev_candidates = []
@@ -610,6 +610,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     os.makedirs("model_collaboration/logs", exist_ok=True)
     os.makedirs(METHOD_LOG_DIR, exist_ok=True)
 
+    ratio = hyperparameters.get("ratio", 1.0)
+
     # Optional training on dev set
     trained_ranker_path = None
     trained_fuser_path = None
@@ -618,7 +620,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     ):
         print("[LLM-Blender] Collecting dev candidates and scores for training...")
         dev_inputs, dev_candidates, dev_scores = _collect_dev_candidates_and_scores(
-            task, task_type, gpu_ids, model_names
+            task, task_type, gpu_ids, model_names, ratio=ratio
         )
         if hyperparameters.get("train_ranker_on_dev", False):
             trained_ranker_path = _train_ranker_on_dev(
@@ -644,7 +646,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             )
 
     # Prepare test inputs
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
 
     # Step 1: generate candidate answers from each base model
     print(f"[LLM-Blender] Generating candidate answers from {len(model_names)} base models: {model_names}")
@@ -681,7 +683,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # Evaluation
     print("[LLM-Blender] Evaluating fused outputs on the test set...")
-    test_scores = eval.get_scores(task, task_type, "test", final_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", final_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores) if test_scores else 0.0
     print(
         f"[LLM-Blender] Final test {task} score with {len(model_names)} models: {avg_test_score}"

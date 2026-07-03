@@ -62,7 +62,7 @@ def default_l1_regularization(weights, coef):
     sum_of_squares = sum([abs(x) for x in weights]) / len(weights)
     return coef * sum_of_squares
 
-def get_score_by_generation(weights, model, tokenizer, cache, input_texts, task, task_type, device, max_new_tokens, regular_coef):
+def get_score_by_generation(weights, model, tokenizer, cache, input_texts, task, task_type, device, max_new_tokens, regular_coef, ratio=1.0):
     """Optimization objective: Merge weights -> Generate -> Score."""
     # Synthesize Weights
     final_state_dict = {}
@@ -97,7 +97,7 @@ def get_score_by_generation(weights, model, tokenizer, cache, input_texts, task,
     
     # Evaluate
     try:
-        scores = eval.get_scores(task, task_type, "dev", decoded_outputs)
+        scores = eval.get_scores(task, task_type, "dev", decoded_outputs, ratio=ratio)
         avg_score = sum(scores) / len(scores)
     except Exception as e:
         print(f"Error during scoring: {e}")
@@ -156,8 +156,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     lora_weight_bound = hyperparameters.get("lora_weight_bound", 1.5)
     regular_coef = hyperparameters.get("regular_coef", 0.05)
     max_response_length = hyperparameters.get("max_response_length", 256)
-    test_batch_size = hyperparameters.get("batch_size", 4) 
+    test_batch_size = hyperparameters.get("batch_size", 4)
     if test_batch_size is None: test_batch_size = 4
+    ratio = hyperparameters.get("ratio", 1.0)
 
     random.seed(seed)
     np.random.seed(seed)
@@ -168,7 +169,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         if not lora_check.is_lora_adapter_peft(model_name):
             raise ValueError("Model {} is not a LoRA adapter".format(model_name))
             
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")[:lorahub_dev_samples]
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)[:lorahub_dev_samples]
     base_model_path = PeftConfig.from_pretrained(model_names[0]).base_model_name_or_path
     device = f"cuda:{gpu_ids[0]}" if torch.cuda.is_available() and gpu_ids else "cpu"
 
@@ -181,7 +182,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         get_score_by_generation, 
         model=model, tokenizer=tokenizer, cache=cache, 
         input_texts=dev_input_list, task=task, task_type=task_type, 
-        device=device, max_new_tokens=max_response_length, regular_coef=regular_coef
+        device=device, max_new_tokens=max_response_length, regular_coef=regular_coef,
+        ratio=ratio
     )
 
     instrum = ng.p.Array(
@@ -228,8 +230,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # =========================================================================
     # Run inference on the full test set using the optimized model.
     print("> Evaluating optimized model on Test Set ...")
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
-    
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
+
     test_outputs = inference_on_test_set(
         model=model,
         tokenizer=tokenizer,
@@ -240,7 +242,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
 
     # Score the results
-    test_score = eval.get_scores(task, task_type, "test", test_outputs)
+    test_score = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_score) / len(test_score)
     print("LoRAHub test {} score: {}".format(task, avg_test_score))
 

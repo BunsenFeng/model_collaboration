@@ -46,9 +46,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     model_descriptions = hyperparameters.get("model_descriptions", None)
     reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", gpu_ids[0])
     reward_model_name = hyperparameters.get("reward_model_name", "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2")
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # preparing router SFT data
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -60,7 +61,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = [] # len(model_names) * len(dev_input_list)
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         list_of_dev_scores.append(dev_score)
 
     # reward modeling scoring, in case there is a tie on the task metric
@@ -174,7 +175,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     router_model_name = "model_collaboration/logs/router_sft_{}".format(task)
 
     # using the router for the test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     selected_model_indices = []
 
     router_prompts = []
@@ -232,7 +233,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         # pop the used output
         list_of_output_list[selected_model_indices[j]].pop(0)
 
-    test_scores = eval.get_scores(task, task_type, "test", final_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", final_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score after trained router: {}".format(task, avg_test_score))
 

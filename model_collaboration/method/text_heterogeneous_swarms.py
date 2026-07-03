@@ -228,7 +228,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     patience = hyperparameters.get("patience", 5)
     restart_patience = hyperparameters.get("restart_patience", 3)
 
-    ratio = hyperparameters.get("ratio", 0.25)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # initialize the swarm
     swarm = NumericSwarm(
@@ -301,7 +301,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # evaluate the best graph on the test set
     best_graph = swarm.get_global_best_particle().tolist()
     best_adjacency_matrix = list_to_numpy_graph(best_graph)
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     test_outputs = graph_generate(
         test_input_list,
         best_adjacency_matrix,
@@ -313,7 +313,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         batch_size
     )
 
-    test_scores = eval.get_scores(task, task_type, "test", test_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("H-Swarm test {} score: {}".format(task, avg_test_score))
 

@@ -43,6 +43,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     patience = hyperparameters.get("patience", 5)
     restart_patience = hyperparameters.get("restart_patience", 3)
     max_iterations = hyperparameters.get("max_iterations", 10)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # initialize the swarm
     model_swarm = swarm.Swarm(
@@ -70,7 +71,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         print("Swarm optimization iteration {}/{}".format(iter+1, max_iterations))
         
         # evaluate the swarm of models on the dev set
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         model_paths = model_swarm.get_model_paths()
         list_of_input_list = [dev_input_list for _ in model_paths]
         list_of_output_list = distributed_generation.distributed_generation(
@@ -81,7 +82,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         list_of_dev_scores = []
         for i in range(len(model_paths)):
             dev_outputs = list_of_output_list[i]
-            dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+            dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
             avg_dev_score = sum(dev_score) / len(dev_score)
             list_of_dev_scores.append(avg_dev_score)
             print("Model: {}, dev {} score: {}".format(model_paths[i], task, avg_dev_score))
@@ -96,7 +97,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # evaluate the global best model on the test set
     best_model_path = model_swarm.get_global_best_path()
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     test_outputs = distributed_generation.distributed_generation(
         [best_model_path],
         [test_input_list],
@@ -104,7 +105,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
     test_outputs = test_outputs[0]
 
-    test_scores = eval.get_scores(task, task_type, "test", test_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
 
     # save the logs

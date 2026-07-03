@@ -37,6 +37,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     mlp_task = hyperparameters.get("task", "General")  # Task type for MLP model (Math or General)
     mode = hyperparameters.get("mode", "free")
     mlp_threshold = hyperparameters.get("mlp_threshold", 0.5)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     if mode == "train":
         if generator not in MENTOR_COLLAB_TRAIN_SUPPORT_MODELS:
@@ -55,13 +56,13 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         task=mlp_task,
         mlp_threshold=mlp_threshold
     )
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     outputs = []
     for input in tqdm(test_input_list, desc="Generating outputs"):
         output = mentor_collab.generate(input, max_new_tokens)
         outputs.append(output)
     
-    test_scores = eval.get_scores(task, task_type, "test", outputs)
+    test_scores = eval.get_scores(task, task_type, "test", outputs, ratio=ratio)
     avg_test_scores = sum(test_scores) / len(test_scores)
     print("Final test {} score after mentorcollab: {}".format(task, avg_test_scores))
     

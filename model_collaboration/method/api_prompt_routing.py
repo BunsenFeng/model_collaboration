@@ -15,9 +15,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     if model_descriptions is None:
         raise ValueError("model_descriptions must be provided in hyperparameters")
     assert len(model_descriptions) == len(model_names), "Length of model_descriptions must match length of model_names"
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # selecting a model as the prompt-based router based on performance on the dev set
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -29,7 +30,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(avg_dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task_type, avg_dev_score))
@@ -39,7 +40,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Best model selected for prompt-based routing: {}".format(best_model_name))
 
     # prompt-based routing: the best model routes each test input to the most suitable model based on model descriptions
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     routing_prompts = []
     for test_input in test_input_list:
         prompt = "You are an AI assistant that routes user questions to the most suitable AI model based on their descriptions.\n\n"
@@ -84,7 +85,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         response = list_of_output_list[model_index].pop(0)
         final_responses.append(response)
     
-    test_scores = eval.get_scores(task, task_type, "test", final_responses)
+    test_scores = eval.get_scores(task, task_type, "test", final_responses, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score prompt-based routing: {}".format(task, avg_test_score))
 

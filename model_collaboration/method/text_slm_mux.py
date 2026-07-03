@@ -70,24 +70,25 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         "tie must be one of 'dev-based', 'model-order', 'random'"
     )
     seed = int(hyperparameters.get("seed", 42))
+    ratio = hyperparameters.get("ratio", 1.0)
     random.seed(seed)
 
     # 1. (Optional) compute per-model dev accuracy for tie-breaking
     model_accuracies = {}
     if tie_breaking == "dev-based":
-        dev_inputs = eval.prepare_inputs(task, task_type, "dev")
+        dev_inputs = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         list_of_inputs = [dev_inputs for _ in model_names]
         dev_outputs = distributed_generation.distributed_generation(
             model_names, list_of_inputs, gpu_ids
         )
         for i, name in enumerate(model_names):
-            scores = eval.get_scores(task, task_type, "dev", dev_outputs[i])
+            scores = eval.get_scores(task, task_type, "dev", dev_outputs[i], ratio=ratio)
             acc = sum(scores) / len(scores) if scores else 0.0
             model_accuracies[name] = acc
             print("[SLM-MUX] dev accuracy for {}: {:.4f}".format(name, acc))
 
     # 2. Generate k samples per model on the test set
-    test_inputs = eval.prepare_inputs(task, task_type, "test")
+    test_inputs = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     print("[SLM-MUX] generating k={} samples per model on {} test items".format(
         samples_per_model, len(test_inputs)
     ))
@@ -100,7 +101,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     for mi in range(len(model_names)):
         per_sample_ans, per_sample_scores = [], []
         for s in range(samples_per_model):
-            sc, ps = eval.get_scores(task, task_type, "test", samples[mi][s], return_output=True)
+            sc, ps = eval.get_scores(task, task_type, "test", samples[mi][s], ratio=ratio, return_output=True)
             per_sample_ans.append(ps)
             per_sample_scores.append(sc)
         extracted.append(per_sample_ans)
