@@ -6,6 +6,7 @@ model_collaboration/*.sh
 !examples/*.json
 model_collaboration/*.json
 !model_collaboration/data/*.json
+model_collaboration/data/assaybench.json
 model_collaboration/data/test.py
 model_collaboration/test.py
 !model_collaboration/test_config.json

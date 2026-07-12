@@ -45,6 +45,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     scenario = hyperparameters.get("scenario", "Performance First")  # "Performance First", "Balance", "Cost First"
     model_descriptions = hyperparameters.get("model_descriptions", None)
     task_description = hyperparameters.get("task_description", task) # default to be task name
+    ratio = hyperparameters.get("ratio", 1.0)
     
     assert model_descriptions != None, "The model_descriptions is needed in hyperparameters in task config."
     assert task_description != None, "The task_description is needed in hyperparameters in task config."
@@ -52,7 +53,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # Preparing router training data from dev set and get scores
     print("Preparing dev set data...")
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     list_of_input_list = [dev_input_list for _ in model_names]
     list_of_output_list = distributed_generation.distributed_generation(
         model_names,
@@ -63,7 +64,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task_type, avg_dev_score))
@@ -239,7 +240,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     # Using the router for the test set
     print("Routing test set queries...")
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     
     # Extract embeddings for test queries
     test_query_embeddings = get_embedding(embedding_model_name, test_input_list)
@@ -328,7 +329,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         list_of_output_list[model_idx].pop(0)
     
     # Evaluate
-    test_scores = eval.get_scores(task, task_type, "test", final_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", final_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score after graph router: {}".format(task, avg_test_score))
     

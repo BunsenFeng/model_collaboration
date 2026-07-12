@@ -92,6 +92,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     top_p = hyperparameters.get("top_p", 0.9)
     batch_size = hyperparameters.get("batch_size", 8)
     load_in_8bit = hyperparameters.get("load_in_8bit", False)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     assert len(model_names) == 1, "This method only supports a single model."
 
@@ -106,7 +107,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     resume = hyperparameters.get("resume", False) or model_name in RESUME_MODELS
 
     # evaluate on the test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
 
     # Pre-fill output list from checkpoint (mid-run save) or existing result log
     output_list = [None] * len(test_input_list)
@@ -180,7 +181,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             if resume:
                 save_checkpoint(task, simple_model_name, test_input_list, output_list)
 
-    test_scores = eval.get_scores(task, task_type, "test", output_list)
+    test_scores = eval.get_scores(task, task_type, "test", output_list, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Model: {}, test {} score: {}".format(model_names[0], task, avg_test_score))
 

@@ -702,6 +702,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     agent_idle_threshold = hyperparameters.get("agent_idle_threshold", 6)
     max_iterations = hyperparameters.get("max_iterations", 10)
     max_num_retries = hyperparameters.get("max_num_retries", 3)
+    ratio = hyperparameters.get("ratio", 1.0)
     
     print("\n" + "="*80)
     print("BBMAS (BLACKBOARD MULTI-AGENT SYSTEM) EXPERIMENT")
@@ -719,7 +720,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("="*80)
 
     # evaluate all given models on the dev set and select the best one to be the backbone
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio) # grab the inputs for the dev set
 
     list_of_input_list = [dev_input_list for _ in model_names] # replicate the dev inputs for each model
     list_of_output_list = distributed_generation.distributed_generation(
@@ -731,7 +732,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_output_list = list_of_output_list[i]
-        dev_scores = eval.get_scores(task, task_type, "dev", dev_output_list)
+        dev_scores = eval.get_scores(task, task_type, "dev", dev_output_list, ratio=ratio)
         avg_dev_score = sum(dev_scores) / len(dev_scores)
         list_of_dev_scores.append(avg_dev_score)
         print(f"   • Model: {model_names[i]} | Avg Dev Score: {avg_dev_score:.4f}")
@@ -750,7 +751,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
     # Get test set inputs
     print(f"\n📥 Loading test set...")
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     print(f"✓ Loaded {len(test_input_list)} test examples")
     
     # Run BBMAS for each test input
@@ -792,7 +793,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print(f"\n{'='*80}")
     print(f"EVALUATING ALL TEST EXAMPLES")
     print(f"{'='*80}")
-    test_scores = eval.get_scores(task, task_type, "test", final_output_list)
+    test_scores = eval.get_scores(task, task_type, "test", final_output_list, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     avg_llm_calls = sum(all_llm_calls) / len(all_llm_calls)
     

@@ -32,9 +32,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # method-specific hyperparameters
     k = hyperparameters.get("k", 1) # top-k and bottom-k
     lambda_ = hyperparameters.get("lambda_", 0.2) # scaler for summed logit contrastion
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # evaluate models on the dev set to know the top-k and bottom-k models
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -46,7 +47,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(avg_dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task, avg_dev_score))
@@ -66,7 +67,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         tokenizer=tokenizer
     )
 
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     outputs = logit_calc_object.batch_generate(
         prompts=test_input_list,
         tokenizer=logit_calc_object.tokenizer,
@@ -77,7 +78,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         arithmetic_func=logit_operation_generator(k, lambda_)
     )
 
-    test_scores = eval.get_scores(task, task_type, "test", outputs)
+    test_scores = eval.get_scores(task, task_type, "test", outputs, ratio=ratio)
     avg_test_scores = sum(test_scores) / len(test_scores)
     print("Final test {} score after logit contrastive: {}".format(task, avg_test_scores))
 

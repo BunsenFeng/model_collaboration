@@ -26,6 +26,25 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Datasets too large to commit to git — downloaded on first use from Hugging Face.
+_HF_DATASETS = {
+    "assaybench": "BunsenFeng/assaybench",
+}
+
+def _ensure_dataset(task):
+    path = os.path.join(DATA_DIR, f"{task}.json")
+    if os.path.exists(path):
+        return
+    if task not in _HF_DATASETS:
+        return
+    print(f"Downloading {task} dataset from Hugging Face...")
+    from huggingface_hub import hf_hub_download
+    tmp = hf_hub_download(repo_id=_HF_DATASETS[task], filename=f"{task}.json", repo_type="dataset")
+    os.makedirs(DATA_DIR, exist_ok=True)
+    import shutil
+    shutil.copy(tmp, path)
+    print(f"Downloaded {task} dataset to {path}")
+
 VERIFIER_PROMPT_TEMPLATE = (
     "User: ### Question: {question}\n\n"
     "### Ground Truth Answer: {ground_truth}\n\n"
@@ -590,6 +609,7 @@ def clear_reward_model():
 
 def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
 
+    _ensure_dataset(task)
     input_list = []
 
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
@@ -652,6 +672,9 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
                 "compiles and is fully functional. Just output the new model code, no other text, and NO testing code!"
             )
             input_list.append(prompt)
+    elif task_type == "gene_ranking":
+        for item in data:
+            input_list.append(item["input"])
     else:
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
@@ -675,6 +698,7 @@ def _kernel_eval_worker(conn, ref_src, custom_src, device):
 
 def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, id_list=None):
 
+    _ensure_dataset(task)
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
         data = json.load(f)[split]
         data = data[:int(len(data)*ratio)]
@@ -822,6 +846,16 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
                 print(f"[kernelbench] subprocess error on {item['id']}: {e}")
             scores.append(score)
             parsed_outputs.append(custom_src)
+    if task_type == "gene_ranking":
+        from model_collaboration.utils.assaybench_scoring import score_gene_ranking
+        for item, output in zip(data, outputs):
+            score = score_gene_ranking(
+                output,
+                item["relevance_genes"],
+                item["relevance_scores"],
+            )
+            scores.append(score)
+            parsed_outputs.append(output)
 
     if task == "culturebench":
         question_to_indices = {}

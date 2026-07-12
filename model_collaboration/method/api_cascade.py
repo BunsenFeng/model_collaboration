@@ -42,6 +42,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     mode = hyperparameters.get("mode", "logit") # confidence: `logit` or `just_ask`
     assert mode == "logit" or mode == "just_ask", "unsupported mode"
     percentage = hyperparameters.get("percentage", 0.5) # threshold percentage, default Top 50%
+    ratio = hyperparameters.get("ratio", 1.0)
 
     print(f"Current mode: {mode}")
 
@@ -49,7 +50,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     if mode == "logit":
         threshold_list = []
         print(f"Finding threshold in dev set under logit mode")
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         for i in range(len(model_names)-1): # find threshld for every model except last model
             output_list, list_logit_scores_list = distributed_generation.batch_generate_text_with_score(
                         model_name=model_names[0],
@@ -71,7 +72,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             threshold_list.append(threshold)
 
     # prepare test set input
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     # record each problem deferral state
     unsolved_dict = {i: True for i in range(len(test_input_list))}
     answer_dict = {i: "" for i in range(len(test_input_list))}
@@ -165,7 +166,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     assert len(test_input_list) == len(final_output_list), "length of test_input_list and final_output_list is not same"
 
     # evaluate the final outputs
-    test_scores = eval.get_scores(task, task_type, "test", final_output_list)
+    test_scores = eval.get_scores(task, task_type, "test", final_output_list, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score of the approach: {}".format(task, avg_test_score))
 
