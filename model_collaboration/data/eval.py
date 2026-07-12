@@ -65,6 +65,80 @@ CODE_EXECUTION_MEMORY_LIMIT_MB = 512
 CODE_EXECUTION_FSIZE_LIMIT_MB = 5
 CODE_EXECUTION_MAX_PROCESSES = 4
 
+# One-shot example for kernel_bench prompts (element-wise addition, from KernelBench)
+_KB_ONE_SHOT_INPUT = """\
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class Model(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, a, b):
+        return a + b
+
+
+def get_inputs():
+    a = torch.randn(1, 128).cuda()
+    b = torch.randn(1, 128).cuda()
+    return [a, b]
+
+
+def get_init_inputs():
+    return []
+"""
+
+_KB_ONE_SHOT_OUTPUT = """\
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.cpp_extension import load_inline
+
+elementwise_add_source = \"\"\"
+#include <torch/extension.h>
+#include <cuda_runtime.h>
+
+__global__ void elementwise_add_kernel(const float* a, const float* b, float* out, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        out[idx] = a[idx] + b[idx];
+    }
+}
+
+torch::Tensor elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {
+    auto size = a.numel();
+    auto out = torch::zeros_like(a);
+    const int block_size = 256;
+    const int num_blocks = (size + block_size - 1) / block_size;
+    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(), b.data_ptr<float>(), out.data_ptr<float>(), size);
+    return out;
+}
+\"\"\"
+
+elementwise_add_cpp_source = "torch::Tensor elementwise_add_cuda(torch::Tensor a, torch::Tensor b);"
+
+elementwise_add = load_inline(
+    name="elementwise_add",
+    cpp_sources=elementwise_add_cpp_source,
+    cuda_sources=elementwise_add_source,
+    functions=["elementwise_add_cuda"],
+    verbose=True,
+    extra_cflags=[""],
+    extra_ldflags=[""],
+)
+
+
+class ModelNew(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.elementwise_add = elementwise_add
+
+    def forward(self, a, b):
+        return self.elementwise_add.elementwise_add_cuda(a, b)
+"""
+
 SANDBOX_PREAMBLE = """
 import sys
 import os
@@ -578,6 +652,26 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
             # Support various field names for the problem description
             problem = item.get("input", item.get("question", item.get("prompt", "")))
             input_list.append(problem)
+    elif task_type == "kernel_bench":
+        for item in data:
+            prompt = (
+                "You write custom CUDA operators to replace the pytorch operators in the given architecture to get speedups.\n\n"
+                "You have complete freedom to choose the set of operators you want to replace. You may replace multiple operators "
+                "with custom implementations, consider operator fusion opportunities (combining multiple operators into a single "
+                "kernel), or algorithmic changes. You are only limited by your imagination.\n\n"
+                "Here's an example to show you the syntax of inline embedding custom CUDA operators in PyTorch:\n\n"
+                "Input architecture:\n\n"
+                f"{_KB_ONE_SHOT_INPUT}\n\n"
+                "Optimized with CUDA operators:\n\n"
+                f"{_KB_ONE_SHOT_OUTPUT}\n\n"
+                "You are given the following architecture:\n\n"
+                f"{item['input']}\n\n"
+                "Note: The kernels should be optimized for FP32 (32-bit floating point) precision.\n\n"
+                "Optimize the architecture named Model with custom CUDA operators! Name your optimized output architecture "
+                "ModelNew. Output the new code in codeblocks. Please generate real code, NOT pseudocode, make sure the code "
+                "compiles and is fully functional. Just output the new model code, no other text, and NO testing code!"
+            )
+            input_list.append(prompt)
     elif task_type == "gene_ranking":
         for item in data:
             input_list.append(item["input"])
@@ -589,6 +683,18 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
         id_list = [item['id'] for item in data]
         return input_list[:int(len(input_list)*ratio)], id_list[:int(len(input_list)*ratio)]
     return input_list[:int(len(input_list)*ratio)]
+
+def _kernel_eval_worker(conn, ref_src, custom_src, device):
+    """Isolated subprocess worker: eval one kernel and send result back via Pipe."""
+    try:
+        from model_collaboration.utils.kernelbench_eval import eval_kernel_against_ref
+        result = eval_kernel_against_ref(ref_src=ref_src, custom_src=custom_src, device=device)
+        conn.send(("ok", result))
+    except Exception as e:
+        conn.send(("error", str(e)))
+    finally:
+        conn.close()
+
 
 def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, id_list=None):
 
@@ -706,6 +812,40 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
             scores.append(score)
             parsed_outputs.append(code)
 
+    if task_type == "kernel_bench":
+        import multiprocessing
+        from model_collaboration.utils.kernelbench_eval import score_kernel_result
+        device = torch.cuda.current_device() if torch.cuda.is_available() else None
+        assert device is not None, "kernel_bench evaluation requires a CUDA GPU"
+        _spawn_ctx = multiprocessing.get_context("spawn")
+        for item, output in zip(data, outputs):
+            ref_src = item["input"]
+            level = int(item["id"].split("_")[0][1:])  # "l1_42" -> 1
+            custom_src = extract_code_block(output, "python")
+            score = 0.0
+            try:
+                parent_conn, child_conn = _spawn_ctx.Pipe(duplex=False)
+                p = _spawn_ctx.Process(
+                    target=_kernel_eval_worker,
+                    args=(child_conn, ref_src, custom_src, device),
+                )
+                p.start()
+                child_conn.close()
+                if parent_conn.poll(timeout=300):
+                    status, payload = parent_conn.recv()
+                    if status == "ok":
+                        score = score_kernel_result(payload, level)
+                    else:
+                        print(f"[kernelbench] eval error on {item['id']}: {payload}")
+                else:
+                    print(f"[kernelbench] timeout on {item['id']}, killing subprocess")
+                    p.kill()
+                parent_conn.close()
+                p.join()
+            except Exception as e:
+                print(f"[kernelbench] subprocess error on {item['id']}: {e}")
+            scores.append(score)
+            parsed_outputs.append(custom_src)
     if task_type == "gene_ranking":
         from model_collaboration.utils.assaybench_scoring import score_gene_ranking
         for item, output in zip(data, outputs):
