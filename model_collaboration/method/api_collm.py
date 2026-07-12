@@ -737,6 +737,7 @@ def run_inference(
     threshold_warmup_schedule="none",
     threshold_warmup_steps=15,
     save_results=True,
+    ratio=1.0,
 ):
     """
     Run inference with trained Co-LLM models.
@@ -785,7 +786,7 @@ def run_inference(
 
     # Prepare inputs using eval.prepare_inputs
     logger.info("Preparing inputs...")
-    test_input_list = eval.prepare_inputs(task, task_type, split)
+    test_input_list = eval.prepare_inputs(task, task_type, split, ratio=ratio)
     logger.info(f"Loaded {len(test_input_list)} inputs")
 
     # Initialize inference
@@ -808,7 +809,7 @@ def run_inference(
 
     # Evaluate
     logger.info("Evaluating outputs...")
-    test_scores = eval.get_scores(task, task_type, split, outputs)
+    test_scores = eval.get_scores(task, task_type, split, outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores) if test_scores else 0.0
 
     logger.info("=" * 80)
@@ -1077,6 +1078,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     max_tokens = hyperparameters.get("max_response_length", 512)
     threshold_warmup_schedule = hyperparameters.get("threshold_warmup_schedule", "none")
     threshold_warmup_steps = hyperparameters.get("threshold_warmup_steps", 15)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     avg_score = run_inference(
         task=task,
@@ -1090,6 +1092,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         max_tokens=max_tokens,
         threshold_warmup_schedule=threshold_warmup_schedule,
         threshold_warmup_steps=threshold_warmup_steps,
+        ratio=ratio,
     )
 
     logger.info(f"\nFinal test score: {avg_score:.4f}")

@@ -200,6 +200,7 @@ def run_method(task: str,
     rounds = int(hyperparameters.get("rounds", 2))
     w = float(hyperparameters.get("w", 0.5))
     training_ratio = float(hyperparameters.get("training_ratio", 1.0))
+    ratio = hyperparameters.get("ratio", 1.0)
     # SFT hyperparameters
     sft_epochs = int(hyperparameters.get("sft_epochs", 1))
     sft_learning_rate = float(hyperparameters.get("sft_learning_rate", 1e-5))
@@ -221,7 +222,7 @@ def run_method(task: str,
         full_data = json.load(f_data)
     dev_data_full = full_data.get("dev", [])
     # Format questions using helper
-    dev_inputs_full = eval.prepare_inputs(task, task_type, "dev")
+    dev_inputs_full = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     assert len(dev_inputs_full) == len(dev_data_full), "Mismatch between dev inputs and data length"
     if training_ratio < 1.0:
         n_total = len(dev_inputs_full)
@@ -523,7 +524,7 @@ def run_method(task: str,
     # After completing all iterations, evaluate on the test set using the
     # finetuned models in a debate format
     print("\nEvaluating finetuned models on test set...")
-    test_inputs = eval.prepare_inputs(task, task_type, "test")
+    test_inputs = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     N = len(current_generation_models)
     # Round 0: generation
     list_of_input_list = [test_inputs for _ in range(N)]
@@ -586,7 +587,7 @@ def run_method(task: str,
         consensus = _majority_vote(extracted_list)
         final_outputs_extracted.append(consensus)
     # Evaluate using extracted answers; eval.get_scores handles parsing internally
-    test_scores = eval.get_scores(task, task_type, "test", final_outputs_extracted)
+    test_scores = eval.get_scores(task, task_type, "test", final_outputs_extracted, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores) if test_scores else 0.0
     print(f"Final Test {task} score after {iterations} finetuning iteration(s): {avg_test_score}")
     # Log results

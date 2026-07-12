@@ -22,8 +22,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # checking if the models are lora adapters
     model_names = lora_check.lora_to_full(model_names)
 
+    ratio = hyperparameters.get("ratio", 1.0)
+
     # evaluating the models and rank them by dev set performance
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -35,7 +37,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(avg_dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task, avg_dev_score))
@@ -72,7 +74,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             [gpu_ids[0]]
         )
         dev_outputs = list_of_output_list[0]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         print("Evaluating greedy soup with models {}: dev {} score: {}".format(current_selected_models, task, avg_dev_score))
         if avg_dev_score >= current_best_score:
@@ -90,7 +92,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         print("Only one model selected, using the model: {}".format(final_model_name))
 
         # evaluate it on the test set
-        test_input_list = eval.prepare_inputs(task, task_type, "test")
+        test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
         list_of_input_list = [test_input_list]
         list_of_output_list = distributed_generation.distributed_generation(
             [final_model_name],
@@ -113,7 +115,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         )
 
         # evaluate it on the test set
-        test_input_list = eval.prepare_inputs(task, task_type, "test")
+        test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
         list_of_input_list = [test_input_list]
         list_of_output_list = distributed_generation.distributed_generation(
             ["model_collaboration/logs/greedy_soup"],
@@ -122,7 +124,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         )
 
     test_outputs = list_of_output_list[0]
-    test_score = eval.get_scores(task, task_type, "test", test_outputs)
+    test_score = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_score) / len(test_score)
     print("Greedy soup test {} score: {}".format(task, avg_test_score))
 

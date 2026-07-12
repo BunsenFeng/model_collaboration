@@ -75,7 +75,7 @@ def get_scores_from_extracted_answers(task, task_type, split, extracted_answers,
                 scores.append(f1_score)
     return scores
 
-def evaluate_models_on_dev(task, task_type, model_indices, model_names, gpu_ids, dev_scores_cache, dev_input_list):
+def evaluate_models_on_dev(task, task_type, model_indices, model_names, gpu_ids, dev_scores_cache, dev_input_list, ratio=1.0):
 
     # find models that need evaluation
     models_to_evaluate = [i for i in model_indices if i not in dev_scores_cache]
@@ -95,7 +95,7 @@ def evaluate_models_on_dev(task, task_type, model_indices, model_names, gpu_ids,
     # cache the scores
     for idx, model_idx in enumerate(models_to_evaluate):
         dev_outputs = list_of_output_list[idx]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         dev_scores_cache[model_idx] = avg_dev_score
         print("Model: {} (index {}), dev {} score: {}".format(model_names[model_idx], model_idx, task, avg_dev_score))
@@ -112,13 +112,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     tie_breaking = hyperparameters.get("tie", "random")
     assert tie_breaking in ["random", "dev-based"], "tie parameter must be either 'random' or 'dev-based'"
+    ratio = hyperparameters.get("ratio", 1.0)
 
     if tie_breaking == "dev-based":
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         dev_scores_cache = {}
 
     # evaluate on the test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio) # grab the inputs for the test set
 
     list_of_input_list = [test_input_list for _ in model_names] # replicate the test inputs for each model
     list_of_output_list = distributed_generation.distributed_generation(
@@ -129,7 +130,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     
     list_of_extracted_answers = []
     for output_list in list_of_output_list:
-        extracted_answers = get_extracted_answers(task, task_type, "test", output_list)
+        extracted_answers = get_extracted_answers(task, task_type, "test", output_list, ratio=ratio)
         list_of_extracted_answers.append(extracted_answers)
     
     majority_vote_answers = []
@@ -153,8 +154,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             
             # evaluate tied models on dev set (only if not already cached)
             evaluate_models_on_dev(
-                task, task_type, tied_model_indices, model_names, gpu_ids, 
-                dev_scores_cache, dev_input_list
+                task, task_type, tied_model_indices, model_names, gpu_ids,
+                dev_scores_cache, dev_input_list, ratio=ratio
             )
             
             # find the best-performing model (on dev set) among those that voted for tied answers
@@ -162,7 +163,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             majority_vote_answers.append(extracted_answers[best_tied_model_index])
     
     # evaluate the final outputs
-    test_scores = get_scores_from_extracted_answers(task, task_type, "test", majority_vote_answers)
+    test_scores = get_scores_from_extracted_answers(task, task_type, "test", majority_vote_answers, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score of majority vote: {}".format(task, avg_test_score))
 

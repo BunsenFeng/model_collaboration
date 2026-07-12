@@ -590,7 +590,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     search_nudging = hyperparameters.get("search_nudging", False)
     search_gamma = hyperparameters.get("search_gamma", False)
     use_kv_cache = hyperparameters.get("use_kv_cache", False)
-    
+    ratio = hyperparameters.get("ratio", 1.0)
+
     if use_kv_cache:
         print("Using KV cache..., outputs can be different from the one without KV cache")
     else:
@@ -601,8 +602,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         model_devices=["cuda:{}".format(gpu_id) for gpu_id in gpu_ids],
     )
     
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
-    
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
+
     gamma_list = [gamma]
     nudging_model_id_list = [nudging_model_id]
 
@@ -637,7 +638,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 nudging_model_id=nudging_model_id,
                 use_kv_cache=use_kv_cache,
             )
-            dev_score = eval.get_scores(task, task_type, "dev", outputs)
+            dev_score = eval.get_scores(task, task_type, "dev", outputs, ratio=ratio)
             avg_dev_score = sum(dev_score) / len(dev_score)
             if avg_dev_score > best_dev_score:
                 best_gamma = gamma
@@ -648,7 +649,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     else:
         print("No search, using default gamma: {}, base model: {}, nudging model: {}".format(best_gamma, model_names[base_model_id], model_names[best_nudging_model_id]))
 
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     outputs = nudging_object.batch_generate(
         prompts=test_input_list,
         batch_size=batch_size,
@@ -661,7 +662,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         use_kv_cache=use_kv_cache,
     )
 
-    test_scores = eval.get_scores(task, task_type, "test", outputs)
+    test_scores = eval.get_scores(task, task_type, "test", outputs, ratio=ratio)
     avg_test_scores = sum(test_scores) / len(test_scores)
     print("Final test {} score after nudging: {}".format(task, avg_test_scores))
 

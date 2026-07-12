@@ -18,6 +18,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # method-specific hyperparameters
     mode = hyperparameters.get("mode", "average") # average or optimized
+    ratio = hyperparameters.get("ratio", 1.0)
 
     if mode == "optimized":
         raise NotImplementedError("Optimized logit fusion is not implemented yet.")
@@ -31,7 +32,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
 
     # preparing inputs
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     outputs = logit_calc_object.batch_generate(
         prompts=test_input_list,
         tokenizer=logit_calc_object.tokenizer,
@@ -41,7 +42,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         temprature=temperature
     )
 
-    test_scores = eval.get_scores(task, task_type, "test", outputs)
+    test_scores = eval.get_scores(task, task_type, "test", outputs, ratio=ratio)
     avg_test_scores = sum(test_scores) / len(test_scores)
     print("Final test {} score after logit fusion: {}".format(task, avg_test_scores))
 

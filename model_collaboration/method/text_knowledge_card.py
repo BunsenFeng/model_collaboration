@@ -12,9 +12,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # method-specific hyperparameters
     exclude_self = hyperparameters.get("exclude_self", False)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # selecting a model as the final response generator based on performance on the dev set
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -26,7 +27,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(avg_dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task, avg_dev_score))
@@ -36,7 +37,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Best model selected for final summarization: {}".format(best_model_name))
 
     # generaing relevant knowledge on the test set from all models
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     knowledge_generation_prompt = []
     for input_text in test_input_list:
         prompt = "You are an AI assistant tasked with generating relevant knowledge to help answer the user's question. Please provide relevant information that can assist in answering the following question:\n\n"
@@ -70,7 +71,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         [gpu_ids[0]]
     )[0]
 
-    test_scores = eval.get_scores(task, task_type, "test", final_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", final_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score after knowledge card: {}".format(task, avg_test_score))
 
