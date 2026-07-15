@@ -59,10 +59,17 @@ def update_generation_hyperparameters(max_response_length, temperature, top_p, b
     BIG_MODEL_MODE = big_model_mode
     LOAD_IN_8BIT = load_in_8bit
 
-def batch_generate_text(model_name, gpu_id, input_list, max_response_length, temperature, top_p, batch_size):
+def batch_generate_text(model_name, gpu_id, input_list, max_response_length, temperature, top_p, batch_size, load_in_8bit=None):
+    # load_in_8bit is passed explicitly (threaded through the Pool args below)
+    # because multiprocessing workers do not inherit the LOAD_IN_8BIT module
+    # global under the 'spawn' start method -- they re-import this module and
+    # reset it to its default (False), silently disabling 8-bit in every worker.
+    # None means "direct (non-Pool) call" -> fall back to the module global.
+    if load_in_8bit is None:
+        load_in_8bit = LOAD_IN_8BIT
     # Load model and tokenizer
     if not BIG_MODEL_MODE:
-        model = _load_model(model_name, {"": gpu_id}, load_in_8bit=LOAD_IN_8BIT)
+        model = _load_model(model_name, {"": gpu_id}, load_in_8bit=load_in_8bit)
     else:
         # ensure that gpu_id is a list
         if not isinstance(gpu_id, list):
@@ -70,7 +77,7 @@ def batch_generate_text(model_name, gpu_id, input_list, max_response_length, tem
         # set CUDA_VISIBLE_DEVICES
         gpu_id_str = ",".join([str(i) for i in gpu_id])
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
-        model = _load_model(model_name, "auto", load_in_8bit=LOAD_IN_8BIT)
+        model = _load_model(model_name, "auto", load_in_8bit=load_in_8bit)
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         tokenizer.pad_token = tokenizer.eos_token
@@ -171,7 +178,9 @@ def distributed_generation(list_of_model_name, list_of_input_list, list_of_gpu_i
                         MAX_RESPONSE_LENGTH if max_response_length is None else max_response_length,
                         TEMPERATURE,
                         TOP_P,
-                        BATCH_SIZE
+                        BATCH_SIZE,
+                        LOAD_IN_8BIT,   # read in parent (set correctly here); passed
+                                        # to each worker since the global doesn't cross
                     ))
             
             pool = Pool(len(generation_args))
