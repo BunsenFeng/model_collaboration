@@ -235,7 +235,13 @@ def normalize_answer(s: str) -> str:
         return ' '.join(text.split())
 
     def remove_punc(text):
-        return text.translate(str.maketrans('', '', string.punctuation))
+        # Preserve math operators so expressions like "x+1" and "x-1" stay distinct.
+        math_chars = set('+-*/^=<>%')
+        punc_to_remove = ''.join(c for c in string.punctuation if c not in math_chars)
+        text = text.translate(str.maketrans('', '', punc_to_remove))
+        # Remove spaces around math operators so "x + 1" and "x+1" normalize identically.
+        text = re.sub(r'\s*([+\-*/^=<>%])\s*', r'\1', text)
+        return text
 
     def lower(text):
         try:
