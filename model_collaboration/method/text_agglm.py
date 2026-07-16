@@ -183,6 +183,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             train_dataset=overall_dataset,
             peft_config=peft_config
         )
+        # Force single-GPU training. torch.cuda.device_count() is often already
+        # cached >1 (CUDA init'd earlier during generation/scoring), so HF Trainer
+        # still sees n_gpu>1 and wraps the ~1.5B aggregator in nn.DataParallel --
+        # which gathers per-token logps onto GPU 0 and OOMs on many-GPU coalitions.
+        # Overriding _n_gpu=1 disables that wrap; one card is ample.
+        trainer.args._n_gpu = 1
         trainer.train()
         if trainer.accelerator.is_main_process:
             trainer.save_model(agglm_log_path + '/' + file_name[:-5])
