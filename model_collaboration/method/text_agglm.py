@@ -123,8 +123,13 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         overall_dataset = hard_dataset + easy_dataset
         overall_dataset = Dataset.from_list(overall_dataset)
 
-        gpu_id_str = ",".join([str(i) for i in gpu_ids])
-        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
+        # Pin the aggregator's GRPO training to a SINGLE GPU. Exposing all the
+        # coalition's GPUs makes HF Trainer wrap the (tiny ~1.5B) aggregator in
+        # nn.DataParallel, which gathers per-token logps onto GPU 0 and OOMs
+        # once the coalition has many GPUs (e.g. 7-model pools). One 80GB card
+        # is ample for a 1.5B LoRA GRPO run; visibility is restored to all GPUs
+        # after training for the multi-model test-set generation below.
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_ids[0])
 
         training_args = GRPOConfig(
             num_generations=batch_size,
@@ -191,6 +196,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dist.barrier()
             dist.destroy_process_group()
 
+    # restore full GPU visibility (training pinned it to gpu_ids[0]) so the
+    # test-set generation below can spread the pool models across all GPUs
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in gpu_ids])
     new_gpu_ids = [i for i in range(len(gpu_ids))]
     test_input_list = eval.prepare_inputs(task, task_type, 'test', ratio=ratio)
     list_of_test_output_list = distributed_generation.distributed_generation(
