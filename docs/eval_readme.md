@@ -46,6 +46,7 @@ The sections below list all currently supported values for these parameters.
 | `culturalbench_hard`* | `multiple_choice` | [Chiu et al., 2024](https://arxiv.org/pdf/2410.02677) | Cultural reasoning and knowledge |
 | `kaleidoscope`* | `multiple_choice` | [Sorensen et al., 2023](https://arxiv.org/abs/2309.00779) | Identifying the relationship between values and situations |
 | `infinite_chat_open`* | `reward_model` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Open-ended user queries |
+| `value_drifts` | `reward_model` | [Bhatia et al., 2026](https://arxiv.org/abs/2510.26707) | Value-probing prompts across 11 contentious topics (V-PRISM subset) |
 | `infinite_chat_diversity` | `generation_diversity` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Average distance of generated responses to references (generations by existing models) |
 | `kernelbench` | `kernel_bench` | [Ouyang et al., 2025](https://arxiv.org/abs/2502.10517) | GPU kernel optimization: rewrite PyTorch operators as faster custom CUDA kernels (250 problems across Levels 1–3) |
 | `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking — 218 dev / 334 test screens, scored by Adjusted nDCG@100 |
