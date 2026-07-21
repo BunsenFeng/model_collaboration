@@ -221,6 +221,7 @@ def run_method(task: str,
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f_data:
         full_data = json.load(f_data)
     dev_data_full = full_data.get("dev", [])
+    dev_data_full = dev_data_full[:int(len(dev_data_full) * ratio)]
     # Format questions using helper
     dev_inputs_full = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     assert len(dev_inputs_full) == len(dev_data_full), "Mismatch between dev inputs and data length"
@@ -562,6 +563,7 @@ def run_method(task: str,
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f_data:
         full_data = json.load(f_data)
     test_data = full_data.get("test", [])
+    test_data = test_data[:int(len(test_data) * ratio)]
     assert len(test_inputs_list) == len(test_data), "Mismatch between test inputs and data length"
     # Extract final answers for each model on the test set
     extracted_final_test = []  # list of N lists
