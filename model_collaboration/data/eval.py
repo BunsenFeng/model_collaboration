@@ -681,6 +681,9 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
     elif task_type == "gene_ranking":
         for item in data:
             input_list.append(item["input"])
+    elif task_type == "ifeval":
+        for item in data:
+            input_list.append(item["input"])
     else:
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
@@ -859,6 +862,16 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
                 output,
                 item["relevance_genes"],
                 item["relevance_scores"],
+            )
+            scores.append(score)
+            parsed_outputs.append(output)
+    if task_type == "ifeval":
+        from model_collaboration.utils.ifeval_eval import score_ifeval_response
+        for item, output in zip(data, outputs):
+            score = score_ifeval_response(
+                output,
+                item["instruction_id_list"],
+                item["kwargs"],
             )
             scores.append(score)
             parsed_outputs.append(output)

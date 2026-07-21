@@ -49,10 +49,11 @@ The sections below list all currently supported values for these parameters.
 | `value_drifts` | `reward_model` | [Bhatia et al., 2026](https://arxiv.org/abs/2510.26707) | Value-probing prompts across 11 contentious topics (V-PRISM subset) |
 | `infinite_chat_diversity` | `generation_diversity` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Average distance of generated responses to references (generations by existing models) |
 | `kernelbench` | `kernel_bench` | [Ouyang et al., 2025](https://arxiv.org/abs/2502.10517) | GPU kernel optimization: rewrite PyTorch operators as faster custom CUDA kernels (250 problems across Levels 1–3) |
-| `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking — 218 dev / 334 test screens, scored by Adjusted nDCG@100 |
-| `mmluprox`* | `multiple_choice` | [Li et al., 2025](https://huggingface.co/datasets/li-lab/MMLU-ProX-Lite) | Multilingual MMLU-Pro with up to 10 options per question — 500 dev / 500 test, sampled uniformly across 20 languages supported by Qwen 2.5 |
-| `communitybench` | `multiple_choice` | [Lin et al., 2025](https://huggingface.co/datasets/jylin001206/CommunityBench) | Preference identification: given a Reddit community profile and thread context, predict which response the community would most prefer — 500 dev / 500 test across 35 subreddits |
-| `mixeval`* | `multiple_choice` | [Ni et al., 2024](https://arxiv.org/abs/2406.06565) | Real-world user query benchmark from MixEval-Hard (multiple-choice split) — 250 dev / 250 test across MMLU, AGIEval, HellaSwag, CommonsenseQA, BoolQ, GPQA, and more |
+| `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking, scored by Adjusted nDCG@100 |
+| `mmluprox`* | `multiple_choice` | [Li et al., 2025](https://huggingface.co/datasets/li-lab/MMLU-ProX-Lite) | Multilingual MMLU-Pro with up to 10 options per question, sampled uniformly across 20 languages supported by Qwen 2.5 |
+| `communitybench` | `multiple_choice` | [Lin et al., 2025](https://huggingface.co/datasets/jylin001206/CommunityBench) | Preference identification: given a Reddit community profile and thread context, predict which response the community would most prefer, across 35 subreddits |
+| `mixeval`* | `multiple_choice` | [Ni et al., 2024](https://arxiv.org/abs/2406.06565) | Real-world user query benchmark from MixEval-Hard (multiple-choice split) across MMLU, AGIEval, HellaSwag, CommonsenseQA, BoolQ, GPQA, and more |
+| `ifeval` | `ifeval` | [Zhou et al., 2023](https://arxiv.org/abs/2311.07911) | Instruction-following evaluation across 25 verifiable constraint types (word count, formatting, keywords, punctuation, etc.), scored as fraction of instructions satisfied per prompt. **Note:** set `max_response_length` to at least 1024 as many prompts require long outputs to satisfy word count constraints |
 
 \* Asterisks mark datasets where the `general_verifier` task_type is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
 
@@ -70,6 +71,7 @@ The sections below list all currently supported values for these parameters.
 | `reward_model` | [Skywork-Reward-Llama-3.1-8B](https://huggingface.co/Skywork/Skywork-Reward-Llama-3.1-8B-v0.2) scores |
 | `coding` | Executes code in sandbox and runs test assertions |
 | `text_generation` | Generates outputs; dev split is scored with the reward model, test split returns 0 scores |
+| `ifeval` | Programmatic rule-based checking of 25 instruction constraint types; score = fraction of constraints satisfied per prompt |
 
 ### General Verifier
 
