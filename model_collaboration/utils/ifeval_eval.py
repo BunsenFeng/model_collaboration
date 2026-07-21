@@ -21,9 +21,13 @@ def _paragraphs(text):
     return [p.strip() for p in re.split(r'\n\s*\n', text.strip()) if p.strip()]
 
 def _apply_relation(count, relation, target):
-    if relation in ('at least', 'MORE THAN', 'more than'):
+    if relation in ('at least',):
         return count >= target
-    if relation in ('less than', 'at most', 'LESS THAN'):
+    if relation in ('more than', 'MORE THAN'):
+        return count > target
+    if relation in ('less than', 'LESS THAN'):
+        return count < target
+    if relation in ('at most',):
         return count <= target
     if relation in ('exactly', 'EXACTLY'):
         return count == target
@@ -174,21 +178,25 @@ def check_detectable_content_postscript(response, kwargs):
 def check_language_response_language(response, kwargs):
     try:
         from langdetect import detect
-        detected = detect(response)
-        # map full language names to ISO codes
-        lang_map = {
-            'arabic': 'ar', 'russian': 'ru', 'german': 'de', 'italian': 'it',
-            'vietnamese': 'vi', 'urdu': 'ur', 'tamil': 'ta', 'bengali': 'bn',
-            'gujarati': 'gu', 'finnish': 'fi', 'korean': 'ko', 'bulgarian': 'bg',
-            'swahili': 'sw', 'persian': 'fa', 'punjabi': 'pa', 'nepali': 'ne',
-            'marathi': 'mr', 'telugu': 'te', 'kannada': 'kn', 'thai': 'th',
-            'portuguese': 'pt', 'hindi': 'hi',
-        }
-        target = kwargs['language'].lower()
-        target_code = lang_map.get(target, target)
-        return detected == target_code
+    except ImportError:
+        raise ImportError(
+            "langdetect is required for language:response_language constraints in IFEval. "
+            "Install it with: pip install langdetect"
+        )
+    lang_map = {
+        'arabic': 'ar', 'russian': 'ru', 'german': 'de', 'italian': 'it',
+        'vietnamese': 'vi', 'urdu': 'ur', 'tamil': 'ta', 'bengali': 'bn',
+        'gujarati': 'gu', 'finnish': 'fi', 'korean': 'ko', 'bulgarian': 'bg',
+        'swahili': 'sw', 'persian': 'fa', 'punjabi': 'pa', 'nepali': 'ne',
+        'marathi': 'mr', 'telugu': 'te', 'kannada': 'kn', 'thai': 'th',
+        'portuguese': 'pt', 'hindi': 'hi',
+    }
+    target = kwargs['language'].lower()
+    target_code = lang_map.get(target, target)
+    try:
+        return detect(response) == target_code
     except Exception:
-        return True  # can't check without langdetect, give benefit of the doubt
+        return False
 
 
 # ── dispatch table ────────────────────────────────────────────────────────────
