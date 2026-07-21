@@ -52,6 +52,7 @@ The sections below list all currently supported values for these parameters.
 | `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking — 218 dev / 334 test screens, scored by Adjusted nDCG@100 |
 | `mmluprox`* | `multiple_choice` | [Li et al., 2025](https://huggingface.co/datasets/li-lab/MMLU-ProX-Lite) | Multilingual MMLU-Pro with up to 10 options per question — 500 dev / 500 test, sampled uniformly across 20 languages supported by Qwen 2.5 |
 | `communitybench` | `multiple_choice` | [Lin et al., 2025](https://huggingface.co/datasets/jylin001206/CommunityBench) | Preference identification: given a Reddit community profile and thread context, predict which response the community would most prefer — 500 dev / 500 test across 35 subreddits |
+| `mixeval`* | `multiple_choice` | [Ni et al., 2024](https://arxiv.org/abs/2406.06565) | Real-world user query benchmark from MixEval-Hard (multiple-choice split) — 250 dev / 250 test across MMLU, AGIEval, HellaSwag, CommonsenseQA, BoolQ, GPQA, and more |
 
 \* Asterisks mark datasets where the `general_verifier` task_type is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
 
