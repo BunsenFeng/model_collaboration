@@ -51,6 +51,7 @@ The sections below list all currently supported values for these parameters.
 | `kernelbench` | `kernel_bench` | [Ouyang et al., 2025](https://arxiv.org/abs/2502.10517) | GPU kernel optimization: rewrite PyTorch operators as faster custom CUDA kernels (250 problems across Levels 1–3) |
 | `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking — 218 dev / 334 test screens, scored by Adjusted nDCG@100 |
 | `mmluprox`* | `multiple_choice` | [Li et al., 2025](https://huggingface.co/datasets/li-lab/MMLU-ProX-Lite) | Multilingual MMLU-Pro with up to 10 options per question — 500 dev / 500 test, sampled uniformly across 20 languages supported by Qwen 2.5 |
+| `communitybench` | `multiple_choice` | [Lin et al., 2025](https://huggingface.co/datasets/jylin001206/CommunityBench) | Preference identification: given a Reddit community profile and thread context, predict which response the community would most prefer — 500 dev / 500 test across 35 subreddits |
 
 \* Asterisks mark datasets where the `general_verifier` task_type is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
 
@@ -71,13 +72,18 @@ The sections below list all currently supported values for these parameters.
 
 ### General Verifier
 
-The `general_verifier` task type leverages the [TIGER-Lab/general-verifier](https://huggingface.co/TIGER-Lab/general-verifier) 1.5B LLM to assess whether a generated answer is semantically equivalent to the ground truth. This is particularly useful when:
+The `general_verifier` task type leverages the [TIGER-Lab/general-verifier](https://huggingface.co/TIGER-Lab/general-verifier) 1.5B LLM to assess whether a generated answer is semantically equivalent to the ground truth. **It is strongly recommended as a drop-in replacement for `multiple_choice`, `exact_match`, and `f1_match`** — use the same dataset JSON unchanged, just set `"task_type": "general_verifier"` in your config.
 
+**When to prefer `general_verifier` over the default task type:**
+
+- The model produces verbose reasoning (e.g., *"The answer is B because..."*) that letter-matching or string-matching would fail to parse correctly
 - Answers may have multiple valid representations (e.g., `3.54e-07` vs `0.000000354`)
-- Mathematical expressions need semantic comparison
-- The exact string format varies but meaning is preserved
+- Mathematical or scientific expressions need semantic comparison rather than exact string matching
+- The exact output format varies across models but the meaning is equivalent
 
-It is compatible with datasets originally designed for `multiple_choice`, `exact_match`, and `f1_match` task types.
+**How it resolves `multiple_choice` parsing failures:** instead of extracting a single letter from the response, the verifier compares the full model output against the text of the correct option. This means a model that explains its choice in prose still gets credit if its reasoning identifies the right answer.
+
+**How it resolves `exact_match` / `f1_match` failures:** instead of normalized string comparison, the verifier uses language understanding to determine equivalence, handling paraphrases, unit conversions, and format differences gracefully.
 
 ---
 
