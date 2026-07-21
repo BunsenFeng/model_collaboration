@@ -50,6 +50,7 @@ The sections below list all currently supported values for these parameters.
 | `infinite_chat_diversity` | `generation_diversity` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Average distance of generated responses to references (generations by existing models) |
 | `kernelbench` | `kernel_bench` | [Ouyang et al., 2025](https://arxiv.org/abs/2502.10517) | GPU kernel optimization: rewrite PyTorch operators as faster custom CUDA kernels (250 problems across Levels 1–3) |
 | `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking — 218 dev / 334 test screens, scored by Adjusted nDCG@100 |
+| `mmluprox`* | `multiple_choice` | [Li et al., 2025](https://huggingface.co/datasets/li-lab/MMLU-ProX-Lite) | Multilingual MMLU-Pro with up to 10 options per question — 500 dev / 500 test, sampled uniformly across 20 languages supported by Qwen 2.5 |
 
 \* Asterisks mark datasets where the `general_verifier` task_type is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
 
