@@ -690,11 +690,14 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
         return input_list[:int(len(input_list)*ratio)], id_list[:int(len(input_list)*ratio)]
     return input_list[:int(len(input_list)*ratio)]
 
-def _kernel_eval_worker(conn, ref_src, custom_src, device):
-    """Isolated subprocess worker: eval one kernel and send result back via Pipe."""
+def _kernel_eval_worker(conn, ref_src, custom_src, device, build_dir=None):
+    """Isolated subprocess worker: eval one kernel and send result back via Pipe.
+    build_dir isolates this eval's TORCH_EXTENSIONS_DIR so concurrent workers on
+    different GPUs never collide on the torch-extension build cache."""
     try:
         from model_collaboration.utils.kernelbench_eval import eval_kernel_against_ref
-        result = eval_kernel_against_ref(ref_src=ref_src, custom_src=custom_src, device=device)
+        result = eval_kernel_against_ref(ref_src=ref_src, custom_src=custom_src,
+                                         device=device, build_dir=build_dir)
         conn.send(("ok", result))
     except Exception as e:
         conn.send(("error", str(e)))
@@ -820,38 +823,67 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
 
     if task_type == "kernel_bench":
         import multiprocessing
+        import tempfile
         from model_collaboration.utils.kernelbench_eval import score_kernel_result
-        device = torch.cuda.current_device() if torch.cuda.is_available() else None
-        assert device is not None, "kernel_bench evaluation requires a CUDA GPU"
+        n_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+        assert n_gpus > 0, "kernel_bench evaluation requires a CUDA GPU"
         _spawn_ctx = multiprocessing.get_context("spawn")
+        KERNEL_EVAL_TIMEOUT = 300
+
+        # Pre-parse every item so results stay index-aligned regardless of order.
+        parsed = []
         for item, output in zip(data, outputs):
-            ref_src = item["input"]
-            level = int(item["id"].split("_")[0][1:])  # "l1_42" -> 1
-            custom_src = extract_code_block(output, "python")
-            score = 0.0
-            try:
+            parsed.append((
+                item["id"],
+                item["input"],                        # ref_src
+                int(item["id"].split("_")[0][1:]),    # level: "l1_42" -> 1
+                extract_code_block(output, "python"), # custom_src
+            ))
+        scores = [0.0] * len(parsed)
+        parsed_outputs = [p[3] for p in parsed]
+
+        # Compile+benchmark is the dominant cost (the dev summarizer-selection
+        # evaluates n_models x items kernels). The coalition already holds one GPU
+        # per model but scoring used only GPU 0 serially, leaving the rest idle.
+        # Evaluate in waves of n_gpus, one kernel per GPU concurrently -- an ~n_gpus
+        # speedup. Each GPU slot gets its own persistent TORCH_EXTENSIONS_DIR so
+        # concurrent compiles in a wave never collide on the build cache; the dirs
+        # are reused across waves (torch rebuilds by source hash) and left for the
+        # ephemeral node tmpdir to reclaim -- we must NOT delete them here, since the
+        # module's audit hook forbids removing paths outside cwd.
+        slot_build_dirs = [os.path.join(tempfile.gettempdir(), f"kb_build_slot_{s}")
+                           for s in range(n_gpus)]
+        for base in range(0, len(parsed), n_gpus):
+            wave = list(range(base, min(base + n_gpus, len(parsed))))
+            procs = {}
+            for slot, idx in enumerate(wave):
+                _id, ref_src, level, custom_src = parsed[idx]
                 parent_conn, child_conn = _spawn_ctx.Pipe(duplex=False)
                 p = _spawn_ctx.Process(
                     target=_kernel_eval_worker,
-                    args=(child_conn, ref_src, custom_src, device),
+                    args=(child_conn, ref_src, custom_src, slot, slot_build_dirs[slot]),
                 )
                 p.start()
                 child_conn.close()
-                if parent_conn.poll(timeout=300):
-                    status, payload = parent_conn.recv()
-                    if status == "ok":
-                        score = score_kernel_result(payload, level)
+                procs[idx] = (p, parent_conn, level, time.time())
+            for idx, (p, parent_conn, level, t0) in procs.items():
+                _id = parsed[idx][0]
+                remaining = max(1.0, KERNEL_EVAL_TIMEOUT - (time.time() - t0))
+                try:
+                    if parent_conn.poll(timeout=remaining):
+                        status, payload = parent_conn.recv()
+                        if status == "ok":
+                            scores[idx] = score_kernel_result(payload, level)
+                        else:
+                            print(f"[kernelbench] eval error on {_id}: {payload}")
                     else:
-                        print(f"[kernelbench] eval error on {item['id']}: {payload}")
-                else:
-                    print(f"[kernelbench] timeout on {item['id']}, killing subprocess")
-                    p.kill()
-                parent_conn.close()
-                p.join()
-            except Exception as e:
-                print(f"[kernelbench] subprocess error on {item['id']}: {e}")
-            scores.append(score)
-            parsed_outputs.append(custom_src)
+                        print(f"[kernelbench] timeout on {_id}, killing subprocess")
+                        p.kill()
+                except Exception as e:
+                    print(f"[kernelbench] subprocess error on {_id}: {e}")
+                finally:
+                    parent_conn.close()
+                    p.join()
     if task_type == "gene_ranking":
         from model_collaboration.utils.assaybench_scoring import score_gene_ranking
         for item, output in zip(data, outputs):
