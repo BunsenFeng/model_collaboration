@@ -132,3 +132,5 @@ dependencies:
       - wandb
       - torch-geometric==2.7.0
       - mergekit==0.1.4
+      - google-genai
+      - python-dotenv

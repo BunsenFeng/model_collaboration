@@ -4,21 +4,31 @@ import random
 import re
 import math
 from datetime import datetime
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Iterable, Sequence
 from collections import defaultdict, deque
+from pathlib import Path
 import csv
+try:
+    from google import genai
+except Exception:  # pragma: no cover
+    genai = None
+from dotenv import load_dotenv
 
 import numpy as np
 from model_collaboration.data import eval
 from model_collaboration.method import distributed_generation
-from model_collaboration.utils import distributed_dpo
+from model_collaboration.utils import distributed_dpo, distributed_grpo
 import logging
+import inspect
 
 logger = logging.getLogger(__name__)
+load_dotenv()
 
-# Generate unique directory names for adapters based on model paths
-# Use a hash or the last part of the path to create a safe directory name
 def _safe_name(model_path: str) -> str:
+    """
+    Generate unique directory names for adapters based on model paths
+    Use a hash or the last part of the path to create a safe directory name   
+    """
     # Use the last part of the path, replacing / with _
     safe_name = model_path.replace("/", "_").replace("\\", "_")
     # Limit length to avoid filesystem issues
@@ -27,270 +37,177 @@ def _safe_name(model_path: str) -> str:
         safe_name = hashlib.md5(model_path.encode()).hexdigest()[:16]
     return safe_name
 
-def _pairwise_competition(
-    gpu_ids: List[int],
-    model_names: List[str],
+def _get_gemini_response_text(response: Any) -> str:
+    """
+    Extract text from a Gemini response object
+    """
+    if hasattr(response, "text") and response.text:
+        return response.text
+
+    try:
+        parts = response.candidates[0].content.parts
+        return "\n".join(
+            getattr(part, "text", "")
+            for part in parts
+            if getattr(part, "text", "")
+        )
+    except Exception:
+        return str(response)
+
+def _extract_json_array(text: str) -> List[Dict[str, Any]]:
+    """
+    Parse a JSON array from Gemini output, tolerating markdown fences
+    """
+    text = text.strip()
+
+    text = re.sub(r"^```json\s*", "", text)
+    text = re.sub(r"^```\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\[[\s\S]*\]", text)
+        if match is None:
+            raise
+        payload = json.loads(match.group(0))
+
+    if not isinstance(payload, list):
+        raise ValueError("Expected Gemini selector output to be a JSON list.")
+
+    return payload
+
+def _score_instructions(
     instructions: List[str],
-    instr_select_method: str,
-    opp_select_method: str,
-    instr_select_configs: Optional[Dict] = None,
-    opp_select_configs: Optional[Dict] = None,
-    random_match_prob: float = 0.2,
-    num_opponents: int = 1,
-    model_reputation: Optional[Dict[str, float]] = None,
-    max_response_length: int = 256,
-    temperature: float = 0.7,
-    top_p: float = 0.9,
-    batch_size: int = 1,
+    task: str,
+    task_type: str,
+    max_retries: int,
+    model_name: str = "gemini-2.5-flash",
+    batch_size: int = 50
 ) -> List[Dict[str, Any]]:
     """
-    Build pairwise competitions between models on a list of instructions.
-
-    For each instruction we select a first model and an opponent model.
-    Opponents are chosen either at random (with probability random_match_prob)
-    or by nearest reputation score (model_reputation), similar to Competition.get_opponent.
-    Returns a list of raw_pairs ready for judging.
+    Ask Gemini to score instructions for adversarial curriculum value
     """
+    client = genai.Client(vertexai=True)
 
-    if len(model_names) < 2 or not instructions:
-        return []
+    all_rows: List[Dict[str, Any]] = []
 
-    # Opponent selection: if model_reputation is provided, follow Competition.get_opponent
-    def get_opponent(current_model: str) -> str:
-        opponents = [m for m in model_names if m != current_model]
+    for start in range(0, len(instructions), batch_size):
+        end = min(start + batch_size, len(instructions))
 
-        def random_opponents(opponents: List[str]) -> str:
-            return random.choice(opponents)
-        
-        if not opponents or not model_reputation or random.random() < random_match_prob:
-            return random_opponents(opponents)
+        batch_items = [
+            {
+                "instruction_idx": i,
+                "instruction": instructions[i],
+            }
+            for i in range(start, end)
+        ]
 
-        # Reputation score of current model
-        current_score = model_reputation.get(current_model)
-        if current_score is None:
-            return random_opponents(opponents)
+        prompt = f"""
+You are selecting prompts for an adversarial Stackelberg curriculum for LLM preference training.
 
-        # Otherwise sort by score difference and sample from the closest num_opponents
-        potential_opponents: List[Tuple[str, float]] = []
-        for other in opponents:
-            other_score = model_reputation.get(other)
-            if other_score is None:
-                # If there is no reputation yet, treat as worst match (infinite diff)
-                diff = float("inf")
-            else:
-                diff = abs(current_score - other_score)
-            potential_opponents.append((other, diff))
-        
-        if not potential_opponents:
-            return random_opponents(opponents)
+Task: {task}
+Task type: {task_type}
 
-        top_k_size = max(1, min(num_opponents, len(potential_opponents)))
+Score each instruction for adversarial curriculum value.
 
-        if opp_select_method == "lowest_diff":
-            potential_opponents.sort(key=lambda x: x[1])
-            top_k = potential_opponents[:top_k_size]
-            return random.choice([name for name, _ in top_k])
-        
-        elif opp_select_method == "highest_diff":
-            potential_opponents.sort(key=lambda x: x[1], reverse=True)
-            top_k = potential_opponents[:top_k_size]
-            return random.choice([name for name, _ in top_k])
-        
-        else:
-            
-            iteration = opp_select_configs["iteration"]
-            iterations = opp_select_configs["total_iterations"]
-            sigma = opp_select_configs["reputation_gap_sigma"]
+A high score means:
+- the prompt is likely to be difficult for current open-source LLMs,
+- but still learnable, not impossible or purely ambiguous,
+- likely to produce meaningful differences between model responses,
+- likely to generate useful preference data for DPO,
+- likely to expose reasoning, truthfulness, instruction-following, coding, or domain-knowledge weaknesses.
 
-            tau = iteration / max(iterations - 1, 1)
+A low score means:
+- too easy,
+- too ambiguous,
+- too subjective,
+- too impossible,
+- unlikely to produce useful preference comparisons.
 
-            if opp_select_method == "schedule_decreasing":
-                start_gap = 1.0
-                end_gap = 0.0
-            else:
-                start_gap = 0.0
-                end_gap = 1.0
+Return ONLY a JSON array.
+Each element must have:
+- "instruction_idx": integer
+- "adversarial_score": number between 0 and 1
+- "reason": short string
 
-            target_gap = end_gap + (start_gap - end_gap) * ((1.0 - tau))
-            max_diff = max(diff for _, diff in potential_opponents)
+Instructions:
+{json.dumps(batch_items, ensure_ascii=False, indent=2)}
+""".strip()
 
-            if max_diff <= 1e-12:
-                normalized_candidates = [(name, 0.0) for name, _ in potential_opponents]
-            else:
-                normalized_candidates = [
-                    (name, float(np.clip(diff / max_diff, 0.0, 1.0)))
-                    for name, diff in potential_opponents
-                ]
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
 
-            scores = []
-            names = []
-            for name, normalized_gap in normalized_candidates:
-                match_score = math.exp(-((normalized_gap - target_gap) ** 2) / (2.0 * sigma**2))
-                names.append(name)
-                scores.append(match_score)
+                text = _get_gemini_response_text(response)
+                rows = _extract_json_array(text)
+                break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise RuntimeError(
+                        f"Gemini instruction scoring failed after {max_retries} attempts."
+                    ) from e
 
-            scores = np.asarray(scores, dtype=float)
-            probs = scores / scores.sum()
-            return str(np.random.choice(names, p=probs))
-    
-    # Uniform Instruction Sampling: Instruction sampling from vanilla Sparta. 
-    # Each model is paired with an opponent model and a random sampling of 
-    # len(instructions) / len(models) instructions.
-    def uniform_instr_sample():
-        model_tasks: Dict[str, List[str]] = {m: [] for m in model_names}
-        instruction_pairs: List[Tuple[str, str, str, int]] = []
+        for row in rows:
+            idx = int(row["instruction_idx"])
+            score = float(row["adversarial_score"])
+            score = float(np.clip(score, 0.0, 1.0))
 
-        for i in range(0, len(instructions), len(model_names)):
-            # Randomly shuffle model order in each loop
-            models_shuffled = random.sample(model_names, len(model_names))
+            all_rows.append({
+                "instruction_idx": idx,
+                "adversarial_score": score,
+                "reason": str(row.get("reason", "")),
+            })
 
-            instr_batch = instructions[i: min(i + len(model_names), len(instructions))]
+    by_idx = {}
+    for row in all_rows:
+        by_idx[int(row["instruction_idx"])] = row
 
-            for j, instr in enumerate(instr_batch):
-                instr_idx = i + j
-                active_model = models_shuffled[j]
-                opponent_model = get_opponent(active_model)
+    missing = sorted(set(range(len(instructions))) - set(by_idx.keys()))
+    if missing:
+        raise ValueError(
+            f"Gemini did not return scores for {len(missing)} instructions. "
+            f"First missing indices: {missing[:10]}"
+        )
 
-                instruction_pairs.append((instr, active_model, opponent_model, instr_idx))
-                model_tasks[active_model].append(instr)
-                model_tasks[opponent_model].append(instr)
-        
-        return model_tasks, instruction_pairs
-    
-    # Exp3 Instruction Sampling: Adversarial instruction selection, 
-    # which maintains a set of weights for each prompt.
-    def exp3_instr_sample(instr_select_configs):
-        # Get hyperparameters
-        iteration = instr_select_configs["iteration"]
+    return [by_idx[i] for i in range(len(instructions))]
 
-        # For the first iteration, make sure every prompt is seen once
-        if iteration == 0:
-            return uniform_instr_sample()
-        
-        model_tasks: Dict[str, List[str]] = {m: [] for m in model_names}
-        instruction_pairs: List[Tuple[str, str, str, int]] = []
+def _scores_to_weights(
+    selector_rows: List[Dict[str, Any]],
+    num_instructions: int,
+    beta: float = 4.0,
+    uniform_mix: float = 0.05,
+) -> np.ndarray:
+    """
+    Convert Gemini adversarial scores into initial EXP3 weights
+    """
+    scores = np.zeros(num_instructions, dtype=float)
 
-        weights = instr_select_configs["weights"]
-        gamma = instr_select_configs["gamma"]
-        probs = _exp3_probs(weights, gamma, len(instructions))
+    for row in selector_rows:
+        idx = int(row["instruction_idx"])
+        if 0 <= idx < num_instructions:
+            scores[idx] = float(row["adversarial_score"])
 
-        for i in range(len(instructions)):
-            # Sample one prompt given the weight distribution
-            instr_idx = int(np.random.choice(len(instructions), p=probs))
-            instr = instructions[instr_idx]
+    beta = float(beta)
+    uniform_mix = float(np.clip(uniform_mix, 0.0, 1.0))
 
-            # Active models are selected round-robin
-            active_model = model_names[i % len(model_names)]
-            opponent_model = get_opponent(active_model)
+    logits = beta * scores
+    logits -= np.max(logits)
 
-            instruction_pairs.append((instr, active_model, opponent_model, instr_idx))
-            model_tasks[active_model].append(instr)
-            model_tasks[opponent_model].append(instr)
-        
-        return model_tasks, instruction_pairs
+    prior = np.exp(logits)
+    prior = prior / prior.sum()
 
-    # Exp3 Instruction Sampling (per model): Adversarial instruction selection, 
-    # which maintains a set of weights for each prompt, for each model
-    def exp3_per_model_instr_sample(instr_select_configs):
-        model_tasks: Dict[str, List[str]] = {m: [] for m in model_names}
-        instruction_pairs: List[Tuple[str, str, str, int]] = []
+    uniform = np.ones(num_instructions, dtype=float) / num_instructions
+    prior = (1.0 - uniform_mix) * prior + uniform_mix * uniform
 
-        gamma = instr_select_configs["gamma"]
-        model_key_by_path = instr_select_configs["model_key_by_path"]
+    # EXP3 only needs relative weights.
+    weights = prior / max(prior.mean(), 1e-12)
+    weights = np.maximum(weights, 1e-12)
 
-        for i in range(len(instructions)):
-            # Active models are selected round-robin
-            active_model = model_names[i % len(model_names)]
-            opponent_model = get_opponent(active_model)
-
-            active_key = model_key_by_path.get(active_model, active_model)
-            weights = instr_select_configs["weights"][active_key]
-            probs = _exp3_probs(weights, gamma, len(instructions))
-
-            # Sample one prompt given the weight distribution
-            instr_idx = int(np.random.choice(len(instructions), p=probs))
-            instr = instructions[instr_idx]
-
-            instruction_pairs.append((instr, active_model, opponent_model, instr_idx))
-            model_tasks[active_model].append(instr)
-            model_tasks[opponent_model].append(instr)
-        
-        return model_tasks, instruction_pairs
-    
-    if instr_select_method == "uniform":
-        model_tasks, instruction_pairs = uniform_instr_sample()
-    elif instr_select_method == "exp3":
-        model_tasks, instruction_pairs = exp3_instr_sample(instr_select_configs)
-    elif instr_select_method == "exp3_per_model":
-        model_tasks, instruction_pairs = exp3_per_model_instr_sample(instr_select_configs)
-
-    # 3) Use distributed_generation to generate all (model, instruction) responses
-    # model_names are already HuggingFace identifiers, use them directly
-    active_model_names: List[str] = []
-    list_of_input_list: List[List[str]] = []
-    for m in model_names:
-        if model_tasks[m]:
-            active_model_names.append(m)
-            list_of_input_list.append(model_tasks[m])
-
-    if not active_model_names:
-        return []
-
-    # Configure generation hyperparameters via the shared helper.
-    # These values are passed in from the method's config (hyperparameters)
-    # so that generation here is consistent with config.json.
-    distributed_generation.update_generation_hyperparameters(
-        max_response_length=max_response_length,
-        temperature=temperature,
-        top_p=top_p,
-        batch_size=batch_size,
-    )
-
-    # Use model_names directly as HuggingFace identifiers
-    list_of_output_list = distributed_generation.distributed_generation(
-        active_model_names,
-        list_of_input_list,
-        gpu_ids,
-    )
-
-    # Build an index: {model_name: {instruction: response}}
-    model_responses: Dict[str, Dict[str, deque]] = {}
-
-    for m, ins_list, out_list in zip(
-        active_model_names, list_of_input_list, list_of_output_list
-    ):
-        responses = defaultdict(deque)
-        for ins, resp in zip(ins_list, out_list):
-            responses[ins].append(resp)
-        model_responses[m] = responses
-
-    # 4) Build raw_pairs, aligned with Competition.pair format
-    raw_pairs: List[Dict[str, Any]] = []
-    for pair_idx, (instr, model_a, model_b, instr_idx) in enumerate(instruction_pairs):
-        if model_a not in model_responses or model_b not in model_responses:
-            continue
-
-        queue_a = model_responses[model_a].get(instr)
-        queue_b = model_responses[model_b].get(instr)
-
-        if not queue_a or not queue_b:
-            continue
-
-        response_a = queue_a.popleft()
-        response_b = queue_b.popleft()
-
-        new_pair = {
-            "pair_id": pair_idx,
-            "instruction_idx": instr_idx,
-            "instruction": instr,
-            "models": [model_a, model_b],
-            "responses": [response_a, response_b],
-            "judges": {},
-        }
-
-        raw_pairs.append(new_pair)
-
-    return raw_pairs
+    return weights
 
 def _judge_batch_with_model(
     judge_name: str,
@@ -371,6 +288,10 @@ Your output should be like this:
                 [instructions],
                 [gpu_id],
                 max_response_length=max_response_length,
+                temperature=temperature,
+                top_p=top_p,
+                batch_size=batch_size,
+                max_parallel_models=1,
             )
             judge_outputs = judge_outputs_lists[0]
 
@@ -494,41 +415,6 @@ def calculate_judge_averages_sparta(pairs: List[Dict[str, Any]]) -> List[Dict[st
                 judge_data["ave_scores"] = [round(ave0, 2), round(ave1, 2)]
     return pairs
 
-def _aggregate_scores(
-    scored_pairs: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    """
-    Normalize pair['scores'] to a length-2 float list and derive score_diff and winner.
-
-    - Ensure scores is length-2 (pad with 5.0 if necessary).
-    - score_diff = scores[0] - scores[1].
-    - winner: 0 if first response wins, 1 if second wins, None for tie.
-    """
-    if not scored_pairs:
-        return scored_pairs
-
-    aggregated_pairs = scored_pairs
-    for pair in aggregated_pairs:
-        scores = pair.get("scores")
-        if not isinstance(scores, list):
-            scores = []
-        scores = [float(s) for s in scores[:2]]
-        while len(scores) < 2:
-            scores.append(5.0)
-
-        score_diff = scores[0] - scores[1]
-        pair["scores"] = scores
-        pair["score_diff"] = float(score_diff)
-
-        if score_diff > 0:
-            pair["winner"] = 0
-        elif score_diff < 0:
-            pair["winner"] = 1
-        else:
-            pair["winner"] = None
-    
-    return aggregated_pairs
-
 def _update_exp3_weights(
     instr_select_configs: Dict[str, Any],
     judged_pairs: List[Dict[str, Any]],
@@ -575,7 +461,7 @@ def _update_exp3_weights(
 
     # Weight update
     reward = (rewards_active + rewards_opponent) / 2
-    log_weights = np.log(np.maximum(weights, 1e-12)) + (gamma / max(K, 1)) * reward
+    log_weights = np.log(np.maximum(weights, 1e-12)) + (1 / K) * reward
     log_weights -= np.max(log_weights)
     weights = np.exp(log_weights)
 
@@ -624,16 +510,16 @@ def _update_exp3_per_model_weights(
         )
         rewards_by_model[active_key][instr_idx] += r_active / active_probs[instr_idx]
 
-        opp_model_path = models[1]
-        opp_key = model_key_by_path.get(opp_model_path, opp_model_path)
-        opp_probs = _exp3_probs(weights[opp_key], gamma, K)
-        r_opponent = _exp3_reward(
-            model_score=scores[1],
-            pair_scores=scores,
-            instr_select_configs=instr_select_configs,
-            iterations=iterations,
-        )
-        rewards_by_model[opp_key][instr_idx] += r_opponent / opp_probs[instr_idx]
+        # opp_model_path = models[1]
+        # opp_key = model_key_by_path.get(opp_model_path, opp_model_path)
+        # opp_probs = _exp3_probs(weights[opp_key], gamma, K)
+        # r_opponent = _exp3_reward(
+        #     model_score=scores[1],
+        #     pair_scores=scores,
+        #     instr_select_configs=instr_select_configs,
+        #     iterations=iterations,
+        # )
+        # rewards_by_model[opp_key][instr_idx] += r_opponent / opp_probs[instr_idx]
 
     # Weight update
     new_weights: Dict[str, np.ndarray] = {}
@@ -643,7 +529,7 @@ def _update_exp3_per_model_weights(
             np.zeros(K, dtype=float),
         )
 
-        log_weights = np.log(np.maximum(old_weights, 1e-12)) + (gamma / max(K, 1)) * model_rewards
+        log_weights = np.log(np.maximum(old_weights, 1e-12)) + (1 / K) * model_rewards
         log_weights -= np.max(log_weights)
 
         new_weights[model_key] = np.exp(log_weights)
@@ -706,7 +592,7 @@ def _exp3_reward(
 
         gap_start = instr_select_configs["ideal_start_gap"]
         gap_end = instr_select_configs["ideal_end_gap"]
-        target_gap = gap_end + (gap_start - gap_end) * ((1.0 - tau))
+        target_gap = gap_end + (gap_start - gap_end) * (1.0 - tau)
 
         sigma = instr_select_configs["preference_gap_sigma"]
 
@@ -812,9 +698,90 @@ def save_exp3_weights(
 
     print(f"[Sparta] Iter {iteration}: Saved EXP3 weights to {save_path}")
 
+def load_exp3_weights(
+    base_dir: str,
+    checkpoint_iteration: int,
+    instr_select_method: str,
+    instructions: List[str],
+    model_names: List[str],
+) -> Any:
+    """
+    Load EXP3 weights saved by save_exp3_weights().
+
+    Expected path:
+      base_dir/iteration_{checkpoint_iteration}/analysis/exp3_weights.json
+
+    Supports instr_select_method == "exp3" and "exp3_per_model"
+    """
+    weights_path = os.path.join(
+        base_dir,
+        f"iteration_{checkpoint_iteration}",
+        "analysis",
+        "exp3_weights.json",
+    )
+    if not os.path.exists(weights_path):
+        raise FileNotFoundError(
+            f"Could not resume EXP3: missing saved weights at {weights_path}. "
+            "Expected to load weights from the previous completed iteration."
+        )
+    
+    with open(weights_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+
+    saved_method = payload.get("instruction_selection")
+    if saved_method != instr_select_method:
+        raise ValueError(
+            f"EXP3 checkpoint method mismatch: "
+            f"saved method={saved_method!r}, current method={instr_select_method!r}."
+        )
+
+    if instr_select_method == "exp3":
+        if "weights" not in payload:
+            raise ValueError(f"EXP3 checkpoint missing 'weights': {weights_path}")
+
+        weights = np.asarray(payload["weights"], dtype=float)
+        print(f"[Sparta] Loaded EXP3 weights from {weights_path}")
+        return weights
+    
+    if instr_select_method == "exp3_per_model":
+        saved_weights_by_model = payload.get("weights")
+        if not isinstance(saved_weights_by_model, dict):
+            raise ValueError(
+                f"Per-model EXP3 checkpoint missing dict 'weights': {weights_path}"
+            )
+
+        weights_by_model: Dict[str, np.ndarray] = {}
+
+        for model_name in model_names:
+            if model_name not in saved_weights_by_model:
+                print(
+                    f"[Sparta] Warning: no saved EXP3 weights for model {model_name!r}; "
+                    "initializing this model's instruction weights to uniform."
+                )
+                weights_by_model[model_name] = np.ones(len(instructions), dtype=float)
+                continue
+
+            weights_by_model[model_name] = np.asarray(
+                saved_weights_by_model[model_name],
+                dtype=float,
+            )
+
+        extra_models = sorted(set(saved_weights_by_model.keys()) - set(model_names))
+        if extra_models:
+            print(
+                f"[Sparta] Warning: ignoring EXP3 weights for models not in current "
+                f"model_names: {extra_models}"
+            )
+
+        print(f"[Sparta] Loaded per-model EXP3 weights from {weights_path}")
+        return weights_by_model
+    
+    raise ValueError(f"Unsupported instruction selection method: {instr_select_method}")
+
 def save_adapter_dev_scores(
     base_dir: str,
     adapter_dev_records: List[Dict[str, Any]],
+    task: str
 ) -> None:
     """
     Save dev-set performance for each evaluated adapter/model.
@@ -822,7 +789,7 @@ def save_adapter_dev_scores(
 
     analysis_dir = os.path.join(base_dir, "analysis")
     os.makedirs(analysis_dir, exist_ok=True)
-    csv_path = os.path.join(analysis_dir, "adapter_dev_scores.csv")
+    csv_path = os.path.join(analysis_dir, f"{task}_adapter_dev_scores.csv")
 
     fieldnames = [
         "adapter_key",
@@ -887,9 +854,9 @@ def run_judges_sparta(
             batch_size=batch_size,
             base_dir=base_dir,
             num_rounds=num_rounds,
-            max_response_length=max_response_length,
-            temperature=temperature,
-            top_p=top_p,
+            max_response_length=64,
+            temperature=1e-5,
+            top_p=1.0,
         )
 
     pairs = calculate_judge_averages_sparta(pairs)
@@ -1585,728 +1552,1823 @@ class RatingSystemStaticWeighted(RatingSystem):
     def get_weights(self) -> Dict[str, float]:
         return self.weights
 
-def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
-    """
-    Sparta competition + multi-judge + reputation + DPO preference generation.
-    
-    This method implements an iterative competition-based training approach where:
-    1. Models compete pairwise on instructions
-    2. Other models (judges) score the competition responses
-    3. Model ratings are updated based on judge scores
-    4. Preference pairs are generated from competitions
-    5. DPO training is applied to improve models
-    6. The best adapter across all iterations is selected via dev set evaluation
-    
-    Args:
-        task: Task name (e.g., "gsm8k", "mmlu")
-        task_type: Task type (e.g., "exact_match", "multiple_choice")
-        gpu_ids: List of GPU IDs to use for distributed processing
-        model_names: List of model identifiers. Can be:
-            - HuggingFace Hub identifiers (e.g., "allenai/Llama-3.1-Tulu-3-8B-SFT")
-            - Local paths (absolute or relative, e.g., "/path/to/model" or "./models/my_model")
-            - Any mix of the above
-            The code supports any number of any models without requiring pre-defined mappings.
-        hyperparameters: Dictionary containing hyperparameters. Supported keys:
-            
-            **Iteration Control:**
-            - num_iterations (int, default=1): Number of Sparta iterations to run
-            - current_iteration (int, default=0): Starting iteration number (for resuming)
-            - base_dir (str, default="model_collaboration/logs/text_sparta_stackelberg"): Base directory for saving logs and models
-            
-            **Generation Hyperparameters (used for both competition and judging):**
-            - max_response_length (int, default=256): Maximum number of tokens to generate
-            - temperature (float, default=0.7): Sampling temperature for generation
-            - top_p (float, default=0.9): Nucleus sampling parameter
-            - batch_size (int, default=1): Batch size for generation
-            
-            **Judge Parameters:**
-            - judge_batch_size (int, default=8): Batch size for judge model generation
-            - judge_rounds (int, default=1): Number of judging rounds per pair
-            
-            **Competition Parameters:**
-            - num_instructions (int, default=500): Number of instructions to use for competition
-            - random_match_prob (float, default=0.2): Probability of random opponent selection
-            - num_opponents (int, default=3): Number of top-K opponents to consider for matching
-            
-            **Rating System Parameters:**
-            - initial_k (float, default=10.0): Initial K value for rating updates
-            - min_k (float, default=5.0): Minimum K value (after decay)
-            - window_size (int, default=10): Window size for deviation calculation
-            - min_deviation (float, default=0.1): Minimum deviation value
-            - epsilon (float, default=0.01): Small epsilon for numerical stability
-            - decay_rate (float, default=0.9): Decay rate for K value
-            - decay_steps (int, default=10): Steps for K decay
-            - scaling_factor (float, default=20.0): Scaling factor for rating updates
-            - score_type (str, default="normal"): Rating system type: "normal", "dynamic", or "static"
-            - freeze_ratings (bool, default=False): If True, ratings are not updated
-            
-            **Debug:**
-            - debug (bool, default=False): If True, prints detailed rating update information
-            
-    Returns:
-        int: Always returns 0 on successful completion
-        
-    Note:
-        - Judges are dynamically selected from the model pool for each pair (models that didn't compete)
-        - DPO training uses default hyperparameters (batch_size=1, gradient_accumulation_steps=16, 
-          learning_rate=1e-6, epoch=1)
-        - All adapters from all iterations are evaluated on dev set, and the best one is selected
-        - LoRA adapters are automatically detected and merged before training new adapters
-    """
 
-    import os
-    from pathlib import Path
-    script_path = Path(__file__).resolve()
-    script_dir = script_path.parent.parent.parent
-    os.chdir(script_dir)
+# ======================================================================================
+# Stackelberg method
+# ======================================================================================
 
-    # ------------------------- 0. Load all hyperparameters in one place -------------------------
-    # Iteration control
-    num_iterations = int(hyperparameters.get("num_iterations", 3))  # Number of iterations to run
-    start_iteration = int(hyperparameters.get("current_iteration", 0))  # Starting iteration number (for resuming)
-    base_dir = hyperparameters.get("base_dir", os.path.join("model_collaboration/logs", "text_sparta_stackelberg"))
-    run_id = hyperparameters.get("run_id", None)
+_GLOBAL_LEADER_KEY = "__global__"
+_VALID_TRAINING_ALGORITHMS = {"dpo", "grpo"}
+_VALID_LEADER_TYPES = {"probabilistic", "gemini", "uniform"}
+_VALID_LEADER_SCOPES = {"global", "per_model"}
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    if start_iteration > 0:
-        # Resume mode: the user must provide the previous run_id.
-        if run_id is None:
-            raise ValueError(
-                "Resuming requires setting hyperparameters['run_id'] to the original run directory name."
-            )
-        run_id = str(run_id)
-        base_dir = os.path.join(base_dir, run_id)
-        if not os.path.isdir(base_dir):
-            raise ValueError(
-                f"Cannot resume from run_id={run_id!r}: directory does not exist at {base_dir}"
-            )
+
+def _save_json(path: str, payload: Any) -> None:
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
+def _read_json(path: str) -> Any:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _append_jsonl(path: str, rows: Iterable[Dict[str, Any]]) -> None:
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        for row in rows:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def _normalize_training_algorithm(value: Any) -> str:
+    value = str(value or "dpo").strip().lower().replace("-", "_")
+    aliases = {
+        "preference": "dpo",
+        "preference_optimization": "dpo",
+        "direct_preference_optimization": "dpo",
+        "online_grpo": "grpo",
+    }
+    value = aliases.get(value, value)
+    if value not in _VALID_TRAINING_ALGORITHMS:
+        raise ValueError(
+            f"training_algorithm must be one of {sorted(_VALID_TRAINING_ALGORITHMS)}, got {value!r}."
+        )
+    return value
+
+
+def _normalize_leader_type(value: Any) -> str:
+    value = str(value or "probabilistic").strip().lower().replace("-", "_")
+    aliases = {
+        "exp3": "probabilistic",
+        "bandit": "probabilistic",
+        "llm": "gemini",
+        "llm_leader": "gemini",
+        "random": "uniform",
+    }
+    value = aliases.get(value, value)
+    if value not in _VALID_LEADER_TYPES:
+        raise ValueError(f"leader_type must be one of {sorted(_VALID_LEADER_TYPES)}, got {value!r}.")
+    return value
+
+
+def _resolve_modes(hyperparameters: Dict[str, Any]) -> Tuple[str, str, str]:
+    training_algorithm = _normalize_training_algorithm(
+        hyperparameters.get("training_algorithm", "dpo")
+    )
+    leader_type = _normalize_leader_type(
+        hyperparameters.get("leader_type", "probabilistic")
+    )
+
+    legacy_instruction_selection = hyperparameters.get("instruction_selection", "").lower()
+    default_scope = "per_model" if legacy_instruction_selection == "exp3_per_model" else "global"
+    leader_scope = hyperparameters.get("leader_scope", default_scope).strip().lower()
+    if leader_scope not in _VALID_LEADER_SCOPES:
+        raise ValueError(f"leader_scope must be one of {sorted(_VALID_LEADER_SCOPES)}, got {leader_scope!r}.")
+    if leader_type == "uniform":
+        leader_scope = "global"
+    return training_algorithm, leader_type, leader_scope
+
+
+def _weights_to_probs(weights: np.ndarray, uniform_mix: float) -> np.ndarray:
+    weights = np.maximum(np.asarray(weights, dtype=float), 1e-12)
+    if weights.ndim != 1 or len(weights) == 0:
+        raise ValueError("Leader weights must be a non-empty one-dimensional vector.")
+    probs = weights / weights.sum()
+    uniform_mix = float(np.clip(uniform_mix, 0.0, 1.0))
+    probs = (1.0 - uniform_mix) * probs + uniform_mix / len(weights)
+    probs = np.maximum(probs, 0.0)
+    return probs / probs.sum()
+
+
+def _entropy_normalized(probs: np.ndarray) -> float:
+    probs = np.maximum(np.asarray(probs, dtype=float), 1e-12)
+    if len(probs) <= 1:
+        return 0.0
+    return float(-(probs * np.log(probs)).sum() / math.log(len(probs)))
+
+
+def _apply_entropy_floor(weights: np.ndarray, entropy_floor: float) -> np.ndarray:
+    weights = np.maximum(np.asarray(weights, dtype=float), 1e-12)
+    entropy_floor = float(np.clip(entropy_floor, 0.0, 1.0))
+    if entropy_floor <= 0.0:
+        return weights
+    probs = weights / weights.sum()
+    if _entropy_normalized(probs) >= entropy_floor:
+        return weights
+    uniform = np.ones_like(probs) / len(probs)
+    lo, hi = 0.0, 1.0
+    for _ in range(50):
+        mid = (lo + hi) / 2.0
+        mixed = (1.0 - mid) * probs + mid * uniform
+        if _entropy_normalized(mixed) >= entropy_floor:
+            hi = mid
+        else:
+            lo = mid
+    mixed = (1.0 - hi) * probs + hi * uniform
+    return np.maximum(mixed / max(float(mixed.mean()), 1e-12), 1e-12)
+
+
+def _leader_keys(scope: str, model_names: Sequence[str]) -> List[str]:
+    return [_GLOBAL_LEADER_KEY] if scope == "global" else list(model_names)
+
+
+def _gemini_prior_rows(
+    base_dir: str,
+    instructions: List[str],
+    task: str,
+    task_type: str,
+    selector_model: str,
+    batch_size: int,
+    max_retries: int,
+) -> List[Dict[str, Any]]:
+    analysis_dir = os.path.join(base_dir, "analysis")
+    os.makedirs(analysis_dir, exist_ok=True)
+    cache_path = os.path.join(analysis_dir, "gemini_instruction_prior.json")
+    if os.path.exists(cache_path):
+        payload = _read_json(cache_path)
+        rows = payload.get("selector_rows", [])
+        cached_instructions = payload.get("instructions", [])
+        if len(rows) == len(instructions) and len(cached_instructions) == len(instructions):
+            print(f"[Stackelberg] Loaded Gemini instruction prior from {cache_path}")
+            return rows
+        print("[Stackelberg] Gemini prior cache size does not match the current prompt pool; rescoring.")
+
+    if genai is None:
+        raise ImportError("google-genai is required for a Gemini leader or Gemini initialization.")
+    rows = _score_instructions(
+        instructions=instructions,
+        task=task,
+        task_type=task_type,
+        max_retries=max_retries,
+        model_name=selector_model,
+        batch_size=batch_size,
+    )
+    payload = {
+        "task": task,
+        "task_type": task_type,
+        "selector_model": selector_model,
+        "selector_rows": rows,
+        "instructions": [
+            {"instruction_idx": i, "instruction": instruction}
+            for i, instruction in enumerate(instructions)
+        ],
+    }
+    _save_json(cache_path, payload)
+    print(f"[Stackelberg] Saved Gemini instruction prior to {cache_path}")
+    return rows
+
+
+def _initialize_leader_state(
+    base_dir: str,
+    instructions: List[str],
+    model_names: List[str],
+    task: str,
+    task_type: str,
+    leader_type: str,
+    leader_scope: str,
+    hyperparameters: Dict[str, Any],
+) -> Dict[str, Any]:
+    k = len(instructions)
+    keys = _leader_keys(leader_scope, model_names)
+    initial_vector = np.ones(k, dtype=float)
+
+    initialization = str(
+        hyperparameters.get(
+            "leader_initialization",
+            "gemini" if leader_type == "gemini" else "uniform",
+        )
+    ).strip().lower()
+    if initialization not in {"uniform", "gemini"}:
+        raise ValueError("leader_initialization must be 'uniform' or 'gemini'.")
+
+    if initialization == "gemini":
+        selector_model = hyperparameters.get("leader_model", "gemini-3.5-flash")
+        rows = _gemini_prior_rows(
+            base_dir=base_dir,
+            instructions=instructions,
+            task=task,
+            task_type=task_type,
+            selector_model=selector_model,
+            batch_size=int(hyperparameters.get("leader_init_batch_size", 50)),
+            max_retries=int(hyperparameters.get("max_retries", 5)),
+        )
+        initial_vector = _scores_to_weights(
+            selector_rows=rows,
+            num_instructions=k,
+            beta=float(hyperparameters.get("leader_init_beta", 4.0)),
+            uniform_mix=float(hyperparameters.get("leader_uniform_mix", 0.05)),
+        )
+
+    return {
+        "leader_type": leader_type,
+        "leader_scope": leader_scope,
+        "weights": {key: initial_vector.copy() for key in keys},
+    }
+
+
+def _serialize_leader_state(
+    state: Dict[str, Any],
+    instructions: List[str],
+    model_names: List[str],
+    uniform_mix: float,
+    iteration: int,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "iteration": int(iteration),
+        "leader_type": state["leader_type"],
+        "leader_scope": state["leader_scope"],
+        "weights": {},
+        "probs": {},
+        "entropy_normalized": {},
+        "top_instructions": {},
+    }
+    for key, vector in state["weights"].items():
+        weights = np.asarray(vector, dtype=float)
+        probs = _weights_to_probs(weights, uniform_mix=uniform_mix)
+        top_indices = np.argsort(probs)[::-1][: min(20, len(probs))]
+        payload["weights"][key] = [float(x) for x in weights]
+        payload["probs"][key] = [float(x) for x in probs]
+        payload["entropy_normalized"][key] = _entropy_normalized(probs)
+        payload["top_instructions"][key] = [
+            {
+                "rank": rank + 1,
+                "instruction_idx": int(idx),
+                "weight": float(weights[idx]),
+                "prob": float(probs[idx]),
+                "instruction": instructions[idx],
+            }
+            for rank, idx in enumerate(top_indices)
+        ]
+    return payload
+
+
+def _save_leader_state(
+    base_dir: str,
+    state: Dict[str, Any],
+    instructions: List[str],
+    model_names: List[str],
+    uniform_mix: float,
+    iteration: int,
+    initial: bool = False,
+) -> str:
+    if initial:
+        path = os.path.join(base_dir, "analysis", "leader_initial_state.json")
     else:
-        # New run mode. Append timestamp to avoid overwriting.
-        run_id = timestamp if run_id is None or str(run_id).strip() == "" else f"{run_id}_{timestamp}"
-        base_dir = os.path.join(base_dir, run_id)
-    
-    os.makedirs(base_dir, exist_ok=True)
+        path = os.path.join(base_dir, f"iteration_{iteration}", "analysis", "leader_state.json")
+    _save_json(
+        path,
+        _serialize_leader_state(
+            state=state,
+            instructions=instructions,
+            model_names=model_names,
+            uniform_mix=uniform_mix,
+            iteration=iteration,
+        ),
+    )
+    return path
 
-    print(f"[Sparta] Logging this run to: {base_dir}")
 
-    # General generation hyperparameters (used for both competition and judging)
-    max_response_length = int(hyperparameters.get("max_response_length", 256))
-    temperature = float(hyperparameters.get("temperature", 0.7))
-    top_p = float(hyperparameters.get("top_p", 0.9))
-    batch_size = int(hyperparameters.get("batch_size", 1))
-    
-    # Judge operational parameters (judges are dynamically selected from model_names pool for each pair)
-    judge_batch_size = int(hyperparameters.get("judge_batch_size", 8))
-    judge_rounds = int(hyperparameters.get("judge_rounds", 1))
-    
-    # Competition and instruction parameters
-    num_instructions = int(hyperparameters.get("num_instructions", 500))
-    random_match_prob = float(hyperparameters.get("random_match_prob", 0.2))
-    num_opponents = int(hyperparameters.get("num_opponents", 1))
+def _load_leader_state(
+    base_dir: str,
+    checkpoint_iteration: int,
+    instructions: List[str],
+    model_names: List[str],
+    expected_type: str,
+    expected_scope: str,
+) -> Dict[str, Any]:
+    path = os.path.join(base_dir, f"iteration_{checkpoint_iteration}", "analysis", "leader_state.json")
+    if os.path.exists(path):
+        payload = _read_json(path)
+        saved_type = payload.get("leader_type")
+        saved_scope = payload.get("leader_scope")
+        if saved_type != expected_type or saved_scope != expected_scope:
+            raise ValueError(
+                "Leader checkpoint/config mismatch: "
+                f"saved=({saved_type}, {saved_scope}), requested=({expected_type}, {expected_scope})."
+            )
+        weights = {
+            key: np.asarray(vector, dtype=float)
+            for key, vector in payload.get("weights", {}).items()
+        }
+        expected_keys = set(_leader_keys(expected_scope, model_names))
+        if set(weights) != expected_keys:
+            raise ValueError(f"Leader checkpoint keys mismatch at {path}.")
+        if any(len(vector) != len(instructions) for vector in weights.values()):
+            raise ValueError(f"Leader checkpoint prompt count mismatch at {path}.")
+        return {"leader_type": expected_type, "leader_scope": expected_scope, "weights": weights}
 
-    # Instruction selection parameters
-    instr_select_method = hyperparameters.get("instruction_selection", "exp3")
-    reward_method = hyperparameters.get("reward_method", "weighted")
-    
-    gamma = float(hyperparameters.get("instr_sample_gamma", 0.2)) # Gamma for instruction sampling
+    # Backward-compatible fallbacks for the two old scripts.
+    if expected_type == "gemini" and expected_scope == "global":
+        legacy = os.path.join(
+            base_dir,
+            f"iteration_{checkpoint_iteration}",
+            "analysis",
+            "gemini_leader_weights.json",
+        )
+        if os.path.exists(legacy):
+            vector = np.asarray(_read_json(legacy)["weights"], dtype=float)
+            return {
+                "leader_type": expected_type,
+                "leader_scope": expected_scope,
+                "weights": {_GLOBAL_LEADER_KEY: vector},
+            }
 
-    difficulty_reward_weight = float(hyperparameters.get("difficulty_reward_weight", 0.3))
-    score_threshold = float(hyperparameters.get("score_threshold", 3.0)) # Min score for nonzero difficulty reward
+    if expected_type == "probabilistic":
+        legacy = os.path.join(
+            base_dir,
+            f"iteration_{checkpoint_iteration}",
+            "analysis",
+            "exp3_weights.json",
+        )
+        if os.path.exists(legacy):
+            payload = _read_json(legacy)
+            raw = payload.get("weights")
+            if expected_scope == "global" and isinstance(raw, list):
+                return {
+                    "leader_type": expected_type,
+                    "leader_scope": expected_scope,
+                    "weights": {_GLOBAL_LEADER_KEY: np.asarray(raw, dtype=float)},
+                }
+            if expected_scope == "per_model" and isinstance(raw, dict):
+                return {
+                    "leader_type": expected_type,
+                    "leader_scope": expected_scope,
+                    "weights": {
+                        model: np.asarray(raw.get(model, np.ones(len(instructions))), dtype=float)
+                        for model in model_names
+                    },
+                }
 
-    preference_quality_reward_weight = float(hyperparameters.get("preference_quality_reward_weight", 0.7))
-    ideal_start_gap = float(hyperparameters.get("ideal_start_gap", 0.6))
-    ideal_end_gap = float(hyperparameters.get("ideal_end_gap", 0.15))
-    preference_gap_sigma = float(hyperparameters.get("preference_gap_sigma", 0.15))
-    
-    if instr_select_method not in ["uniform", "exp3", "exp3_per_model"]:
-        raise ValueError("Invalid instruction sampling method.")
-    if reward_method not in ["weighted", "difficulty_only", "preference_quality_only"]:
-        raise ValueError("Invalid reward method.")
-    
-    instr_select_configs = {
-        "reward_method": reward_method,
-        "gamma": gamma,
-        "difficulty_reward_weight": difficulty_reward_weight,
-        "score_threshold": score_threshold,
-        "preference_quality_reward_weight": preference_quality_reward_weight,
-        "ideal_start_gap": ideal_start_gap,
-        "ideal_end_gap": ideal_end_gap,
-        "preference_gap_sigma": preference_gap_sigma
+    raise FileNotFoundError(f"No leader checkpoint found for iteration {checkpoint_iteration}: {path}")
+
+
+def _leader_vector_for_model(state: Dict[str, Any], model_name: str) -> np.ndarray:
+    key = _GLOBAL_LEADER_KEY if state["leader_scope"] == "global" else model_name
+    if key not in state["weights"]:
+        raise KeyError(f"Missing leader weights for {key!r}.")
+    return np.asarray(state["weights"][key], dtype=float)
+
+
+def _select_opponent(
+    current_model: str,
+    model_names: List[str],
+    model_ratings: Dict[str, Dict[str, float]],
+    random_match_prob: float,
+    num_opponents: int,
+    opponent_selection: str,
+    iteration: int,
+    total_iterations: int,
+    reputation_gap_sigma: float,
+) -> str:
+    opponents = [m for m in model_names if m != current_model]
+    if not opponents:
+        raise ValueError("At least two models are required for a duel.")
+    if random.random() < random_match_prob:
+        return random.choice(opponents)
+
+    current_score = float(model_ratings.get(current_model, {}).get("score", 100.0))
+    candidates = [
+        (other, abs(current_score - float(model_ratings.get(other, {}).get("score", 100.0))))
+        for other in opponents
+    ]
+    top_k = max(1, min(int(num_opponents), len(candidates)))
+    if opponent_selection == "lowest_diff":
+        candidates.sort(key=lambda x: x[1])
+        return random.choice([name for name, _ in candidates[:top_k]])
+    if opponent_selection == "highest_diff":
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        return random.choice([name for name, _ in candidates[:top_k]])
+    if opponent_selection not in {"schedule_decreasing", "schedule_increasing"}:
+        raise ValueError(f"Invalid opponent_selection={opponent_selection!r}.")
+
+    tau = iteration / max(total_iterations - 1, 1)
+    target_gap = 1.0 - tau if opponent_selection == "schedule_decreasing" else tau
+    max_diff = max(diff for _, diff in candidates) if candidates else 0.0
+    names: List[str] = []
+    scores: List[float] = []
+    sigma = max(float(reputation_gap_sigma), 1e-12)
+    for name, diff in candidates:
+        normalized_gap = 0.0 if max_diff <= 1e-12 else float(np.clip(diff / max_diff, 0.0, 1.0))
+        names.append(name)
+        scores.append(math.exp(-((normalized_gap - target_gap) ** 2) / (2.0 * sigma**2)))
+    probs = np.asarray(scores, dtype=float)
+    if not np.isfinite(probs).all() or probs.sum() <= 0:
+        return random.choice(opponents)
+    probs /= probs.sum()
+    return str(np.random.choice(names, p=probs))
+
+
+def _sample_duels_unified(
+    instructions: List[str],
+    model_names: List[str],
+    model_ratings: Dict[str, Dict[str, float]],
+    leader_state: Dict[str, Any],
+    num_duels: int,
+    leader_uniform_mix: float,
+    random_match_prob: float,
+    num_opponents: int,
+    opponent_selection: str,
+    iteration: int,
+    total_iterations: int,
+    reputation_gap_sigma: float,
+) -> List[Dict[str, Any]]:
+    if len(model_names) < 3:
+        raise ValueError("At least three models are required: two duelers and one peer judge.")
+    if not instructions:
+        return []
+    duels: List[Dict[str, Any]] = []
+    for duel_id in range(int(num_duels)):
+        active_model = model_names[duel_id % len(model_names)]
+        vector = _leader_vector_for_model(leader_state, active_model)
+        if leader_state["leader_type"] == "uniform":
+            probs = np.ones(len(instructions), dtype=float) / len(instructions)
+        else:
+            probs = _weights_to_probs(vector, uniform_mix=leader_uniform_mix)
+        instruction_idx = int(np.random.choice(len(instructions), p=probs))
+        opponent_model = _select_opponent(
+            current_model=active_model,
+            model_names=model_names,
+            model_ratings=model_ratings,
+            random_match_prob=random_match_prob,
+            num_opponents=num_opponents,
+            opponent_selection=opponent_selection,
+            iteration=iteration,
+            total_iterations=total_iterations,
+            reputation_gap_sigma=reputation_gap_sigma,
+        )
+        judges = [m for m in model_names if m not in {active_model, opponent_model}]
+        duels.append(
+            {
+                "duel_id": int(duel_id),
+                "pair_id": int(duel_id),
+                "instruction_idx": instruction_idx,
+                "instruction": instructions[instruction_idx],
+                "models": [active_model, opponent_model],
+                "judge_names": judges,
+                "sample_prob": float(probs[instruction_idx]),
+                "old_weight": float(vector[instruction_idx]),
+            }
+        )
+    return duels
+
+
+def _save_prompt_sampling_manifest(base_dir: str, iteration: int, duels: List[Dict[str, Any]]) -> None:
+    _save_json(
+        os.path.join(base_dir, f"iteration_{iteration}", "analysis", "prompt_sampling_manifest.json"),
+        {"iteration": int(iteration), "duels": duels},
+    )
+
+
+def _generate_offline_duel_responses(
+    duels: List[Dict[str, Any]],
+    current_model_paths: Dict[str, str],
+    gpu_ids: List[int],
+    max_response_length: int,
+    temperature: float,
+    top_p: float,
+    batch_size: int,
+    max_parallel_models: Optional[int],
+) -> List[Dict[str, Any]]:
+    tasks_by_model: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
+    for duel in duels:
+        for model_name in duel["models"]:
+            tasks_by_model[model_name].append((int(duel["duel_id"]), duel["instruction"]))
+
+    active_names = [m for m in current_model_paths if tasks_by_model.get(m)]
+    model_paths = [current_model_paths[m] for m in active_names]
+    input_lists = [[prompt for _, prompt in tasks_by_model[m]] for m in active_names]
+    distributed_generation.update_generation_hyperparameters(
+        max_response_length=max_response_length,
+        temperature=temperature,
+        top_p=top_p,
+        batch_size=batch_size,
+        big_model_mode=False,
+    )
+    output_lists = distributed_generation.distributed_generation(
+        model_paths,
+        input_lists,
+        gpu_ids,
+        max_response_length=max_response_length,
+        temperature=temperature,
+        top_p=top_p,
+        batch_size=batch_size,
+        max_parallel_models=max_parallel_models,
+    )
+
+    response_by_duel_model: Dict[Tuple[int, str], str] = {}
+    for model_name, assignments, outputs in zip(active_names, [tasks_by_model[m] for m in active_names], output_lists):
+        if len(assignments) != len(outputs):
+            raise RuntimeError(f"Generation length mismatch for {model_name}.")
+        for (duel_id, _), output in zip(assignments, outputs):
+            response_by_duel_model[(duel_id, model_name)] = output
+
+    raw_pairs: List[Dict[str, Any]] = []
+    for duel in duels:
+        duel_id = int(duel["duel_id"])
+        model_a, model_b = duel["models"]
+        if (duel_id, model_a) not in response_by_duel_model or (duel_id, model_b) not in response_by_duel_model:
+            continue
+        pair = dict(duel)
+        pair["model_paths"] = [current_model_paths[model_a], current_model_paths[model_b]]
+        pair["responses"] = [
+            response_by_duel_model[(duel_id, model_a)],
+            response_by_duel_model[(duel_id, model_b)],
+        ]
+        pair["judges"] = {}
+        raw_pairs.append(pair)
+    return raw_pairs
+
+
+def _judge_offline_duels(
+    raw_pairs: List[Dict[str, Any]],
+    model_names: List[str],
+    current_model_paths: Dict[str, str],
+    model_ratings: Dict[str, Dict[str, float]],
+    gpu_ids: List[int],
+    base_dir: str,
+    judge_batch_size: int,
+    judge_rounds: int,
+    judge_max_response_length: int,
+    judge_temperature: float,
+    judge_top_p: float,
+) -> List[Dict[str, Any]]:
+    judge_groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for pair in raw_pairs:
+        for judge_name in pair.get("judge_names", []):
+            judge_groups[judge_name].append(pair)
+
+    for idx, (judge_name, pairs) in enumerate(judge_groups.items()):
+        gpu_id = gpu_ids[idx % len(gpu_ids)]
+        _judge_batch_with_model(
+            judge_name=judge_name,
+            judge_model=current_model_paths[judge_name],
+            pairs=pairs,
+            gpu_id=gpu_id,
+            batch_size=judge_batch_size,
+            base_dir=base_dir,
+            num_rounds=judge_rounds,
+            max_response_length=judge_max_response_length,
+            temperature=judge_temperature,
+            top_p=judge_top_p,
+        )
+
+    judged_pairs = calculate_judge_averages_sparta(raw_pairs)
+    complete: List[Dict[str, Any]] = []
+    for pair in judged_pairs:
+        weighted = np.zeros(2, dtype=float)
+        total_weight = 0.0
+        for judge_name, judge_info in pair.get("judges", {}).items():
+            if judge_name in pair.get("models", []):
+                continue
+            ave = judge_info.get("ave_scores")
+            if not ave or len(ave) < 2:
+                continue
+            judge_weight = float(model_ratings.get(judge_name, {}).get("score", 1.0))
+            weighted += judge_weight * np.asarray(ave[:2], dtype=float)
+            total_weight += judge_weight
+        if total_weight <= 0.0:
+            pair["scores"] = [5.0, 5.0]
+        else:
+            pair["scores"] = [float(x) for x in weighted / total_weight]
+        model_a, model_b = pair["models"]
+        score_a, score_b = pair["scores"]
+        pair["model_level_scores"] = {model_a: score_a, model_b: score_b}
+        pair["model_level_rewards"] = {
+            model_a: float(np.clip((score_a - 1.0) / 9.0, 0.0, 1.0)),
+            model_b: float(np.clip((score_b - 1.0) / 9.0, 0.0, 1.0)),
+        }
+        pair["score_diff"] = float(score_a - score_b)
+        pair["winner"] = model_a if score_a > score_b else model_b if score_b > score_a else None
+        pair["winner_index"] = 0 if score_a > score_b else 1 if score_b > score_a else None
+        pair["response_summaries"] = {
+            model_a: [
+                {
+                    "reward": pair["model_level_rewards"][model_a],
+                    "raw_score_1_to_10": score_a,
+                    "completion_excerpt": str(pair["responses"][0])[:800],
+                    "judge_scores": {
+                        j: info.get("ave_scores", [None, None])[0]
+                        for j, info in pair.get("judges", {}).items()
+                    },
+                }
+            ],
+            model_b: [
+                {
+                    "reward": pair["model_level_rewards"][model_b],
+                    "raw_score_1_to_10": score_b,
+                    "completion_excerpt": str(pair["responses"][1])[:800],
+                    "judge_scores": {
+                        j: info.get("ave_scores", [None, None])[1]
+                        for j, info in pair.get("judges", {}).items()
+                    },
+                }
+            ],
+        }
+        complete.append(pair)
+    return complete
+
+
+def _build_rating_system(
+    score_type: str,
+    model_ratings: Dict[str, Dict[str, float]],
+    delta_history: Dict[str, List[float]],
+    base_dir: str,
+    iteration: int,
+    hyperparameters: Dict[str, Any],
+) -> RatingSystem:
+    common = dict(
+        model_scores=model_ratings,
+        initial_K=float(hyperparameters.get("initial_k", 10.0)),
+        min_K=float(hyperparameters.get("min_k", 5.0)),
+        delta_history=delta_history,
+        window_size=int(hyperparameters.get("window_size", 10)),
+        min_deviation=float(hyperparameters.get("min_deviation", 0.1)),
+        epsilon=float(hyperparameters.get("epsilon", 0.01)),
+        decay_rate=float(hyperparameters.get("decay_rate", 0.9)),
+        decay_steps=int(hyperparameters.get("decay_steps", 10)),
+        scaling_factor=float(hyperparameters.get("scaling_factor", 20.0)),
+        freeze_ratings=bool(hyperparameters.get("freeze_ratings", False)),
+        debug=bool(hyperparameters.get("debug", False)),
+    )
+    if score_type == "dynamic":
+        return RatingSystemDynamicWeighted(base_dir=base_dir, current_iteration=iteration, **common)
+    if score_type == "static":
+        return RatingSystemStaticWeighted(base_dir=base_dir, current_iteration=iteration, **common)
+    if score_type != "normal":
+        raise ValueError("score_type must be 'normal', 'dynamic', or 'static'.")
+    return RatingSystem(**common)
+
+
+def _request_gemini_multipliers(
+    selector_model: str,
+    prompt: str,
+    observed_indices: set,
+    min_multiplier: float,
+    max_multiplier: float,
+    max_retries: int,
+) -> Tuple[Dict[int, float], str]:
+    if genai is None:
+        raise ImportError("google-genai is not importable.")
+    client = genai.Client(vertexai=True)
+    raw_text = ""
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(model=selector_model, contents=prompt)
+            raw_text = _get_gemini_response_text(response)
+            rows = _extract_json_array(raw_text)
+            multipliers: Dict[int, float] = {}
+            for row in rows:
+                idx = int(row["instruction_idx"])
+                if idx in observed_indices:
+                    multipliers[idx] = float(
+                        np.clip(float(row.get("multiplier", 1.0)), min_multiplier, max_multiplier)
+                    )
+            return multipliers, raw_text
+        except Exception:
+            if attempt == max_retries - 1:
+                raise
+    return {}, raw_text
+
+
+def _gemini_reweight_vector(
+    base_dir: str,
+    iteration: int,
+    leader_key: str,
+    previous_weights: np.ndarray,
+    instructions: List[str],
+    judged_duels: List[Dict[str, Any]],
+    task: str,
+    task_type: str,
+    training_algorithm: str,
+    hyperparameters: Dict[str, Any],
+) -> np.ndarray:
+    observed: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
+    for duel in judged_duels:
+        scores = duel.get("scores")
+        if not isinstance(scores, list) or len(scores) < 2:
+            continue
+        observed[int(duel["instruction_idx"])].append(duel)
+    if not observed:
+        return np.asarray(previous_weights, dtype=float)
+
+    uniform_mix = float(hyperparameters.get("leader_uniform_mix", 0.05))
+    probs = _weights_to_probs(previous_weights, uniform_mix=uniform_mix)
+    records: List[Dict[str, Any]] = []
+    for instruction_idx, rows in observed.items():
+        all_scores: List[float] = []
+        all_rewards: List[float] = []
+        gaps: List[float] = []
+        response_examples: List[Dict[str, Any]] = []
+        for duel in rows:
+            scores = [float(x) for x in duel.get("scores", [])[:2]]
+            if len(scores) == 2:
+                all_scores.extend(scores)
+                gaps.append(abs(scores[0] - scores[1]))
+            rewards = duel.get("model_level_rewards", {})
+            if isinstance(rewards, dict):
+                all_rewards.extend(float(x) for x in rewards.values())
+            for model_name, examples in duel.get("response_summaries", {}).items():
+                for example in examples[:1]:
+                    response_examples.append(
+                        {
+                            "model": model_name,
+                            "reward": example.get("reward"),
+                            "raw_score_1_to_10": example.get("raw_score_1_to_10"),
+                            "completion_excerpt": str(example.get("completion_excerpt", ""))[:400],
+                        }
+                    )
+        records.append(
+            {
+                "instruction_idx": int(instruction_idx),
+                "instruction": instructions[instruction_idx],
+                "old_weight": float(previous_weights[instruction_idx]),
+                "old_prob": float(probs[instruction_idx]),
+                "num_duels": len(rows),
+                "mean_model_score_1_to_10": float(np.mean(all_scores)) if all_scores else 5.0,
+                "mean_reward": float(np.mean(all_rewards)) if all_rewards else 0.5,
+                "std_reward": float(np.std(all_rewards)) if len(all_rewards) > 1 else 0.0,
+                "mean_model_score_gap": float(np.mean(gaps)) if gaps else 0.0,
+                "response_examples": response_examples[:4],
+            }
+        )
+
+    top_indices = np.argsort(probs)[::-1][: min(20, len(probs))]
+    context = {
+        "iteration": int(iteration),
+        "leader_key": leader_key,
+        "training_algorithm": training_algorithm,
+        "task": task,
+        "task_type": task_type,
+        "num_total_instructions": len(instructions),
+        "current_distribution_entropy_normalized": _entropy_normalized(probs),
+        "top_weighted_instructions": [
+            {
+                "instruction_idx": int(i),
+                "prob": float(probs[i]),
+                "weight": float(previous_weights[i]),
+                "instruction": instructions[i][:500],
+            }
+            for i in top_indices
+        ],
+        "observed_instruction_records": records,
     }
+    min_multiplier = float(hyperparameters.get("leader_min_update_multiplier", 1.0 / 3.0))
+    max_multiplier = float(hyperparameters.get("leader_max_update_multiplier", 3.0))
+    selector_model = hyperparameters.get("leader_model", "gemini-3.5-flash")
+    prompt = f"""
+You are the Stackelberg leader for a multi-LLM alignment curriculum.
+The follower optimizer is {training_algorithm.upper()}.
 
-    # Opponent matching parameters
-    opp_select_method = hyperparameters.get("opponent_selection", "schedule_decreasing")
+Increase prompt weights when the evidence suggests a prompt is difficult but learnable and produces useful alignment signal: meaningful response-quality variation, informative peer-judge scores, and non-trivial but not impossible score gaps. Decrease weights for prompts that are too easy, impossible, ambiguous, noisy, or uninformative.
 
-    reputation_gap_sigma = float(hyperparameters.get("reputation_gap_sigma", 0.15))
-     
-    if opp_select_method not in ["lowest_diff", "highest_diff", "schedule_decreasing", "schedule_increasing"]:
-        raise ValueError("Invalid opponent selection method.")
-    
-    
-    opp_select_configs = {
-        "total_iterations": start_iteration + num_iterations,
-        "reputation_gap_sigma": reputation_gap_sigma
+Return ONLY a JSON array with one object for every observed instruction_idx. Each object must contain:
+- "instruction_idx": integer
+- "multiplier": number in [{min_multiplier}, {max_multiplier}]
+- "reason": short string
+
+Do not invent indices and do not include prose outside the JSON array.
+
+Context:
+{json.dumps(context, ensure_ascii=False, indent=2)}
+""".strip()
+
+    raw_text = ""
+    multipliers: Dict[int, float] = {}
+    try:
+        multipliers, raw_text = _request_gemini_multipliers(
+            selector_model=selector_model,
+            prompt=prompt,
+            observed_indices=set(observed),
+            min_multiplier=min_multiplier,
+            max_multiplier=max_multiplier,
+            max_retries=int(hyperparameters.get("max_retries", 5)),
+        )
+    except Exception as exc:
+        print(f"[Stackelberg] Gemini update failed for {leader_key} ({exc}); using deterministic fallback.")
+        qualities: List[float] = []
+        for record in records:
+            score = float(record["mean_model_score_1_to_10"])
+            difficulty = 1.0 - (score - 1.0) / 9.0
+            normalized_gap = float(record["mean_model_score_gap"]) / 9.0
+            gap_quality = math.exp(-((normalized_gap - 0.35) ** 2) / (2.0 * 0.25**2))
+            reward_variance = float(record["std_reward"])
+            qualities.append(0.45 * difficulty + 0.35 * gap_quality + 0.20 * reward_variance)
+        center = float(np.mean(qualities)) if qualities else 0.0
+        for record, quality in zip(records, qualities):
+            multipliers[int(record["instruction_idx"])] = float(
+                np.clip(math.exp(quality - center), min_multiplier, max_multiplier)
+            )
+
+    new_weights = np.maximum(np.asarray(previous_weights, dtype=float).copy(), 1e-12)
+    for idx, multiplier in multipliers.items():
+        new_weights[idx] *= multiplier
+    new_weights = _apply_entropy_floor(
+        new_weights,
+        entropy_floor=float(hyperparameters.get("leader_entropy_floor", 0.30)),
+    )
+    safe_key = _safe_name(leader_key)
+    _save_json(
+        os.path.join(
+            base_dir,
+            f"iteration_{iteration}",
+            "analysis",
+            f"gemini_leader_update_{safe_key}.json",
+        ),
+        {
+            "iteration": int(iteration),
+            "leader_key": leader_key,
+            "context": context,
+            "raw_gemini_text": raw_text,
+            "applied_multipliers": {str(k): float(v) for k, v in multipliers.items()},
+            "old_entropy": _entropy_normalized(probs),
+            "new_entropy": _entropy_normalized(_weights_to_probs(new_weights, uniform_mix=uniform_mix)),
+        },
+    )
+    return new_weights
+
+
+def _update_leader_state(
+    state: Dict[str, Any],
+    judged_duels: List[Dict[str, Any]],
+    instructions: List[str],
+    model_names: List[str],
+    base_dir: str,
+    iteration: int,
+    total_iterations: int,
+    task: str,
+    task_type: str,
+    training_algorithm: str,
+    hyperparameters: Dict[str, Any],
+) -> Dict[str, Any]:
+    leader_type = state["leader_type"]
+    if leader_type == "uniform":
+        return state
+
+    valid_duels = [
+        duel
+        for duel in judged_duels
+        if isinstance(duel.get("scores"), list)
+        and len(duel["scores"]) >= 2
+        and duel.get("instruction_idx") is not None
+    ]
+    if not valid_duels:
+        print("[Stackelberg] No complete scored duels; preserving leader weights.")
+        return state
+
+    if leader_type == "gemini":
+        for key in list(state["weights"]):
+            relevant = valid_duels
+            if state["leader_scope"] == "per_model":
+                relevant = [duel for duel in valid_duels if duel.get("models", [None])[0] == key]
+            state["weights"][key] = _gemini_reweight_vector(
+                base_dir=base_dir,
+                iteration=iteration,
+                leader_key=key,
+                previous_weights=np.asarray(state["weights"][key], dtype=float),
+                instructions=instructions,
+                judged_duels=relevant,
+                task=task,
+                task_type=task_type,
+                training_algorithm=training_algorithm,
+                hyperparameters=hyperparameters,
+            )
+        return state
+
+    # Probabilistic EXP3 leader.
+    instr_configs = {
+        "reward_method": hyperparameters.get("reward_method", "weighted"),
+        "gamma": float(hyperparameters.get("instr_sample_gamma", hyperparameters.get("leader_uniform_mix", 0.2))),
+        "difficulty_reward_weight": float(hyperparameters.get("difficulty_reward_weight", 0.3)),
+        "score_threshold": float(hyperparameters.get("score_threshold", 3.0)),
+        "preference_quality_reward_weight": float(hyperparameters.get("preference_quality_reward_weight", 0.7)),
+        "ideal_start_gap": float(hyperparameters.get("ideal_start_gap", 0.6)),
+        "ideal_end_gap": float(hyperparameters.get("ideal_end_gap", 0.15)),
+        "preference_gap_sigma": float(hyperparameters.get("preference_gap_sigma", 0.15)),
+        "iteration": int(iteration),
     }
+    if instr_configs["reward_method"] not in {"weighted", "difficulty_only", "preference_quality_only"}:
+        raise ValueError("Invalid reward_method for the probabilistic leader.")
 
-    # Rating system parameters
-    initial_K = float(hyperparameters.get("initial_k", 10.0))
-    min_K = float(hyperparameters.get("min_k", 5.0))
+    if state["leader_scope"] == "global":
+        instr_configs["weights"] = np.asarray(state["weights"][_GLOBAL_LEADER_KEY], dtype=float)
+        state["weights"][_GLOBAL_LEADER_KEY] = _update_exp3_weights(
+            instr_select_configs=instr_configs,
+            judged_pairs=valid_duels,
+            instructions=instructions,
+            iterations=total_iterations,
+        )
+    else:
+        instr_configs["weights"] = {
+            model: np.asarray(state["weights"][model], dtype=float)
+            for model in model_names
+        }
+        instr_configs["model_key_by_path"] = {model: model for model in model_names}
+        state["weights"] = _update_exp3_per_model_weights(
+            instr_select_configs=instr_configs,
+            judged_pairs=valid_duels,
+            instructions=instructions,
+            iterations=total_iterations,
+        )
+    return state
+
+
+def _load_ratings_and_history(
+    base_dir: str,
+    iteration: int,
+    model_names: List[str],
+) -> Tuple[Dict[str, Dict[str, float]], Dict[str, List[float]], int]:
+    previous_info_path = os.path.join(base_dir, f"iteration_{iteration - 1}", "model_info.json")
+    if iteration > 0 and os.path.exists(previous_info_path):
+        previous = _read_json(previous_info_path)
+        ratings = {
+            model: {
+                "score": float(previous.get(model, {}).get("score", 100.0)),
+                "deviation": float(previous.get(model, {}).get("deviation", 0.5)),
+            }
+            for model in model_names
+        }
+    else:
+        ratings = {model: {"score": 100.0, "deviation": 0.5} for model in model_names}
+
+    delta_path = os.path.join(base_dir, "rating_deltas.json")
+    history = {model: [] for model in model_names}
+    update_count = 0
+    if os.path.exists(delta_path):
+        try:
+            payload = _read_json(delta_path)
+            raw = payload.get("delta_history", {})
+            history = {model: list(raw.get(model, [])) for model in model_names}
+            update_count = int(payload.get("update_count", 0))
+        except Exception:
+            pass
+    return ratings, history, update_count
+
+
+def _save_ratings_and_history(
+    base_dir: str,
+    iteration: int,
+    ratings: Dict[str, Dict[str, float]],
+    delta_history: Dict[str, List[float]],
+    update_count: int,
+) -> None:
+    _save_json(
+        os.path.join(base_dir, f"iteration_{iteration}", "model_info.json"),
+        {
+            model: {
+                "score": float(info["score"]),
+                "deviation": float(info["deviation"]),
+            }
+            for model, info in ratings.items()
+        },
+    )
+    _save_json(
+        os.path.join(base_dir, "rating_deltas.json"),
+        {"delta_history": delta_history, "update_count": int(update_count)},
+    )
+
+
+def _restore_latest_adapters(
+    base_dir: str,
+    model_names: List[str],
+    start_iteration: int,
+    training_algorithm: str,
+) -> Tuple[Dict[str, str], List[Tuple[int, str, str]]]:
+    current_paths = {model: model for model in model_names}
+    entries: List[Tuple[int, str, str]] = []
+    if start_iteration <= 0:
+        return current_paths, entries
+    prefix = f"{training_algorithm}_"
+    for model in model_names:
+        for previous_iteration in range(start_iteration - 1, -1, -1):
+            candidate = os.path.join(
+                base_dir,
+                f"iteration_{previous_iteration}",
+                f"{prefix}{_safe_name(model)}",
+            )
+            if os.path.isdir(candidate):
+                current_paths[model] = candidate
+                entries.append((previous_iteration, model, candidate))
+                break
+    return current_paths, entries
+
+
+def _write_grpo_train_files_by_model(
+    duels: List[Dict[str, Any]],
+    model_names: List[str],
+    dataset_dir: str,
+) -> Dict[str, str]:
+    os.makedirs(dataset_dir, exist_ok=True)
+    rows_by_model: Dict[str, List[Dict[str, Any]]] = {model: [] for model in model_names}
+    for duel in duels:
+        model_a, model_b = duel["models"]
+        judges_json = json.dumps(duel["judge_names"], ensure_ascii=False)
+        for active_model, opponent_model in ((model_a, model_b), (model_b, model_a)):
+            rows_by_model[active_model].append(
+                {
+                    "prompt": duel["instruction"],
+                    "instruction_idx": int(duel["instruction_idx"]),
+                    "duel_id": int(duel["duel_id"]),
+                    "active_model": active_model,
+                    "opponent_model": opponent_model,
+                    "judge_names_json": judges_json,
+                }
+            )
+    paths: Dict[str, str] = {}
+    for model, rows in rows_by_model.items():
+        if not rows:
+            continue
+        path = os.path.join(dataset_dir, f"grpo_prompts_{_safe_name(model)}.jsonl")
+        if os.path.exists(path):
+            os.remove(path)
+        _append_jsonl(path, rows)
+        paths[model] = path
+    return paths
+
+
+def _load_reward_log(path: str) -> List[Dict[str, Any]]:
+    if not os.path.exists(path):
+        return []
+    rows: List[Dict[str, Any]] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(json.loads(line))
+            except Exception:
+                continue
+    return rows
+
+
+def _aggregate_grpo_reward_logs(
+    duels: List[Dict[str, Any]],
+    trained_output_paths_by_model: Dict[str, str],
+) -> List[Dict[str, Any]]:
+    reward_rows: List[Dict[str, Any]] = []
+    for output_path in trained_output_paths_by_model.values():
+        reward_rows.extend(_load_reward_log(os.path.join(output_path, "reward_logs", "online_rewards.jsonl")))
+
+    by_duel_model: Dict[int, Dict[str, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
+    for row in reward_rows:
+        try:
+            duel_id = int(row.get("duel_id"))
+            model_name = str(row.get("model_name"))
+        except Exception:
+            continue
+        by_duel_model[duel_id][model_name].append(row)
+
+    judged_duels: List[Dict[str, Any]] = []
+    for duel in duels:
+        duel_id = int(duel["duel_id"])
+        model_scores: Dict[str, float] = {}
+        model_rewards: Dict[str, float] = {}
+        response_summaries: Dict[str, List[Dict[str, Any]]] = {}
+        for model_name in duel["models"]:
+            rows = by_duel_model.get(duel_id, {}).get(model_name, [])
+            if not rows:
+                continue
+            raw_scores = [float(row.get("raw_score_1_to_10", 5.0)) for row in rows]
+            rewards = [float(row.get("reward", 0.0)) for row in rows]
+            model_scores[model_name] = float(np.mean(raw_scores))
+            model_rewards[model_name] = float(np.mean(rewards))
+            sorted_rows = sorted(rows, key=lambda row: float(row.get("reward", 0.0)), reverse=True)
+            candidates = sorted_rows[:2] + sorted_rows[-2:] if len(sorted_rows) > 2 else sorted_rows
+            summaries: List[Dict[str, Any]] = []
+            seen = set()
+            for row in candidates:
+                key = (str(row.get("completion", "")), float(row.get("reward", 0.0)))
+                if key in seen:
+                    continue
+                seen.add(key)
+                summaries.append(
+                    {
+                        "reward": float(row.get("reward", 0.0)),
+                        "raw_score_1_to_10": float(row.get("raw_score_1_to_10", 5.0)),
+                        "completion_excerpt": str(row.get("completion", ""))[:800],
+                        "judge_scores": row.get("judge_scores", {}),
+                    }
+                )
+            response_summaries[model_name] = summaries
+
+        scored = dict(duel)
+        scored["model_level_scores"] = model_scores
+        scored["model_level_rewards"] = model_rewards
+        scored["response_summaries"] = response_summaries
+        model_a, model_b = duel["models"]
+        if model_a in model_scores and model_b in model_scores:
+            score_a = model_scores[model_a]
+            score_b = model_scores[model_b]
+            scored["scores"] = [score_a, score_b]
+            scored["score_diff"] = float(score_a - score_b)
+            scored["winner"] = model_a if score_a > score_b else model_b if score_b > score_a else None
+            scored["winner_index"] = 0 if score_a > score_b else 1 if score_b > score_a else None
+        else:
+            scored["scores"] = []
+            scored["score_diff"] = None
+            scored["winner"] = None
+            scored["winner_index"] = None
+        judged_duels.append(scored)
+    return judged_duels
+
+
+def _update_reputations_from_grpo_duels(
+    model_ratings: Dict[str, Dict[str, float]],
+    judged_duels: List[Dict[str, Any]],
+    delta_history: Dict[str, List[float]],
+    update_count: int,
+    hyperparameters: Dict[str, Any],
+) -> Tuple[Dict[str, Dict[str, float]], Dict[str, List[float]], int, List[Dict[str, Any]]]:
+    if bool(hyperparameters.get("freeze_ratings", False)):
+        return model_ratings, delta_history, update_count, []
+
+    initial_k = float(hyperparameters.get("initial_k", 10.0))
+    min_k = float(hyperparameters.get("min_k", 5.0))
     window_size = int(hyperparameters.get("window_size", 10))
     min_deviation = float(hyperparameters.get("min_deviation", 0.1))
     epsilon = float(hyperparameters.get("epsilon", 0.01))
     decay_rate = float(hyperparameters.get("decay_rate", 0.9))
-    decay_steps = int(hyperparameters.get("decay_steps", 10))
+    decay_steps = float(hyperparameters.get("decay_steps", 10))
     scaling_factor = float(hyperparameters.get("scaling_factor", 20.0))
-    score_type = hyperparameters.get("score_type", "normal")  # normal / dynamic / static
-    freeze_ratings = bool(hyperparameters.get("freeze_ratings", False))
     debug = bool(hyperparameters.get("debug", False))
+    rating_history: List[Dict[str, Any]] = []
 
-    # Track current model paths (for adapter handling across iterations)
-    # model_names are already HuggingFace identifiers, use them directly
-    current_model_paths: Dict[str, str] = {m: m for m in model_names}
+    for duel_index, duel in enumerate(judged_duels):
+        scores = duel.get("scores")
+        if not isinstance(scores, list) or len(scores) < 2:
+            continue
+        model_a, model_b = duel["models"]
+        score_diff = float(scores[0] - scores[1])
+        update_count += 1
+        k_value = max(min_k, initial_k * (decay_rate ** (update_count / max(decay_steps, 1e-12))))
+        model_deltas: Dict[str, List[float]] = {model: [] for model in model_ratings}
+        for index, model_i in enumerate((model_a, model_b)):
+            model_j = model_b if index == 0 else model_a
+            rating_i = float(model_ratings[model_i]["score"])
+            rating_j = float(model_ratings[model_j]["score"])
+            sigma_i = float(model_ratings[model_i]["deviation"])
+            sigma_j = float(model_ratings[model_j]["deviation"])
+            combined = math.sqrt(sigma_i**2 + sigma_j**2) or 1e-6
+            phi_forward = 0.5 * (1.0 + math.erf((rating_i - rating_j) / (math.sqrt(2.0) * combined)))
+            phi_backward = 0.5 * (1.0 + math.erf((rating_j - rating_i) / (math.sqrt(2.0) * combined)))
+            signed_diff = score_diff if index == 0 else -score_diff
+            delta = (
+                k_value
+                * signed_diff
+                * math.tanh(sigma_i)
+                * max(abs(phi_forward - phi_backward), epsilon)
+                / max(scaling_factor, 1e-12)
+            )
+            new_rating = max(10.0, rating_i + delta)
+            actual_delta = new_rating - rating_i
+            model_ratings[model_i]["score"] = new_rating
+            model_deltas[model_i].append(actual_delta)
 
-    all_adapter_entries: List[Tuple[int, str, str]] = []
-
-    # If resuming from a later iteration, restore the latest existing adapter for each model.
-    if start_iteration > 0:
-        for m in model_names:
-            for prev_it in range(start_iteration - 1, -1, -1):
-                candidate_path = os.path.join(
-                    base_dir,
-                    f"iteration_{prev_it}",
-                    f"dpo_{_safe_name(m)}",
+        for model, deltas in model_deltas.items():
+            if not deltas:
+                continue
+            delta_history.setdefault(model, []).extend(deltas)
+            delta_history[model] = delta_history[model][-window_size:]
+            if len(delta_history[model]) >= 2:
+                model_ratings[model]["deviation"] = max(
+                    float(np.std(delta_history[model])),
+                    min_deviation,
                 )
-                if os.path.isdir(candidate_path):
-                    current_model_paths[m] = candidate_path
-                    break
-
-    for it in range(num_iterations):
-        iteration = start_iteration + it  # the global iteration number of the current iteration
-
-        # ------------------------- 2. Initialize / Read the previous iteration's model_ratings + delta_history -------------------------
-        iter_dir_prev = os.path.join(base_dir, f"iteration_{iteration-1}")
-        model_info_path_prev = os.path.join(iter_dir_prev, "model_info.json")
-        if iteration > 0 and os.path.exists(model_info_path_prev):
-            with open(model_info_path_prev, "r", encoding="utf-8") as f:
-                prev_info = json.load(f)
-            model_ratings: Dict[str, Dict[str, float]] = {
-                m: {
-                    "score": float(prev_info[m].get("score", 100.0)),
-                    "deviation": float(prev_info[m].get("deviation", 0.5)),
-                }
-                for m in prev_info
+        rating_history.append(
+            {
+                "duel_index": duel_index,
+                "duel_id": duel.get("duel_id"),
+                "duel": duel,
+                "ratings": {
+                    model: {
+                        "score": float(info["score"]),
+                        "deviation": float(info["deviation"]),
+                    }
+                    for model, info in model_ratings.items()
+                },
             }
-        else:
-            model_ratings = {m: {"score": 100.0, "deviation": 0.5} for m in model_names}
-        for m in model_names:
-            model_ratings.setdefault(m, {"score": 100.0, "deviation": 0.5})
-
-        delta_history_path = os.path.join(base_dir, "rating_deltas.json")
-        delta_history: Dict[str, List[float]] = {m: [] for m in model_ratings}
-        update_count = 0
-        if os.path.exists(delta_history_path):
-            try:
-                with open(delta_history_path, "r", encoding="utf-8") as f:
-                    payload = json.load(f)
-                raw_hist = payload.get("delta_history", {})
-                for m in model_ratings:
-                    delta_history[m] = raw_hist.get(m, [])
-                update_count = int(payload.get("update_count", 0))
-            except Exception:
-                pass
-
-        # ------------------------- 3. Prepare dev instructions -------------------------
-        all_instructions = eval.prepare_inputs(task, task_type, "dev")
-        instructions = all_instructions[:min(num_instructions, len(all_instructions))]
-        print(f"[Sparta] Iter {iteration}: Using {len(instructions)} dev instructions.")
-
-        # ------------------------- 4. pairwise competition -------------------------
-        model_reputation = {current_model_paths[m]: model_ratings[m]["score"] for m in model_names}
-        
-        if instr_select_method == "exp3":
-            instr_select_configs["iteration"] = iteration
-
-            if "weights" not in instr_select_configs:
-                instr_select_configs["weights"] = np.ones(len(instructions), dtype=float)
-
-        elif instr_select_method == "exp3_per_model":
-            instr_select_configs["iteration"] = iteration
-            instr_select_configs["model_key_by_path"] = {
-                current_model_paths[m]: m for m in model_names
-            }
-
-            if "weights" not in instr_select_configs:
-                instr_select_configs["weights"] = {
-                    m: np.ones(len(instructions), dtype=float) for m in model_names
-                }
-        
-        opp_select_configs["iteration"] = iteration
-    
-        raw_pairs = _pairwise_competition(
-            gpu_ids=gpu_ids,
-            model_names=[current_model_paths[m] for m in model_names],
-            instructions=instructions,
-            instr_select_method=instr_select_method,
-            opp_select_method=opp_select_method,
-            instr_select_configs=instr_select_configs,
-            opp_select_configs=opp_select_configs,
-            random_match_prob=random_match_prob,
-            num_opponents=num_opponents,
-            model_reputation=model_reputation,
-            max_response_length=max_response_length,
-            temperature=temperature,
-            top_p=top_p,
-            batch_size=batch_size,
         )
-        print(f"[Sparta] Iter {iteration}: Generated {len(raw_pairs)} raw pairs.")
-        if not raw_pairs:
-            continue
+        if debug:
+            print(f"[Stackelberg] GRPO rating update {duel_index}: score_diff={score_diff:.3f}")
+    return model_ratings, delta_history, update_count, rating_history
 
-        # ------------------------- 5. Multiple judges scoring + ave_scores -------------------------
-        # Optimize: Group pairs by judge models to avoid loading models multiple times
-        # For each pair, judges are models from the pool that didn't participate in that specific competition
-        # pair["models"] contains model paths (from current_model_paths), need to map back to original names
-        # Build reverse mapping: model_path -> original_model_name
-        path_to_name = {current_model_paths.get(m, m): m for m in model_names}
-        
-        # Step 1: Collect all pairs that need judging and group them by judge model
-        # judge_model_path -> list of pairs that need this judge
-        judge_groups: Dict[str, List[Dict[str, Any]]] = {}
-        pairs_without_judges: List[Dict[str, Any]] = []
-        
-        for pair in raw_pairs:
-            # Get the two model paths that competed in this pair
-            competing_model_paths = pair.get("models", [])
-            # Map back to original model names
-            competing_model_names = {path_to_name.get(path, path) for path in competing_model_paths}
-            # Judges are all models in the pool except the two that competed
-            pair_judge_models = [m for m in model_names if m not in competing_model_names]
-            
-            if not pair_judge_models:
-                # If all models competed, skip judging (shouldn't happen with >2 models)
-                pairs_without_judges.append(pair)
-                continue
-            
-            # Group pairs by judge model path
-            for judge_model_name in pair_judge_models:
-                judge_model_path = current_model_paths.get(judge_model_name, judge_model_name)
-                if judge_model_path not in judge_groups:
-                    judge_groups[judge_model_path] = []
-                # Use the same pair object reference so modifications are in-place
-                judge_groups[judge_model_path].append(pair)
-        
-        # Step 2: Judge all pairs for each judge model in one batch (avoids reloading models)
-        judge_paths_list = list(judge_groups.keys())
-        
-        for idx, judge_model_path in enumerate(judge_paths_list):
-            # Get the original judge model name for judge_name
-            judge_model_name = None
-            for m in model_names:
-                if current_model_paths.get(m, m) == judge_model_path:
-                    judge_model_name = m
-                    break
-            if judge_model_name is None:
-                judge_model_name = judge_model_path
-            
-            # Assign GPU for this judge model (round-robin)
-            gpu_id = gpu_ids[idx % len(gpu_ids)]
-            
-            pairs_to_judge = judge_groups[judge_model_path]
-            print(f"[Sparta] Iter {iteration}: Judging {len(pairs_to_judge)} pairs with judge {judge_model_name} on GPU {gpu_id}")
-            
-            # Judge all pairs for this judge model in one batch
-            # Note: _judge_batch_with_model modifies pairs in-place, so raw_pairs will be updated
-            _judge_batch_with_model(
-                judge_name=judge_model_name,
-                judge_model=judge_model_path,
-                pairs=pairs_to_judge,
-                gpu_id=gpu_id,
-                batch_size=judge_batch_size,
-                base_dir=base_dir,
-                num_rounds=judge_rounds,
-                max_response_length=max_response_length,
-                temperature=temperature,
-                top_p=top_p,
-            )
-        
-        # Step 3: Collect all judged pairs and calculate averages
-        # raw_pairs already contains the judged results since we passed references to _judge_batch_with_model
-        # Add pairs that didn't need judging
-        judged_pairs = raw_pairs.copy()
-        judged_pairs.extend(pairs_without_judges)
-        
-        # Calculate judge averages (required before computing weighted scores)
-        judged_pairs = calculate_judge_averages_sparta(judged_pairs)
 
-        for pair in judged_pairs:
-            judges = pair.get("judges", {})
-            if not judges:
-                continue
-            w0_sum = w1_sum = total_weight = 0.0
-            for jname, jinfo in judges.items():
-                ave = jinfo.get("ave_scores")
-                if not ave or len(ave) < 2:
-                    continue
-                score_a, score_b = float(ave[0]), float(ave[1])
-                judge_weight = float(model_ratings.get(jname, {}).get("score", 1.0))
-                w0_sum += judge_weight * score_a
-                w1_sum += judge_weight * score_b
-                total_weight += judge_weight
-            if total_weight <= 0:
-                continue
-            pair["scores"] = [w0_sum / total_weight, w1_sum / total_weight]
+def _run_dpo_iteration(
+    task: str,
+    task_type: str,
+    gpu_ids: List[int],
+    model_names: List[str],
+    hyperparameters: Dict[str, Any],
+    base_dir: str,
+    iteration: int,
+    total_iterations: int,
+    instructions: List[str],
+    current_model_paths: Dict[str, str],
+    leader_state: Dict[str, Any],
+    model_ratings: Dict[str, Dict[str, float]],
+    delta_history: Dict[str, List[float]],
+    update_count: int,
+) -> Tuple[Dict[str, str], Dict[str, Any], Dict[str, Dict[str, float]], Dict[str, List[float]], int, List[Tuple[int, str, str]]]:
+    iter_dir = os.path.join(base_dir, f"iteration_{iteration}")
+    os.makedirs(iter_dir, exist_ok=True)
+    seed = int(hyperparameters.get("seed", 42)) + iteration
+    random.seed(seed)
+    np.random.seed(seed)
 
-        judged_pairs = _aggregate_scores(judged_pairs)
-
-        if instr_select_method == "exp3":
-            instr_select_configs["weights"] = _update_exp3_weights(
-                instr_select_configs=instr_select_configs,
-                judged_pairs=judged_pairs,
-                instructions=instructions,
-                iterations=start_iteration + num_iterations
-            )
-        elif instr_select_method == "exp3_per_model":
-            instr_select_configs["weights"] = _update_exp3_per_model_weights(
-                instr_select_configs=instr_select_configs,
-                judged_pairs=judged_pairs,
-                instructions=instructions,
-                iterations=start_iteration + num_iterations,
-            )
-
-        save_exp3_weights(
-            base_dir=base_dir,
-            iteration=iteration,
-            instr_select_method=instr_select_method,
-            instr_select_configs=instr_select_configs,
-            instructions=instructions,
-        )
-
-        # ------------------------- 6. RatingSystem update (normal / dynamic / static) -------------------------
-        if score_type == "dynamic":
-            rating_system = RatingSystemDynamicWeighted(
-                model_scores=model_ratings,
-                initial_K=initial_K,
-                min_K=min_K,
-                delta_history=delta_history,
-                base_dir=base_dir,
-                current_iteration=iteration,
-                window_size=window_size,
-                min_deviation=min_deviation,
-                epsilon=epsilon,
-                decay_rate=decay_rate,
-                decay_steps=decay_steps,
-                scaling_factor=scaling_factor,
-                freeze_ratings=freeze_ratings,
-                debug=debug,
-            )
-        elif score_type == "static":
-            rating_system = RatingSystemStaticWeighted(
-                model_scores=model_ratings,
-                initial_K=initial_K,
-                min_K=min_K,
-                delta_history=delta_history,
-                base_dir=base_dir,
-                current_iteration=iteration,
-                window_size=window_size,
-                min_deviation=min_deviation,
-                epsilon=epsilon,
-                decay_rate=decay_rate,
-                decay_steps=decay_steps,
-                scaling_factor=scaling_factor,
-                freeze_ratings=freeze_ratings,
-                debug=debug,
-            )
-        else:
-            rating_system = RatingSystem(
-                model_scores=model_ratings,
-                initial_K=initial_K,
-                min_K=min_K,
-                delta_history=delta_history,
-                window_size=window_size,
-                min_deviation=min_deviation,
-                epsilon=epsilon,
-                decay_rate=decay_rate,
-                decay_steps=decay_steps,
-                scaling_factor=scaling_factor,
-                freeze_ratings=freeze_ratings,
-                debug=debug,
-            )
-        
-        rating_system.update_count = update_count
-
-        rating_history: List[Dict[str, Any]] = []
-        for idx_pair, pair in enumerate(judged_pairs):
-            # Map adapter paths in pair["models"] back to original model names for rating system
-            # Create a copy to avoid modifying the original pair
-            pair_for_rating = pair.copy()
-            if "models" in pair_for_rating:
-                original_models = []
-                for model_path in pair_for_rating["models"]:
-                    # Map adapter path back to original model name
-                    original_name = path_to_name.get(model_path, model_path)
-                    original_models.append(original_name)
-                pair_for_rating["models"] = original_models
-            
-            rating_system.update_ratings_from_judges(pair_for_rating)
-            current_ratings = rating_system.get_all_ratings()
-            rating_history.append(
-                {
-                    "pair_index": idx_pair,
-                    "pair": pair,
-                    "ratings": {
-                        model: {
-                            "score": info["score"],
-                            "deviation": info["deviation"],
-                        }
-                        for model, info in current_ratings.items()
-                    },
-                }
-            )
-
-        model_ratings = rating_system.get_all_ratings()
-
-        # Write the latest delta_history back (RatingSystem has already updated self.delta_history)
-        delta_history = rating_system.delta_history if hasattr(
-            rating_system, "delta_history"
-        ) else delta_history
-
-        # ------------------------- 7. Save model_info.json and rating_deltas.json + rating_history -------------------------
-        iter_dir = os.path.join(base_dir, f"iteration_{iteration}")
-        os.makedirs(iter_dir, exist_ok=True)
-
-        model_info_path = os.path.join(iter_dir, "model_info.json")
-        serializable_info = {
-            m: {
-                "score": float(model_ratings[m]["score"]),
-                "deviation": float(model_ratings[m]["deviation"]),
-            }
-            for m in model_ratings
-        }
-        with open(model_info_path, "w", encoding="utf-8") as f:
-            json.dump(serializable_info, f, ensure_ascii=False, indent=2)
-        print(f"[Sparta] Iter {iteration}: Saved model_info to {model_info_path}")
-
-        payload = {"delta_history": delta_history, "update_count": getattr(rating_system, "update_count", 0)}
-        with open(delta_history_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
-
-        save_rating_history_sparta(rating_history, base_dir, iteration)
-        save_judged_pairs_sparta(judged_pairs, base_dir, iteration)
-
-        # ------------------------- 8. Generate preference_pairs (using select_preference_response + filter_tie) -------------------------
-        preference_pairs: List[Dict[str, Any]] = []
-        for pair in judged_pairs:
-            # Map adapter paths in pair["models"] back to original model names for rating system
-            # Create a copy to avoid modifying the original pair
-            pair_for_pref = pair.copy()
-            if "models" in pair_for_pref:
-                original_models = []
-                for model_path in pair_for_pref["models"]:
-                    # Map adapter path back to original model name
-                    original_name = path_to_name.get(model_path, model_path)
-                    original_models.append(original_name)
-                pair_for_pref["models"] = original_models
-            
-            pref = rating_system.select_preference_response(pair_for_pref)
-            if pref is not None:
-                preference_pairs.append(pref)
-
-        old_len = len(preference_pairs)
-        preference_pairs = filter_tie_sparta(preference_pairs)
-        logger.info(
-            f"[Sparta] Iter {iteration}: preference_pairs {old_len} -> {len(preference_pairs)} after tie filter"
-        )
-
-        dataset_dir = os.path.join(iter_dir, "dataset")
-        pref_path = save_preference_pairs_to_json_sparta(preference_pairs, dataset_dir)
-
-        # ------------------------- 9. DPO training -------------------------
-        # DPO is performed to update models based on preference pairs
-        if preference_pairs and pref_path:
-            dpo_data_paths = [pref_path for _ in model_names]
-            dpo_gpu_ids = gpu_ids[: len(model_names)] or [0]
-            
-            dpo_output_model_paths = [
-                os.path.join(iter_dir, f"dpo_{_safe_name(m)}")
-                for m in model_names
-            ]
-
-            # Use current_model_paths to get actual model paths (supports adapters from previous iterations)
-            # This allows DPO to be applied on top of previously trained adapters.
-            dpo_hf_model_names = [
-                current_model_paths.get(m, m) for m in model_names
-            ]
-
-            print(f"[Sparta] Iter {iteration}: Starting DPO for {model_names}")
-            # Use default DPO hyperparameters: batch_size=1, gradient_accumulation_steps=16, learning_rate=1e-6, epoch=1
-            distributed_dpo.distributed_dpo(
-                list_of_model_names=dpo_hf_model_names,
-                list_of_dpo_data_paths=dpo_data_paths,
-                list_of_gpu_ids=dpo_gpu_ids,
-                list_of_output_model_paths=dpo_output_model_paths,
-            )
-            print(f"[Sparta] Iter {iteration}: DPO finished.")
-            
-            # Update current_model_paths to use DPO-trained adapter paths for next iteration
-            # This mirrors the approach in text_multiagent_finetuning.py where
-            # finetuned model paths replace the base model paths.
-            for idx, m in enumerate(model_names):
-                current_model_paths[m] = dpo_output_model_paths[idx]
-                all_adapter_entries.append((iteration, m, dpo_output_model_paths[idx]))
-                print(f"[Sparta] Iter {iteration}: Updated model path for {m} -> {dpo_output_model_paths[idx]}")
-
-    # ------------------------- 10. Final evaluation: evaluate ALL adapters from ALL iterations on dev, then pick best for test -------------------------
-    print(f"[Sparta] All iterations completed. Evaluating all adapters on dev set...")
-
-    # 1) Collect all adapter paths from every iteration for every model.
-    # Adapter directory names are stable: iteration_k/dpo_<original_model_name>.
-    discovered_adapter_entries: List[Tuple[int, str, str]] = []
-    for eval_it in range(start_iteration, start_iteration + num_iterations):
-        iter_dir_eval = os.path.join(base_dir, f"iteration_{eval_it}")
-        if not os.path.isdir(iter_dir_eval):
-            continue
-        for m in model_names:
-            candidate_path = os.path.join(iter_dir_eval, f"dpo_{_safe_name(m)}")
-            if os.path.isdir(candidate_path):
-                discovered_adapter_entries.append((eval_it, m, candidate_path))
-
-    # Combine adapters created in this run with adapters discovered on disk.
-    combined_adapter_entries: List[Tuple[int, str, str]] = []
-    seen_adapter_paths = set()
-    for entry in all_adapter_entries + discovered_adapter_entries:
-        if entry[2] in seen_adapter_paths:
-            continue
-        seen_adapter_paths.add(entry[2])
-        combined_adapter_entries.append(entry)
-    all_adapter_entries = combined_adapter_entries
-
-    # If no adapters were found (e.g., no preference_pairs), fall back to using the final current_model_paths
-    if not all_adapter_entries:
-        print("[Sparta] No DPO adapters found across iterations; falling back to final models only.")
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
-        list_of_input_list = [dev_input_list for _ in model_names]
-        final_model_paths = [current_model_paths.get(m, m) for m in model_names]
-        list_of_output_list = distributed_generation.distributed_generation(
-            final_model_paths,
-            list_of_input_list,
-            gpu_ids,
-        )
-
-        list_of_dev_scores = []
-        for i in range(len(model_names)):
-            dev_outputs = list_of_output_list[i]
-            dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
-            avg_dev_score = sum(dev_score) / len(dev_score)
-            list_of_dev_scores.append(avg_dev_score)
-            print(f"[Sparta] Final model {model_names[i]}: dev {task} score: {avg_dev_score}")
-
-        best_model_index = list_of_dev_scores.index(max(list_of_dev_scores))
-        best_model_name = model_names[best_model_index]
-        best_model_path = final_model_paths[best_model_index]
-        best_model_iteration = start_iteration + num_iterations - 1
-        print(
-            f"[Sparta] Best model (no adapters case) selected for test evaluation: "
-            f"{best_model_name} from iteration {best_model_iteration} "
-            f"(dev score: {list_of_dev_scores[best_model_index]})"
-        )
-        per_model_dev_scores = {
-            model_names[i]: list_of_dev_scores[i] for i in range(len(model_names))
-        }
-    else:
-        # 2) Evaluate every (iteration, model, adapter_path) on dev set
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
-        list_of_input_list = [dev_input_list for _ in all_adapter_entries]
-        adapter_paths = [entry[2] for entry in all_adapter_entries]
-
-        list_of_output_list = distributed_generation.distributed_generation(
-            adapter_paths,
-            list_of_input_list,
-            gpu_ids,
-        )
-
-        adapter_dev_scores: List[float] = []
-        adapter_keys: List[str] = []
-        adapter_dev_records: List[Dict[str, Any]] = []
-        per_model_dev_scores = {}
-
-        for idx, ((it, m, path), outputs) in enumerate(
-            zip(all_adapter_entries, list_of_output_list)
-        ):
-            dev_score = eval.get_scores(task, task_type, "dev", outputs)
-            avg_dev_score = sum(dev_score) / len(dev_score)
-
-            adapter_dev_scores.append(avg_dev_score)
-            key = f"{m}_iter{it}"
-            adapter_keys.append(key)
-            per_model_dev_scores[key] = avg_dev_score
-
-            adapter_dev_records.append({
-                    "adapter_key": key,
-                    "model": m,
-                    "iteration": int(it),
-                    "adapter_path": path,
-                    "dev_score": float(avg_dev_score),
-                })
-
-            print(
-                f"[Sparta] Adapter {key} ({path}): dev {task} score: {avg_dev_score}"
-            )
-        
-        save_adapter_dev_scores(base_dir, adapter_dev_records)
-
-        # 3) Select the best adapter across all iterations and models
-        best_idx = adapter_dev_scores.index(max(adapter_dev_scores))
-        best_iter, best_model_name, best_model_path = all_adapter_entries[best_idx]
-        print(
-            f"[Sparta] Best adapter selected for test evaluation: {best_model_name} "
-            f"from iteration {best_iter} (dev score: {adapter_dev_scores[best_idx]})"
-        )
-    
-    # 4) Evaluate best model on test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
-    test_output_list = distributed_generation.distributed_generation(
-        [best_model_path],
-        [test_input_list],
-        gpu_ids
+    num_duels = int(hyperparameters.get("num_duels_per_iteration", len(instructions)))
+    duels = _sample_duels_unified(
+        instructions=instructions,
+        model_names=model_names,
+        model_ratings=model_ratings,
+        leader_state=leader_state,
+        num_duels=num_duels,
+        leader_uniform_mix=float(
+            hyperparameters.get("leader_uniform_mix", hyperparameters.get("instr_sample_gamma", 0.2))
+        ),
+        random_match_prob=float(hyperparameters.get("random_match_prob", 0.2)),
+        num_opponents=int(hyperparameters.get("num_opponents", 3)),
+        opponent_selection=hyperparameters.get("opponent_selection", "schedule_decreasing"),
+        iteration=iteration,
+        total_iterations=total_iterations,
+        reputation_gap_sigma=float(hyperparameters.get("reputation_gap_sigma", 0.15)),
     )
-    final_output_list = test_output_list[0]
-    
-    # Evaluate the final outputs
-    test_scores = eval.get_scores(task, task_type, "test", final_output_list)
-    avg_test_score = sum(test_scores) / len(test_scores)
-    print(f"[Sparta] Final test {task} score: {avg_test_score}")
-    
-    # 5) Save the logs
-    experiment_logs = {
+    _save_prompt_sampling_manifest(base_dir, iteration, duels)
+
+    raw_pairs = _generate_offline_duel_responses(
+        duels=duels,
+        current_model_paths=current_model_paths,
+        gpu_ids=gpu_ids,
+        max_response_length=int(hyperparameters.get("max_response_length", 256)),
+        temperature=float(hyperparameters.get("temperature", 0.7)),
+        top_p=float(hyperparameters.get("top_p", 0.9)),
+        batch_size=int(hyperparameters.get("batch_size", 1)),
+        max_parallel_models=int(hyperparameters.get("max_parallel_generation_models", len(gpu_ids))),
+    )
+    print(f"[Stackelberg] Iter {iteration}: generated {len(raw_pairs)} offline duel pairs.")
+    if not raw_pairs:
+        return current_model_paths, leader_state, model_ratings, delta_history, update_count, []
+
+    judged_pairs = _judge_offline_duels(
+        raw_pairs=raw_pairs,
+        model_names=model_names,
+        current_model_paths=current_model_paths,
+        model_ratings=model_ratings,
+        gpu_ids=gpu_ids,
+        base_dir=base_dir,
+        judge_batch_size=int(hyperparameters.get("judge_batch_size", 8)),
+        judge_rounds=int(hyperparameters.get("judge_rounds", 1)),
+        judge_max_response_length=int(hyperparameters.get("judge_max_response_length", 64)),
+        judge_temperature=float(hyperparameters.get("judge_temperature", 1e-5)),
+        judge_top_p=float(hyperparameters.get("judge_top_p", 1.0)),
+    )
+    save_judged_pairs_sparta(judged_pairs, base_dir, iteration)
+
+    score_type = hyperparameters.get("score_type", "normal")
+    rating_system = _build_rating_system(
+        score_type=score_type,
+        model_ratings=model_ratings,
+        delta_history=delta_history,
+        base_dir=base_dir,
+        iteration=iteration,
+        hyperparameters=hyperparameters,
+    )
+    rating_system.update_count = update_count
+    rating_history: List[Dict[str, Any]] = []
+    for pair_index, pair in enumerate(judged_pairs):
+        rating_system.update_ratings_from_judges(pair)
+        rating_history.append(
+            {
+                "pair_index": pair_index,
+                "pair": pair,
+                "ratings": {
+                    model: {
+                        "score": float(info["score"]),
+                        "deviation": float(info["deviation"]),
+                    }
+                    for model, info in rating_system.get_all_ratings().items()
+                },
+            }
+        )
+    model_ratings = rating_system.get_all_ratings()
+    delta_history = rating_system.delta_history
+    update_count = int(rating_system.update_count)
+    _save_ratings_and_history(base_dir, iteration, model_ratings, delta_history, update_count)
+    save_rating_history_sparta(rating_history, base_dir, iteration)
+
+    leader_state = _update_leader_state(
+        state=leader_state,
+        judged_duels=judged_pairs,
+        instructions=instructions,
+        model_names=model_names,
+        base_dir=base_dir,
+        iteration=iteration,
+        total_iterations=total_iterations,
+        task=task,
+        task_type=task_type,
+        training_algorithm="dpo",
+        hyperparameters=hyperparameters,
+    )
+
+    preference_pairs: List[Dict[str, Any]] = []
+    for pair in judged_pairs:
+        preference = rating_system.select_preference_response(pair)
+        if preference is not None:
+            preference_pairs.append(preference)
+    preference_pairs = filter_tie_sparta(preference_pairs)
+    dataset_dir = os.path.join(iter_dir, "dataset")
+    preference_path = save_preference_pairs_to_json_sparta(preference_pairs, dataset_dir)
+
+    new_entries: List[Tuple[int, str, str]] = []
+    if preference_pairs and preference_path:
+        output_paths = [os.path.join(iter_dir, f"dpo_{_safe_name(model)}") for model in model_names]
+        _call_with_supported_kwargs(
+            distributed_dpo.distributed_dpo,
+            {
+                "list_of_model_names": [current_model_paths[model] for model in model_names],
+                "list_of_dpo_data_paths": [preference_path for _ in model_names],
+                "list_of_gpu_ids": gpu_ids[: len(model_names)] or [gpu_ids[0]],
+                "list_of_output_model_paths": output_paths,
+                "parallel_training": bool(hyperparameters.get("parallel_dpo_training", True)),
+                "batch_size": int(hyperparameters.get("dpo_batch_size", 1)),
+                "gradient_accumulation_steps": int(hyperparameters.get("dpo_gradient_accumulation_steps", 16)),
+                "learning_rate": float(hyperparameters.get("dpo_learning_rate", 1e-6)),
+                "epoch": float(hyperparameters.get("dpo_epoch", 1.0)),
+            },
+        )
+        for model, output_path in zip(model_names, output_paths):
+            current_model_paths[model] = output_path
+            new_entries.append((iteration, model, output_path))
+    return current_model_paths, leader_state, model_ratings, delta_history, update_count, new_entries
+
+
+def _run_grpo_iteration(
+    task: str,
+    task_type: str,
+    gpu_ids: List[int],
+    model_names: List[str],
+    hyperparameters: Dict[str, Any],
+    base_dir: str,
+    iteration: int,
+    total_iterations: int,
+    instructions: List[str],
+    current_model_paths: Dict[str, str],
+    leader_state: Dict[str, Any],
+    model_ratings: Dict[str, Dict[str, float]],
+    delta_history: Dict[str, List[float]],
+    update_count: int,
+) -> Tuple[Dict[str, str], Dict[str, Any], Dict[str, Dict[str, float]], Dict[str, List[float]], int, List[Tuple[int, str, str]]]:
+    if hyperparameters.get("score_type", "normal") != "normal":
+        raise ValueError("GRPO currently supports score_type='normal' only, matching the original GRPO method.")
+    iter_dir = os.path.join(base_dir, f"iteration_{iteration}")
+    os.makedirs(iter_dir, exist_ok=True)
+    seed = int(hyperparameters.get("seed", 42)) + iteration
+    random.seed(seed)
+    np.random.seed(seed)
+
+    duels = _sample_duels_unified(
+        instructions=instructions,
+        model_names=model_names,
+        model_ratings=model_ratings,
+        leader_state=leader_state,
+        num_duels=int(hyperparameters.get("num_duels_per_iteration", len(instructions))),
+        leader_uniform_mix=float(
+            hyperparameters.get("leader_uniform_mix", hyperparameters.get("instr_sample_gamma", 0.2))
+        ),
+        random_match_prob=float(hyperparameters.get("random_match_prob", 0.2)),
+        num_opponents=int(hyperparameters.get("num_opponents", 3)),
+        opponent_selection=hyperparameters.get("opponent_selection", "schedule_decreasing"),
+        iteration=iteration,
+        total_iterations=total_iterations,
+        reputation_gap_sigma=float(hyperparameters.get("reputation_gap_sigma", 0.15)),
+    )
+    _save_prompt_sampling_manifest(base_dir, iteration, duels)
+    dataset_dir = os.path.join(iter_dir, "dataset")
+    train_paths_by_model = _write_grpo_train_files_by_model(duels, model_names, dataset_dir)
+    if not train_paths_by_model:
+        return current_model_paths, leader_state, model_ratings, delta_history, update_count, []
+
+    iteration_model_paths = current_model_paths.copy()
+    train_models = [model for model in model_names if model in train_paths_by_model]
+    output_paths = [os.path.join(iter_dir, f"grpo_{_safe_name(model)}") for model in train_models]
+    trained_paths = _call_with_supported_kwargs(
+        distributed_grpo.distributed_grpo_with_judges,
+        {
+            "list_of_model_names": [iteration_model_paths[model] for model in train_models],
+            "list_of_train_data_paths": [train_paths_by_model[model] for model in train_models],
+            "list_of_gpu_ids": gpu_ids[: len(train_models)] or [gpu_ids[0]],
+            "list_of_output_model_paths": output_paths,
+            "list_of_original_model_names": train_models,
+            "judge_model_paths_by_name": iteration_model_paths,
+            "judge_weights_by_name": {model: float(model_ratings[model]["score"]) for model in model_names},
+            "judge_gpu_ids": hyperparameters.get("online_judge_gpu_ids", None),
+            "parallel_training": bool(hyperparameters.get("parallel_grpo_training", False)),
+            "gpus_per_grpo_job": int(hyperparameters.get("gpus_per_grpo_job", 1)),
+            "max_parallel_grpo_jobs": int(hyperparameters.get("max_parallel_grpo_jobs", len(gpu_ids))),
+            "batch_size": int(hyperparameters.get("grpo_batch_size", 1)),
+            "gradient_accumulation_steps": int(hyperparameters.get("grpo_gradient_accumulation_steps", 4)),
+            "learning_rate": float(hyperparameters.get("grpo_learning_rate", 1e-6)),
+            "epoch": float(hyperparameters.get("grpo_epoch", 1.0)),
+            "num_generations": int(hyperparameters.get("grpo_num_generations", 4)),
+            "max_completion_length": int(hyperparameters.get("grpo_max_completion_length", 256)),
+            "beta": float(hyperparameters.get("grpo_beta", 0.0)),
+            "epsilon": float(hyperparameters.get("grpo_epsilon", 0.2)),
+            "scale_rewards": hyperparameters.get("grpo_scale_rewards", "group"),
+            "loss_type": hyperparameters.get("grpo_loss_type", "grpo"),
+            "reward_scale": hyperparameters.get("reward_scale", "zero_one"),
+            "judge_batch_size": int(hyperparameters.get("judge_batch_size", 4)),
+            "judge_max_response_length": int(hyperparameters.get("judge_max_response_length", 64)),
+            "judge_temperature": float(hyperparameters.get("judge_temperature", 1e-5)),
+            "judge_top_p": float(hyperparameters.get("judge_top_p", 1.0)),
+            "seed": seed,
+        },
+    )
+    trained_by_model = {model: path for model, path in zip(train_models, trained_paths)}
+    judged_duels = _aggregate_grpo_reward_logs(duels, trained_by_model)
+    _save_json(os.path.join(iter_dir, "judged_results", "judged_duels.json"), judged_duels)
+
+    model_ratings, delta_history, update_count, rating_history = _update_reputations_from_grpo_duels(
+        model_ratings=model_ratings,
+        judged_duels=judged_duels,
+        delta_history=delta_history,
+        update_count=update_count,
+        hyperparameters=hyperparameters,
+    )
+    _save_ratings_and_history(base_dir, iteration, model_ratings, delta_history, update_count)
+    save_rating_history_sparta(rating_history, base_dir, iteration)
+
+    leader_state = _update_leader_state(
+        state=leader_state,
+        judged_duels=judged_duels,
+        instructions=instructions,
+        model_names=model_names,
+        base_dir=base_dir,
+        iteration=iteration,
+        total_iterations=total_iterations,
+        task=task,
+        task_type=task_type,
+        training_algorithm="grpo",
+        hyperparameters=hyperparameters,
+    )
+
+    new_entries: List[Tuple[int, str, str]] = []
+    for model, path in trained_by_model.items():
+        current_model_paths[model] = path
+        new_entries.append((iteration, model, path))
+    return current_model_paths, leader_state, model_ratings, delta_history, update_count, new_entries
+
+
+def _call_with_supported_kwargs(function: Any, kwargs: Dict[str, Any]) -> Any:
+    """Call a project utility while tolerating version-specific optional parameters."""
+    try:
+        signature = inspect.signature(function)
+    except (TypeError, ValueError):
+        # Some wrapped/c-extension callables do not expose a usable signature.
+        return function(**kwargs)
+    if any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in signature.parameters.values()):
+        return function(**kwargs)
+    filtered = {key: value for key, value in kwargs.items() if key in signature.parameters}
+    return function(**filtered)
+
+
+def _safe_average(scores: Sequence[float]) -> float:
+    if not scores:
+        raise ValueError("Evaluation returned no scores.")
+    return float(sum(float(score) for score in scores) / len(scores))
+
+
+def _evaluate_adapters_and_test(
+    task: str,
+    task_type: str,
+    gpu_ids: List[int],
+    model_names: List[str],
+    hyperparameters: Dict[str, Any],
+    base_dir: str,
+    run_id: str,
+    training_algorithm: str,
+    leader_type: str,
+    leader_scope: str,
+    current_model_paths: Dict[str, str],
+    all_adapter_entries: List[Tuple[int, str, str]],
+    total_iterations: int,
+) -> float:
+    print("[Sparta] All iterations complete. Beginning evaluation...")
+    prefix = f"{training_algorithm}_"
+    discovered: List[Tuple[int, str, str]] = []
+    for iteration in range(total_iterations):
+        for model in model_names:
+            path = os.path.join(base_dir, f"iteration_{iteration}", f"{prefix}{_safe_name(model)}")
+            if os.path.isdir(path):
+                discovered.append((iteration, model, path))
+    seen = set()
+    entries: List[Tuple[int, str, str]] = []
+    for entry in all_adapter_entries + discovered:
+        if entry[2] in seen:
+            continue
+        seen.add(entry[2])
+        entries.append(entry)
+
+    eval_max_response_length = int(
+        hyperparameters.get("eval_max_response_length", hyperparameters.get("max_response_length", 256))
+    )
+    eval_temperature = float(hyperparameters.get("eval_temperature", hyperparameters.get("temperature", 0.7)))
+    eval_top_p = float(hyperparameters.get("eval_top_p", hyperparameters.get("top_p", 0.9)))
+    eval_batch_size = int(hyperparameters.get("eval_batch_size", hyperparameters.get("batch_size", 1)))
+    distributed_generation.update_generation_hyperparameters(
+        max_response_length=eval_max_response_length,
+        temperature=eval_temperature,
+        top_p=eval_top_p,
+        batch_size=eval_batch_size,
+        big_model_mode=False,
+    )
+
+    dev_inputs = eval.prepare_inputs(task, task_type, "dev")
+    dev_records: List[Dict[str, Any]] = []
+    if entries:
+        print("[Sparta] Adapters found. Evaluating...")
+        paths = [entry[2] for entry in entries]
+        outputs_by_path = distributed_generation.distributed_generation(
+            paths,
+            [dev_inputs for _ in paths],
+            gpu_ids,
+            max_response_length=eval_max_response_length,
+            temperature=eval_temperature,
+            top_p=eval_top_p,
+            batch_size=eval_batch_size,
+            max_parallel_models=int(hyperparameters.get("max_parallel_generation_models", len(gpu_ids))),
+        )
+        for (iteration, model, path), outputs in zip(entries, outputs_by_path):
+            score = _safe_average(eval.get_scores(task, task_type, "dev", outputs))
+            dev_records.append(
+                {
+                    "adapter_key": f"{model}_iter{iteration}",
+                    "model": model,
+                    "iteration": int(iteration),
+                    "adapter_path": path,
+                    "dev_score": score,
+                }
+            )
+        save_adapter_dev_scores(base_dir, dev_records, task)
+        best_record = max(dev_records, key=lambda record: record["dev_score"])
+        best_model_name = str(best_record["model"])
+        best_model_iteration = int(best_record["iteration"])
+        best_model_path = str(best_record["adapter_path"])
+        dev_scores = {record["adapter_key"]: record["dev_score"] for record in dev_records}
+    else:
+        print("[Sparta] No adapters found. Evaluating...")
+        paths = [current_model_paths[model] for model in model_names]
+        outputs_by_path = distributed_generation.distributed_generation(
+            paths,
+            [dev_inputs for _ in paths],
+            gpu_ids,
+            max_response_length=eval_max_response_length,
+            temperature=eval_temperature,
+            top_p=eval_top_p,
+            batch_size=eval_batch_size,
+            max_parallel_models=int(hyperparameters.get("max_parallel_generation_models", len(gpu_ids))),
+        )
+        scores = [
+            _safe_average(eval.get_scores(task, task_type, "dev", outputs))
+            for outputs in outputs_by_path
+        ]
+        best_index = int(np.argmax(scores))
+        best_model_name = model_names[best_index]
+        best_model_iteration = total_iterations - 1
+        best_model_path = paths[best_index]
+        dev_scores = {model: score for model, score in zip(model_names, scores)}
+
+    test_inputs = eval.prepare_inputs(task, task_type, "test")
+    test_outputs = distributed_generation.distributed_generation(
+        [best_model_path],
+        [test_inputs],
+        gpu_ids,
+        max_response_length=eval_max_response_length,
+        temperature=eval_temperature,
+        top_p=eval_top_p,
+        batch_size=eval_batch_size,
+        max_parallel_models=1,
+    )[0]
+    test_scores = eval.get_scores(task, task_type, "test", test_outputs)
+    average_test_score = _safe_average(test_scores)
+    logs = {
         "task": task,
         "task_type": task_type,
         "method": "text_sparta_stackelberg",
+        "training_algorithm": training_algorithm,
+        "leader_type": leader_type,
+        "leader_scope": leader_scope,
         "run_id": run_id,
         "model_names": model_names,
         "best_model": best_model_name,
-        "best_model_iteration": int(best_iter) if 'best_iter' in locals() else int(start_iteration + num_iterations - 1),
+        "best_model_iteration": best_model_iteration,
         "best_model_path": best_model_path,
         "hyperparameters": hyperparameters,
-        "avg_test_score": avg_test_score,
-        "dev_scores": per_model_dev_scores,
-        "logs": []
+        "avg_test_score": average_test_score,
+        "dev_scores": dev_scores,
+        "logs": [
+            {"input": prompt, "output": output, "score": score}
+            for prompt, output, score in zip(test_inputs, test_outputs, test_scores)
+        ],
     }
-    for i in range(len(test_input_list)):
-        log_entry = {
-            "input": test_input_list[i],
-            "output": final_output_list[i],
-            "score": test_scores[i]
-        }
-        experiment_logs["logs"].append(log_entry)
-    
-    # Save to a json file
-    log_filename = os.path.join(
+    log_path = os.path.join(
         base_dir,
-        f"{task}_{len(model_names)}_{round(avg_test_score, 4)}_text_sparta_stackelberg.json",
+        f"{task}_{len(model_names)}_{round(average_test_score, 4)}_"
+        f"{training_algorithm}_{leader_type}_stackelberg.json",
     )
-    os.makedirs(os.path.dirname(log_filename), exist_ok=True)
-    with open(log_filename, "w", encoding="utf-8") as f:
-        json.dump(experiment_logs, f, indent=4, ensure_ascii=False)
-    print(f"[Sparta] Saved experiment logs to {log_filename}")
+    _save_json(log_path, logs)
+    print(
+        f"[Stackelberg] Best model={best_model_name}, iteration={best_model_iteration}, "
+        f"test_score={average_test_score:.6f}"
+    )
+    return average_test_score
 
+
+def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
+    script_path = Path(__file__).resolve()
+    script_dir = script_path.parent.parent.parent
+    os.chdir(script_dir)
+
+    training_algorithm, leader_type, leader_scope = _resolve_modes(hyperparameters)
+    if not gpu_ids:
+        gpu_ids = [0]
+    if len(model_names) < 3:
+        raise ValueError("At least three models are required for peer-judged Stackelberg training.")
+
+    num_iterations = int(hyperparameters.get("num_iterations", 1))
+    start_iteration = int(hyperparameters.get("current_iteration", 0))
+    root_base_dir = str(
+        hyperparameters.get("base_dir", os.path.join("model_collaboration", "logs", "text_sparta_stackelberg"))
+    )
+    requested_run_id = hyperparameters.get("run_id", "")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if start_iteration > 0:
+        if not requested_run_id:
+            raise ValueError("Resuming requires hyperparameters['run_id'].")
+        run_id = requested_run_id
+        base_dir = os.path.join(root_base_dir, run_id)
+        if not os.path.isdir(base_dir):
+            raise ValueError(f"Cannot resume: run directory does not exist at {base_dir}")
+    else:
+        run_id = timestamp if not requested_run_id else f"{requested_run_id}_{timestamp}"
+        base_dir = os.path.join(root_base_dir, run_id)
+    os.makedirs(base_dir, exist_ok=True)
+
+    total_iterations = start_iteration + num_iterations
+    num_instructions = int(hyperparameters.get("num_instructions", 500 if training_algorithm == "dpo" else 128))
+    all_instructions = eval.prepare_inputs(task, task_type, "dev")
+    instructions = all_instructions[: min(num_instructions, len(all_instructions))]
+    if not instructions:
+        raise ValueError(f"No dev instructions found for task={task!r}, task_type={task_type!r}.")
+
+    resolved = {
+        "task": task,
+        "task_type": task_type,
+        "training_algorithm": training_algorithm,
+        "leader_type": leader_type,
+        "leader_scope": leader_scope,
+        "run_id": run_id,
+        "start_iteration": start_iteration,
+        "num_iterations": num_iterations,
+        "num_instructions": len(instructions),
+        "model_names": model_names,
+        "gpu_ids": gpu_ids,
+        "hyperparameters": hyperparameters,
+    }
+    config_path = os.path.join(base_dir, "resolved_run_config.json")
+    if start_iteration > 0 and os.path.exists(config_path):
+        previous = _read_json(config_path)
+        for key in ("training_algorithm", "leader_type", "leader_scope"):
+            if previous.get(key) != resolved.get(key):
+                raise ValueError(
+                    f"Cannot change {key} while resuming: saved={previous.get(key)!r}, requested={resolved.get(key)!r}."
+                )
+    else:
+        _save_json(config_path, resolved)
+
+    print(
+        f"[Stackelberg] Run directory: {base_dir}\n"
+        f"[Stackelberg] training_algorithm={training_algorithm}, "
+        f"leader_type={leader_type}, leader_scope={leader_scope}"
+    )
+
+    current_model_paths, all_adapter_entries = _restore_latest_adapters(
+        base_dir=base_dir,
+        model_names=model_names,
+        start_iteration=start_iteration,
+        training_algorithm=training_algorithm,
+    )
+    if start_iteration > 0:
+        leader_state = _load_leader_state(
+            base_dir=base_dir,
+            checkpoint_iteration=start_iteration - 1,
+            instructions=instructions,
+            model_names=model_names,
+            expected_type=leader_type,
+            expected_scope=leader_scope,
+        )
+    else:
+        leader_state = _initialize_leader_state(
+            base_dir=base_dir,
+            instructions=instructions,
+            model_names=model_names,
+            task=task,
+            task_type=task_type,
+            leader_type=leader_type,
+            leader_scope=leader_scope,
+            hyperparameters=hyperparameters,
+        )
+        _save_leader_state(
+            base_dir=base_dir,
+            state=leader_state,
+            instructions=instructions,
+            model_names=model_names,
+            uniform_mix=float(
+                hyperparameters.get("leader_uniform_mix", hyperparameters.get("instr_sample_gamma", 0.2))
+            ),
+            iteration=-1,
+            initial=True,
+        )
+
+    for local_iteration in range(num_iterations):
+        iteration = start_iteration + local_iteration
+        print(f"[Stackelberg] Iteration {iteration} starting.")
+        model_ratings, delta_history, update_count = _load_ratings_and_history(
+            base_dir=base_dir,
+            iteration=iteration,
+            model_names=model_names,
+        )
+        if training_algorithm == "dpo":
+            result = _run_dpo_iteration(
+                task=task,
+                task_type=task_type,
+                gpu_ids=gpu_ids,
+                model_names=model_names,
+                hyperparameters=hyperparameters,
+                base_dir=base_dir,
+                iteration=iteration,
+                total_iterations=total_iterations,
+                instructions=instructions,
+                current_model_paths=current_model_paths,
+                leader_state=leader_state,
+                model_ratings=model_ratings,
+                delta_history=delta_history,
+                update_count=update_count,
+            )
+        else:
+            result = _run_grpo_iteration(
+                task=task,
+                task_type=task_type,
+                gpu_ids=gpu_ids,
+                model_names=model_names,
+                hyperparameters=hyperparameters,
+                base_dir=base_dir,
+                iteration=iteration,
+                total_iterations=total_iterations,
+                instructions=instructions,
+                current_model_paths=current_model_paths,
+                leader_state=leader_state,
+                model_ratings=model_ratings,
+                delta_history=delta_history,
+                update_count=update_count,
+            )
+        (
+            current_model_paths,
+            leader_state,
+            model_ratings,
+            delta_history,
+            update_count,
+            new_entries,
+        ) = result
+        all_adapter_entries.extend(new_entries)
+        _save_leader_state(
+            base_dir=base_dir,
+            state=leader_state,
+            instructions=instructions,
+            model_names=model_names,
+            uniform_mix=float(
+                hyperparameters.get("leader_uniform_mix", hyperparameters.get("instr_sample_gamma", 0.2))
+            ),
+            iteration=iteration,
+        )
+
+    _evaluate_adapters_and_test(
+        task=task,
+        task_type=task_type,
+        gpu_ids=gpu_ids,
+        model_names=model_names,
+        hyperparameters=hyperparameters,
+        base_dir=base_dir,
+        run_id=run_id,
+        training_algorithm=training_algorithm,
+        leader_type=leader_type,
+        leader_scope=leader_scope,
+        current_model_paths=current_model_paths,
+        all_adapter_entries=all_adapter_entries,
+        total_iterations=total_iterations,
+    )
     return 0
+
