@@ -2,7 +2,9 @@
 The helper functions for distributed DPO.
 """
 import os
+import atexit
 import torch
+import torch.nn as nn
 import shutil
 import random
 from tqdm import tqdm
@@ -14,6 +16,74 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
 from model_collaboration.utils import lora_check
 
+
+def _index_to_long(index):
+    """Recover a Long index from a floating-point one, but only losslessly.
+    float32/float64 represent vocab-size integers exactly, so casting is safe;
+    a fp16/bf16 index is already corrupted (bf16 is exact only to 256, fp16 to
+    2048, both well below typical vocab sizes), so we fail fast rather than
+    coerce silently and train/generate on wrong token IDs."""
+    if isinstance(index, torch.Tensor) and index.is_floating_point():
+        if index.dtype in (torch.float16, torch.bfloat16):
+            raise TypeError(
+                f"Received a {index.dtype} index tensor; casting to Long would "
+                f"silently corrupt indices (fp16/bf16 cannot exactly represent "
+                f"vocab-size ints). Fix the upstream cast instead of coercing here."
+            )
+        return index.long()
+    return index
+
+
+def _register_embedding_long_hook(model):
+    """
+    Under bf16 AMP some trl/transformers versions cast input_ids to a float dtype
+    before the forward pass, causing nn.Embedding to crash (indices must be Long).
+    This hook recovers Long indices at the embedding boundary from float32/float64
+    only; a fp16/bf16 index is rejected (see _index_to_long) because its token IDs
+    would already be corrupted.
+    """
+    def _cast_to_long(module, args):
+        return tuple(_index_to_long(x) for x in args)
+    for module in model.modules():
+        if isinstance(module, nn.Embedding):
+            module.register_forward_pre_hook(_cast_to_long)
+
+_GATHER_PATCHED = False
+
+def _patch_torch_gather():
+    """
+    TRL's DPOTrainer casts batch tensors (including integer labels/input_ids) to
+    the model dtype before the log-probability gather call, producing a float index
+    that crashes torch.gather.  We wrap torch.gather / Tensor.gather to recover a
+    Long index from a losslessly-castable (float32/float64) one; fp16/bf16 indices
+    are rejected rather than silently corrupted (see _index_to_long).
+
+    The patch is idempotent (safe to call more than once per process) and restores
+    the original functions at interpreter exit so it cannot leak into unrelated code.
+    """
+    global _GATHER_PATCHED
+    if _GATHER_PATCHED:
+        return
+    _orig_gather = torch.gather
+    _orig_tensor_gather = torch.Tensor.gather
+
+    def _safe_gather(input, dim, index, *args, **kwargs):
+        return _orig_gather(input, dim, _index_to_long(index), *args, **kwargs)
+
+    def _safe_tensor_gather(self, dim, index, *args, **kwargs):
+        return _orig_tensor_gather(self, dim, _index_to_long(index), *args, **kwargs)
+
+    torch.gather = _safe_gather
+    torch.Tensor.gather = _safe_tensor_gather
+
+    def _restore():
+        torch.gather = _orig_gather
+        torch.Tensor.gather = _orig_tensor_gather
+    atexit.register(_restore)
+
+    _GATHER_PATCHED = True
+
+
 def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=1, gradient_accumulation_steps=16,
                learning_rate=1e-6, epoch=1):
     """
@@ -23,6 +93,7 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
     gpu_id: the GPU id you want to use.
     output_model_path: the path to save the DPO model.
     """
+    _patch_torch_gather()   # fix TRL casting gather indices to float
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
     torch.cuda.set_device(0)
 
@@ -53,6 +124,8 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         # Load base model directly
         model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 
+    _register_embedding_long_hook(model)
+
     if os.path.exists(output_model_path):
         print(f"Model path {output_model_path} exists. Deleting it to avoid conflicts.")
         shutil.rmtree(output_model_path)
@@ -72,7 +145,10 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
-        bf16=True,
+        # bf16=True causes AMP to cast ALL tensors (including integer labels/input_ids)
+        # to bfloat16, breaking embedding lookups and gather() calls. The model is
+        # already loaded in bfloat16 via torch_dtype, so AMP is unnecessary here.
+        bf16=False,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
         warmup_ratio = 0.1,

@@ -29,14 +29,27 @@ def softmax(probs):
         probs: np.ndarray, shape (n, ), probabilities after softmax.
     zero terms are not considered in the softmax operation.
     """
-    probs = np.array(probs)
-    probs = np.exp(probs)
-    for i in range(len(probs)):
-        if probs[i] == np.exp(0): # 0 means 0, no edge
-            probs[i] = 0
-    probs = probs / np.sum(probs)
-    assert sum(probs) >= 0.999 and sum(probs) <= 1.001
-    return probs
+    probs = np.array(probs, dtype=float)
+    out = np.zeros_like(probs)
+    mask = probs != 0  # 0 means no edge, excluded from the softmax
+    vals = probs[mask]
+    if vals.size == 0:
+        out[:] = 1.0 / len(out)  # degenerate: no edges -> uniform so downstream sampling stays valid
+        return out
+    if np.any(np.isposinf(vals)):
+        # +inf score(s) -- e.g. 1/0 when a PSO row-sum is exactly 0 -- dominate the
+        # softmax limit: all mass is shared uniformly among them, finite entries -> 0.
+        weights = np.isposinf(vals).astype(float)
+    else:
+        finite = np.isfinite(vals)  # excludes -inf and NaN, which contribute no mass
+        weights = np.zeros_like(vals)
+        if np.any(finite):
+            weights[finite] = np.exp(vals[finite] - np.max(vals[finite]))  # shift for numerical stability (softmax is shift-invariant); avoids exp overflow when 1/value is huge
+        else:
+            weights[:] = 1.0  # all edges non-finite (-inf/NaN) -> uniform over them
+    out[mask] = weights / weights.sum()
+    assert out.sum() >= 0.999 and out.sum() <= 1.001
+    return out
 
 def top_p_sampling_selection(probs, top_p_threshold):
     """
