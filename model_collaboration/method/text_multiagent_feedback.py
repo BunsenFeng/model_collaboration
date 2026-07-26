@@ -31,9 +31,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # method-specific hyperparameters
     rounds = hyperparameters.get("round", 3)
     feedback_count = hyperparameters.get("feedback_count", 3)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # selecting a model as the final summarizer based on performance on the dev set
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
     list_of_input_list = [dev_input_list for _ in model_names]
 
     list_of_output_list = distributed_generation.distributed_generation(
@@ -45,7 +46,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(avg_dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task_type, avg_dev_score))
@@ -55,7 +56,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Best model selected for final summarization: {}".format(best_model_name))
 
     # multiagent feedback on the test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     response_list = None # len(model_names) * len(test_input_list)
     for r in range(rounds):
         print("Round {}/{}".format(r+1, rounds))
@@ -144,7 +145,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         list_of_gpu_ids
     )
     final_outputs = list_of_output_list[0]
-    test_scores = eval.get_scores(task, task_type, "test", final_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", final_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final Test {} score after {} rounds of multiagent feedback: {}".format(task, rounds, avg_test_score))
 

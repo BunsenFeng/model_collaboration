@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import os
-from multiprocessing import get_context
+from multiprocessing import get_context, Pool
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import torch
 from torch import _dynamo
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import AutoPeftModelForCausalLM, PeftConfig
 
 try:
@@ -48,17 +48,42 @@ def _strip_assistant_final(text: str) -> str:
         return text[idx + len("assistantfinal"):].strip()
     return text
 
+def _register_embedding_long_hook(model):
+    """Recover Long embedding indices at the embedding boundary.
+    Loading bfloat16 models can cause input_ids to be cast to a float dtype under
+    some transformers/PEFT versions, breaking nn.Embedding lookups. Only float32/
+    float64 indices are recovered; fp16/bf16 indices are rejected as they are lossy."""
+    import torch.nn as nn
+    def _cast_to_long(module, args):
+        def to_long(x):
+            if isinstance(x, torch.Tensor) and x.is_floating_point():
+                if x.dtype in (torch.float16, torch.bfloat16):
+                    raise TypeError(
+                        f"nn.Embedding received a {x.dtype} index tensor; casting to "
+                        f"Long would silently corrupt token IDs."
+                    )
+                return x.long()
+            return x
+        return tuple(to_long(x) for x in args)
+    for module in model.modules():
+        if isinstance(module, nn.Embedding):
+            module.register_forward_pre_hook(_cast_to_long)
+
+
 def _load_model(model_name, device_map, load_in_8bit=False):
     if load_in_8bit and model_name not in NO_8BIT_MODELS:
         quant_config = BitsAndBytesConfig(load_in_8bit=True)
-        return AutoModelForCausalLM.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(
             model_name, quantization_config=quant_config,
             device_map=device_map, trust_remote_code=True
         )
-    return AutoModelForCausalLM.from_pretrained(
-        model_name, torch_dtype=torch.bfloat16,
-        device_map=device_map, trust_remote_code=True
-    )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, torch_dtype=torch.bfloat16,
+            device_map=device_map, trust_remote_code=True
+        )
+    _register_embedding_long_hook(model)
+    return model
 
 
 def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size, big_model_mode=False, load_in_8bit=False):
@@ -147,18 +172,21 @@ def build_model_and_tokenizer_for_generation(
     return model, tokenizer
 
 
-def _apply_chat_template_or_raw(tokenizer: Any, prompts: List[str]) -> List[str]:
+def _apply_chat_template_or_raw(tokenizer: Any, prompts: List[str], model_name: str = "") -> List[str]:
     rendered: List[str] = []
+    tmpl_kwargs: Dict[str, Any] = {"tokenize": False, "add_generation_prompt": True}
+    if model_name in QWEN3_MODELS:
+        tmpl_kwargs["enable_thinking"] = False
     try:
         for text in prompts:
             if "<begin>" in text:
                 question, partial_response = text.split("<begin>", 1)
                 chat = [{"role": "user", "content": question}]
-                prefix = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+                prefix = tokenizer.apply_chat_template(chat, **tmpl_kwargs)
                 rendered.append(prefix + partial_response)
             else:
                 chat = [{"role": "user", "content": text}]
-                rendered.append(tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True))
+                rendered.append(tokenizer.apply_chat_template(chat, **tmpl_kwargs))
         return rendered
     except Exception:
         return prompts
@@ -210,7 +238,7 @@ def batch_generate_text_adapter_aware(
         short_name = os.path.basename(model_name.rstrip("/"))
         for start in tqdm(range(0, len(input_list), batch_size), desc=f"generate:{short_name[:32]}"):
             prompts = input_list[start : start + batch_size]
-            rendered = _apply_chat_template_or_raw(tokenizer, prompts)
+            rendered = _apply_chat_template_or_raw(tokenizer, prompts, model_name=model_name)
             inputs = tokenizer(rendered, return_tensors="pt", padding=True, truncation=True).to(model.device)
             with torch.no_grad():
                 generated = model.generate(
@@ -366,7 +394,7 @@ def batch_generate_text_with_score(
     try:
         for start in tqdm(range(0, len(input_list), batch_size), desc=f"generate-score:{model_name}"):
             prompts = input_list[start : start + batch_size]
-            rendered = _apply_chat_template_or_raw(tokenizer, prompts)
+            rendered = _apply_chat_template_or_raw(tokenizer, prompts, model_name=model_name)
             inputs = tokenizer(rendered, return_tensors="pt", padding=True, truncation=True).to(model.device)
             kwargs = _generation_kwargs(
                 max_response_length=max_response_length,

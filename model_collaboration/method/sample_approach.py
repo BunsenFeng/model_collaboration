@@ -27,6 +27,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     script_dir = script_path.parent.parent.parent
     os.chdir(script_dir)
 
+    ratio = hyperparameters.get("ratio", 1.0)
+
     # 1. optionally, extract the general hyperparameters from the hyperparameters dict
     # these four are included in any config file by default
     # this is useful if you are handling generation/finetuning without the (amazing) helper functions provided
@@ -55,7 +57,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # if you ever saves anything during this step, make sure to save it in `model_collaboration/logs/<your_method_name>/`!
 
     # a most simple example, select the best model based on dev set performance
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio) # grab the inputs for the dev set
 
     # evaluate every model on it through distributed generation
     list_of_input_list = [dev_input_list for _ in model_names] # replicate the dev inputs for each model
@@ -68,7 +70,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs) # send the outputs to the eval module to get a list of per-input scores
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio) # send the outputs to the eval module to get a list of per-input scores
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(avg_dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task, avg_dev_score))
@@ -82,7 +84,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # based on the stuff you did in the dev set, you arrived at some final approach
     # generate responses with it, evaluate it, do logging
 
-    test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio) # grab the inputs for the test set
 
     # let's implement a multi-agent summary approach
     # each model generates their own response
@@ -115,7 +117,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )[0] # get the only output list, [0] is important because the output is list of list and [0] takes the list out
 
     # evaluate the final outputs
-    test_scores = eval.get_scores(task, task_type, "test", final_output_list)
+    test_scores = eval.get_scores(task, task_type, "test", final_output_list, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score of the approach: {}".format(task, avg_test_score))
 

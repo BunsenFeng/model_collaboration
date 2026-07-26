@@ -15,40 +15,49 @@ The sections below list all currently supported values for these parameters.
 
 | Task | Task Type | Reference | Description |
 |------|-----------|-----------|-------------|
-| `agieval`* | `multiple_choice` | [Zhong et al., 2023](https://arxiv.org/pdf/2304.06364) | Challenging reasoning tasks from standardized exams (LSAT, SAT, GRE, etc.) |
-| `arc_challenge`* | `multiple_choice` | [Clark et al., 2018](https://arxiv.org/pdf/1803.05457) | Science exam questions requiring complex reasoning |
-| `mmlu_redux`* | `multiple_choice` | [Gema et al., 2024](https://arxiv.org/pdf/2406.04127) | Curated subset of MMLU with error corrections |
-| `bbh`* | `exact_match` | [Suzgun et al., 2022](https://arxiv.org/pdf/2210.09261) | BIG-Bench Hard tasks requiring multi-step reasoning |
-| `gsm8k`* | `exact_match` | [Cobbe et al., 2021](https://arxiv.org/pdf/2110.14168) | Grade school math word problems |
-| `math`* | `exact_match` | [Hendrycks et al., 2021](https://arxiv.org/pdf/2009.03300) | Competition-level mathematics problems |
-| `wikidyk`* | `f1_match` | [Zhang et al., 2025](https://arxiv.org/pdf/2505.12306) | Wikipedia "Did You Know" trivia questions |
-| `sciencemeter`* | `multiple_choice` | [Wang et al., 2025](https://arxiv.org/pdf/2505.24302) | Scientific knowledge evaluation |
-| `popqa`* | `f1_match` | [Mallen et al., 2023](https://arxiv.org/pdf/2212.10511) | Popular factual knowledge questions |
-| `blend`* | `multiple_choice` | [Myung et al., 2025](https://arxiv.org/pdf/2406.09948) | Blended reasoning evaluation |
-| `truthfulqa`* | `multiple_choice` | [Lin et al., 2022](https://arxiv.org/pdf/2109.07958) | Truthfulness evaluation with adversarial questions |
+| `agieval` | `general_verifier` (`multiple_choice`) | [Zhong et al., 2023](https://arxiv.org/pdf/2304.06364) | Challenging reasoning tasks from standardized exams (LSAT, SAT, GRE, etc.) |
+| `arc_challenge` | `general_verifier` (`multiple_choice`) | [Clark et al., 2018](https://arxiv.org/pdf/1803.05457) | Science exam questions requiring complex reasoning |
+| `mmlu_redux` | `general_verifier` (`multiple_choice`) | [Gema et al., 2024](https://arxiv.org/pdf/2406.04127) | Curated subset of MMLU with error corrections |
+| `bbh` | `general_verifier` (`exact_match`) | [Suzgun et al., 2022](https://arxiv.org/pdf/2210.09261) | BIG-Bench Hard tasks requiring multi-step reasoning |
+| `gsm8k` | `general_verifier` (`exact_match`) | [Cobbe et al., 2021](https://arxiv.org/pdf/2110.14168) | Grade school math word problems |
+| `math` | `general_verifier` (`exact_match`) | [Hendrycks et al., 2021](https://arxiv.org/pdf/2009.03300) | Competition-level mathematics problems |
+| `wikidyk` | `general_verifier` (`f1_match`) | [Zhang et al., 2025](https://arxiv.org/pdf/2505.12306) | Wikipedia "Did You Know" trivia questions |
+| `sciencemeter` | `general_verifier` (`multiple_choice`) | [Wang et al., 2025](https://arxiv.org/pdf/2505.24302) | Scientific knowledge evaluation |
+| `popqa` | `general_verifier` (`f1_match`) | [Mallen et al., 2023](https://arxiv.org/pdf/2212.10511) | Popular factual knowledge questions |
+| `blend` | `general_verifier` (`multiple_choice`) | [Myung et al., 2025](https://arxiv.org/pdf/2406.09948) | Blended reasoning evaluation |
+| `truthfulqa` | `general_verifier` (`multiple_choice`) | [Lin et al., 2022](https://arxiv.org/pdf/2109.07958) | Truthfulness evaluation with adversarial questions |
 | `coconot` | `noncompliance` | [Brahman et al., 2024](https://arxiv.org/pdf/2407.12043) | Requests requiring appropriate non-compliance |
 | `alpacaeval` | `reward_model` | [Dubois et al., 2023](https://proceedings.neurips.cc/paper_files/paper/2023/file/5fc47800ee5b30b8777fdd30abcaaf3b-Paper-Conference.pdf) | Instruction-following evaluation |
 | `wildchat` | `reward_model` | [Zhao et al., 2024](https://arxiv.org/pdf/2405.01470) | Real-world user conversations |
-| `sciriff`* | `exact_match` | [Wadden et al., 2024](https://arxiv.org/abs/2406.07835) | Scientific information retrieval and filtering |
-| `culturebench`* | `exact_match` | [Chiu et al., 2024](https://arxiv.org/pdf/2410.02677) | Cultural reasoning and knowledge |
+| `sciriff` | `general_verifier` (`exact_match`) | [Wadden et al., 2024](https://arxiv.org/abs/2406.07835) | Scientific information retrieval and filtering |
+| `culturebench` | `general_verifier` (`exact_match`) | [Chiu et al., 2024](https://arxiv.org/pdf/2410.02677) | Cultural reasoning and knowledge |
 | `human_interest` | `reward_model` | [Feng et al., 2025](https://arxiv.org/pdf/2410.11163) | Diverse human-interest instructions |
-| `tablemwp_multiple_choice`* | `multiple_choice` | [Lu et al., 2023](https://arxiv.org/pdf/2209.14610) | Answer multiple-choice questions about tables |
-| `tablemwp_free_text`* | `exact_match` | [Lu et al., 2023](https://arxiv.org/pdf/2209.14610) | Answer free-text questions about tables |
+| `tablemwp_multiple_choice` | `general_verifier` (`multiple_choice`) | [Lu et al., 2023](https://arxiv.org/pdf/2209.14610) | Answer multiple-choice questions about tables |
+| `tablemwp_free_text` | `general_verifier` (`exact_match`) | [Lu et al., 2023](https://arxiv.org/pdf/2209.14610) | Answer free-text questions about tables |
 | `mbpp` | `coding` | [Austin et al., 2021](https://arxiv.org/pdf/2108.07732) | Python programming challenges |
 | `humaneval` | `coding` | [Chen et al., 2021](https://arxiv.org/pdf/2107.03374) | Python function completion tasks |
-| `gpqa_diamond`* | `multiple_choice` | [Rein et al., 2023](https://arxiv.org/pdf/2311.12022) | Graduate-level science questions (Diamond subset) |
-| `gpqa_extended`* | `multiple_choice` | [Rein et al., 2023](https://arxiv.org/pdf/2311.12022) | Graduate-level science questions (Extended subset) |
-| `gpqa_main`* | `multiple_choice` | [Rein et al., 2023](https://arxiv.org/pdf/2311.12022) | Graduate-level science questions (Main subset) |
-| `medmcqa`* | `multiple_choice` | [Pal et al., 2022](https://arxiv.org/pdf/2203.14371) | Medical entrance exam questions |
-| `medqa`* | `multiple_choice` | [Jin et al., 2021](https://arxiv.org/pdf/2009.13081) | Medical licensing exam questions |
-| `pubmedqa`* | `exact_match` | [Jin et al., 2019](https://arxiv.org/pdf/1909.06146) | Biomedical research question answering |
-| `theoremqa`* | `exact_match` | [Chen et al., 2023](https://arxiv.org/pdf/2305.12524) | Theorem proving and mathematical reasoning |
-| `culturalbench_hard`* | `multiple_choice` | [Chiu et al., 2024](https://arxiv.org/pdf/2410.02677) | Cultural reasoning and knowledge |
-| `kaleidoscope`* | `multiple_choice` | [Sorensen et al., 2023](https://arxiv.org/abs/2309.00779) | Identifying the relationship between values and situations |
-| `infinite_chat_open`* | `reward_model` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Open-ended user queries |
+| `gpqa_diamond` | `general_verifier` (`multiple_choice`) | [Rein et al., 2023](https://arxiv.org/pdf/2311.12022) | Graduate-level science questions (Diamond subset) |
+| `gpqa_extended` | `general_verifier` (`multiple_choice`) | [Rein et al., 2023](https://arxiv.org/pdf/2311.12022) | Graduate-level science questions (Extended subset) |
+| `gpqa_main` | `general_verifier` (`multiple_choice`) | [Rein et al., 2023](https://arxiv.org/pdf/2311.12022) | Graduate-level science questions (Main subset) |
+| `medmcqa` | `general_verifier` (`multiple_choice`) | [Pal et al., 2022](https://arxiv.org/pdf/2203.14371) | Medical entrance exam questions |
+| `medqa` | `general_verifier` (`multiple_choice`) | [Jin et al., 2021](https://arxiv.org/pdf/2009.13081) | Medical licensing exam questions |
+| `pubmedqa` | `general_verifier` (`exact_match`) | [Jin et al., 2019](https://arxiv.org/pdf/1909.06146) | Biomedical research question answering |
+| `theoremqa` | `general_verifier` (`exact_match`) | [Chen et al., 2023](https://arxiv.org/pdf/2305.12524) | Theorem proving and mathematical reasoning |
+| `culturalbench_hard` | `general_verifier` (`multiple_choice`) | [Chiu et al., 2024](https://arxiv.org/pdf/2410.02677) | Cultural reasoning and knowledge |
+| `kaleidoscope` | `general_verifier` (`multiple_choice`) | [Sorensen et al., 2023](https://arxiv.org/abs/2309.00779) | Identifying the relationship between values and situations |
+| `infinite_chat_open` | `reward_model` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Open-ended user queries |
+| `value_drifts` | `reward_model` | [Bhatia et al., 2026](https://arxiv.org/abs/2510.26707) | Value-probing prompts across 11 contentious topics (V-PRISM subset) |
 | `infinite_chat_diversity` | `generation_diversity` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Average distance of generated responses to references (generations by existing models) |
+| `kernelbench` | `kernel_bench` | [Ouyang et al., 2025](https://arxiv.org/abs/2502.10517) | GPU kernel optimization: rewrite PyTorch operators as faster custom CUDA kernels (250 problems across Levels 1–3) |
+| `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking, scored by Adjusted nDCG@100 |
+| `mmluprox` | `general_verifier` (`multiple_choice`) | [Li et al., 2025](https://huggingface.co/datasets/li-lab/MMLU-ProX-Lite) | Multilingual MMLU-Pro with up to 10 options per question, sampled uniformly across 20 languages supported by Qwen 2.5 |
+| `communitybench` | `general_verifier` (`multiple_choice`) | [Lin et al., 2025](https://huggingface.co/datasets/jylin001206/CommunityBench) | Preference identification: given a Reddit community profile and thread context, predict which response the community would most prefer, across 35 subreddits |
+| `mixeval` | `general_verifier` (`multiple_choice`) | [Ni et al., 2024](https://arxiv.org/abs/2406.06565) | Real-world user query benchmark from MixEval-Hard (multiple-choice split) across MMLU, AGIEval, HellaSwag, CommonsenseQA, BoolQ, GPQA, and more |
+| `ifeval` | `ifeval` | [Zhou et al., 2023](https://arxiv.org/abs/2311.07911) | Instruction-following evaluation across 25 verifiable constraint types (word count, formatting, keywords, punctuation, etc.), scored as fraction of instructions satisfied per prompt. **Note:** set `max_response_length` to at least 1024 as many prompts require long outputs to satisfy word count constraints |
 
-\* Asterisks mark datasets where the `general_verifier` task_type is especially helpful (e.g., numeric or semantic variability). In practice, `general_verifier` can be applied to any dataset that uses `multiple_choice`, `exact_match`, or `f1_match` and has question/input + ground truth. See [General Verifier](#general-verifier) for details.
+The task type shown in parentheses is the rule-based fallback; `general_verifier` is strongly recommended as the primary task type for all datasets that support it.
+
+See [General Verifier](#general-verifier) for details on when and why to prefer it over the rule-based fallbacks.
 
 ---
 
@@ -64,16 +73,22 @@ The sections below list all currently supported values for these parameters.
 | `reward_model` | [Skywork-Reward-Llama-3.1-8B](https://huggingface.co/Skywork/Skywork-Reward-Llama-3.1-8B-v0.2) scores |
 | `coding` | Executes code in sandbox and runs test assertions |
 | `text_generation` | Generates outputs; dev split is scored with the reward model, test split returns 0 scores |
+| `ifeval` | Programmatic rule-based checking of 25 instruction constraint types; score = fraction of constraints satisfied per prompt |
 
 ### General Verifier
 
-The `general_verifier` task type leverages the [TIGER-Lab/general-verifier](https://huggingface.co/TIGER-Lab/general-verifier) 1.5B LLM to assess whether a generated answer is semantically equivalent to the ground truth. This is particularly useful when:
+The `general_verifier` task type leverages the [TIGER-Lab/general-verifier](https://huggingface.co/TIGER-Lab/general-verifier) 1.5B LLM to assess whether a generated answer is semantically equivalent to the ground truth. **It is strongly recommended as a drop-in replacement for `multiple_choice`, `exact_match`, and `f1_match`** — use the same dataset JSON unchanged, just set `"task_type": "general_verifier"` in your config.
 
+**When to prefer `general_verifier` over the default task type:**
+
+- The model produces verbose reasoning (e.g., *"The answer is B because..."*) that letter-matching or string-matching would fail to parse correctly
 - Answers may have multiple valid representations (e.g., `3.54e-07` vs `0.000000354`)
-- Mathematical expressions need semantic comparison
-- The exact string format varies but meaning is preserved
+- Mathematical or scientific expressions need semantic comparison rather than exact string matching
+- The exact output format varies across models but the meaning is equivalent
 
-It is compatible with datasets originally designed for `multiple_choice`, `exact_match`, and `f1_match` task types.
+**How it resolves `multiple_choice` parsing failures:** instead of extracting a single letter from the response, the verifier compares the full model output against the text of the correct option. This means a model that explains its choice in prose still gets credit if its reasoning identifies the right answer.
+
+**How it resolves `exact_match` / `f1_match` failures:** instead of normalized string comparison, the verifier uses language understanding to determine equivalence, handling paraphrases, unit conversions, and format differences gracefully.
 
 ---
 

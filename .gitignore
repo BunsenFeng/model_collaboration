@@ -6,6 +6,7 @@ model_collaboration/*.sh
 !examples/*.json
 model_collaboration/*.json
 !model_collaboration/data/*.json
+model_collaboration/data/assaybench.json
 model_collaboration/data/test.py
 model_collaboration/test.py
 !model_collaboration/test_config.json
@@ -14,6 +15,7 @@ model_collaboration/distill/
 model_collaboration/data/*_devonly.json
 model_collaboration/boxed.py
 model_collaboration/gpt_rejudge.py
+model_collaboration/rescore.py
 model_collaboration/config.slurm
 model_collaboration/log.txt
 model_collaboration/*.txt

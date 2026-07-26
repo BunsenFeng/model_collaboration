@@ -29,14 +29,27 @@ def softmax(probs):
         probs: np.ndarray, shape (n, ), probabilities after softmax.
     zero terms are not considered in the softmax operation.
     """
-    probs = np.array(probs)
-    probs = np.exp(probs)
-    for i in range(len(probs)):
-        if probs[i] == np.exp(0): # 0 means 0, no edge
-            probs[i] = 0
-    probs = probs / np.sum(probs)
-    assert sum(probs) >= 0.999 and sum(probs) <= 1.001
-    return probs
+    probs = np.array(probs, dtype=float)
+    out = np.zeros_like(probs)
+    mask = probs != 0  # 0 means no edge, excluded from the softmax
+    vals = probs[mask]
+    if vals.size == 0:
+        out[:] = 1.0 / len(out)  # degenerate: no edges -> uniform so downstream sampling stays valid
+        return out
+    if np.any(np.isposinf(vals)):
+        # +inf score(s) -- e.g. 1/0 when a PSO row-sum is exactly 0 -- dominate the
+        # softmax limit: all mass is shared uniformly among them, finite entries -> 0.
+        weights = np.isposinf(vals).astype(float)
+    else:
+        finite = np.isfinite(vals)  # excludes -inf and NaN, which contribute no mass
+        weights = np.zeros_like(vals)
+        if np.any(finite):
+            weights[finite] = np.exp(vals[finite] - np.max(vals[finite]))  # shift for numerical stability (softmax is shift-invariant); avoids exp overflow when 1/value is huge
+        else:
+            weights[:] = 1.0  # all edges non-finite (-inf/NaN) -> uniform over them
+    out[mask] = weights / weights.sum()
+    assert out.sum() >= 0.999 and out.sum() <= 1.001
+    return out
 
 def top_p_sampling_selection(probs, top_p_threshold):
     """
@@ -228,7 +241,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     patience = hyperparameters.get("patience", 5)
     restart_patience = hyperparameters.get("restart_patience", 3)
 
-    ratio = hyperparameters.get("ratio", 0.25)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # initialize the swarm
     swarm = NumericSwarm(
@@ -301,7 +314,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # evaluate the best graph on the test set
     best_graph = swarm.get_global_best_particle().tolist()
     best_adjacency_matrix = list_to_numpy_graph(best_graph)
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     test_outputs = graph_generate(
         test_input_list,
         best_adjacency_matrix,
@@ -313,7 +326,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         batch_size
     )
 
-    test_scores = eval.get_scores(task, task_type, "test", test_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("H-Swarm test {} score: {}".format(task, avg_test_score))
 

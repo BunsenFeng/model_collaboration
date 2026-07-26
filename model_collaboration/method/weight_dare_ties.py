@@ -51,6 +51,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     minimum_step_length = hyperparameters.get("minimum_step_length", 0.1)
     patience = hyperparameters.get("patience", 5)
     restart_patience = hyperparameters.get("restart_patience", 3)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     if mode == "optimized":
 
@@ -72,7 +73,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         )
 
         # optimize the weights of model merging on the dev set
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         for iteration in range(max_iterations):
             population_of_weights = swarm.get_particles() # [tensor(len(model_names)), ...]
             # softmax to ensure weights sum to 1
@@ -109,7 +110,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dev_scores = []
             for i in range(len(list_of_output_list)):
                 dev_output = list_of_output_list[i]
-                dev_score = eval.get_scores(task, task_type, "dev", dev_output)
+                dev_score = eval.get_scores(task, task_type, "dev", dev_output, ratio=ratio)
                 avg_dev_score = sum(dev_score) / len(dev_score)
                 dev_scores.append(avg_dev_score)
                 print("Iteration {}, particle {}: dev {} score: {}".format(iteration, i, task, avg_dev_score))
@@ -146,7 +147,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_ids[0]))
     
     # evaluate it on the test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     list_of_input_list = [test_input_list]
     list_of_output_list = distributed_generation.distributed_generation(
         [merged_model_path],
@@ -155,7 +156,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
 
     test_outputs = list_of_output_list[0]
-    test_score = eval.get_scores(task, task_type, "test", test_outputs)
+    test_score = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_score) / len(test_score)
     print("dare-ties test {} score: {}".format(task, avg_test_score))
 

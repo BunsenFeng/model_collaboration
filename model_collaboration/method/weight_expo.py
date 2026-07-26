@@ -147,7 +147,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     alpha_mode = hyperparameters.get("alpha_mode", "fixed")
     alpha_candidates = hyperparameters.get("alpha_candidates", [0.1, 0.2, 0.3, 0.4, 0.5])
     k = hyperparameters.get("k", 1)
-    
+    ratio = hyperparameters.get("ratio", 1.0)
+
     # Create output directory
     expo_base_path = hyperparameters.get("expo_base_path", "model_collaboration/logs/expo/")
     expo_base_path = expo_base_path.rstrip("/") + "_" + task + "/"
@@ -167,8 +168,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Step 1: Evaluating all models on dev set")
     print("=" * 60)
     
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev")
-    
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
+
     list_of_input_list = [dev_input_list for _ in model_names]
     list_of_output_list = distributed_generation.distributed_generation(
         model_names,
@@ -180,7 +181,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     model_scores = []
     for i, model_name in enumerate(model_names):
         dev_outputs = list_of_output_list[i]
-        dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
+        dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
         avg_dev_score = sum(dev_scores) / len(dev_scores)
         model_scores.append(avg_dev_score)
         print(f"Model {i + 1} ({model_name}): dev {task} score = {avg_dev_score:.4f}")
@@ -278,9 +279,9 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             )
             
             dev_outputs = list_of_output_list[0]
-            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
+            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
             avg_dev_score = sum(dev_scores) / len(dev_scores)
-            
+
             print(f"Alpha {candidate_alpha}: dev {task} score = {avg_dev_score:.4f}")
             
             if avg_dev_score > best_dev_score:
@@ -322,16 +323,16 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         except:
             pass
     
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
-    
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
+
     list_of_output_list = distributed_generation.distributed_generation(
         [final_model_path],
         [test_input_list],
         [gpu_ids[0]]
     )
-    
+
     test_outputs = list_of_output_list[0]
-    test_scores = eval.get_scores(task, task_type, "test", test_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     
     print(f"\n{'=' * 60}")
@@ -407,6 +408,7 @@ def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_
     alpha_mode = hyperparameters.get("alpha_mode", "fixed")
     alpha_candidates = hyperparameters.get("alpha_candidates", [0.1, 0.2, 0.3, 0.4, 0.5])
     pair_selection = hyperparameters.get("pair_selection", "dpo_score")
+    ratio = hyperparameters.get("ratio", 1.0)
     gpu_id = gpu_ids[0]
     
     # Evaluate all models if multiple pairs
@@ -415,8 +417,8 @@ def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_
         print("Evaluating all models on dev set to select best pair")
         print("=" * 60)
         
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
-        
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
+
         all_model_paths = []
         for sft, dpo in pairs:
             all_model_paths.extend([sft, dpo])
@@ -431,7 +433,7 @@ def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_
         all_dev_scores = []
         for i, model_path in enumerate(all_model_paths):
             dev_outputs = list_of_output_list[i]
-            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
+            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
             avg_dev_score = sum(dev_scores) / len(dev_scores)
             all_dev_scores.append(avg_dev_score)
             model_type = "source" if i % 2 == 0 else "target"
@@ -466,7 +468,7 @@ def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_
     
     # Optimize alpha if needed
     if alpha_mode == "optimized":
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         best_alpha = alpha_candidates[0]
         best_dev_score = -float("inf")
         
@@ -478,9 +480,9 @@ def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_
                 [extrapolated_model_path], [dev_input_list], [gpu_id]
             )
             dev_outputs = list_of_output_list[0]
-            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs)
+            dev_scores = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
             avg_dev_score = sum(dev_scores) / len(dev_scores)
-            
+
             print(f"Alpha {candidate_alpha}: dev score = {avg_dev_score:.4f}")
             if avg_dev_score > best_dev_score:
                 best_dev_score = avg_dev_score
@@ -498,13 +500,13 @@ def run_pairs_mode(task, task_type, gpu_ids, model_names, hyperparameters, expo_
     gc.collect()
     torch.cuda.empty_cache()
     
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     list_of_output_list = distributed_generation.distributed_generation(
         [final_model_path], [test_input_list], [gpu_ids[0]]
     )
-    
+
     test_outputs = list_of_output_list[0]
-    test_scores = eval.get_scores(task, task_type, "test", test_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", test_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     
     print(f"\nExPO test {task} score: {avg_test_score:.4f} (alpha={alpha})")

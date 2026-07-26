@@ -42,7 +42,13 @@ moco -c <path-to-config>.json -l ./
 
 Try to use <10B LLMs or anything that could fit onto a single of your GPU. If you are trying to run collaboration with one of the model being too large to fit onto a single GPU: add `"big_model_mode": true` to `"hyperparameters"`: it will use all provided GPUs for a single model in rotation. This will only work for some approaches.
 
+To reduce GPU memory usage, you can add `"load_in_8bit": true` to `"hyperparameters"`: models will be loaded with 8-bit quantization via `bitsandbytes`. Defaults to `false`. Note that a small set of models are incompatible with 8-bit quantization and will fall back to bf16 automatically.
+
 Reasoning LMs are supported! Please use much larger `"max_response_length"` to account for them: we will parse the text after `</think>` as the actual model output.
+
+Qwen3 models (`Qwen/Qwen3-*`) are supported and will automatically run in non-thinking mode (`enable_thinking=False`).
+
+DeepSeek-R1 distill models (e.g. `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`) are supported: `<think>...</think>` blocks are automatically stripped from outputs before evaluation.
 
 These are vibe implementations (and your future implementations can be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 
@@ -284,6 +290,19 @@ Without further ado, a complete list of all supported methods and configurations
 - description: Multiple LLMs independently generate answers for each query. The final answer is determined through majority voting, where the answer appearing most frequently among the models is selected as the output. When there is a tie, the tie-breaking strategy is used to select the final answer. This approach is applicable only to question types of "multiple_choice", "exact_match", or "f1_match".
 - method-specific hyperparameters:
     - `tie`, default "random": the tie-breaking strategy. Options are "random" (arbitrarily select one of the tied answers) or "dev-based" (evaluate the models that vote for tied answers on the dev set, then use the answer from the best-performing model).
+
+#### Text-level: SLM-MUX
+- file: `text_slm_mux.py`
+- description: A training-free, confidence-based router over a pool of (small) LMs. For each test question, every candidate model independently produces `samples_per_model` (k) samples; per-model confidence is the majority-vote consistency over its k extracted answers (`max_count / k`). The model with the highest confidence wins, and its majority answer is the final output. Ties on confidence are broken by validation accuracy on the dev set (the paper's default), or by model order / randomly. Unlike majority vote, which aggregates a single answer per model across models, SLM-MUX aggregates k samples *within* each model and then selects one model — which lets a single confident model override the rest. Applicable to "multiple_choice", "exact_match", and "f1_match" task types.
+- related paper(s):
+    - [SLM-MUX: Orchestrating Small Language Models for Reasoning](https://arxiv.org/abs/2510.05077)
+- method-specific hyperparameters:
+    - `samples_per_model`, default 5: number of independent samples (k) drawn from each model per question. Higher k gives a more reliable confidence estimate at the cost of more inference.
+    - `tie`, default "dev-based": tie-breaking when multiple models share the top confidence. Options are "dev-based" (evaluate every model once on the dev set and pick the one with the highest dev accuracy among the tied models — the paper's default), "model-order" (first model in `model_names` wins), or "random".
+    - `seed`, default 42: random seed used for tie-breaking inside the consistency vote.
+- note:
+    - Sampling diversity matters: with `temperature` near 0 every sample collapses to the same answer and confidence saturates at 1.0 for every model. The paper uses `temperature=0.3`; values in `[0.3, 0.7]` work well.
+    - Compute is roughly `samples_per_model x` what majority vote would take on the test set, plus one dev pass for tie-breaking.
 
 #### Text-level: Structured Interaction
 - file: `text_structure.py`

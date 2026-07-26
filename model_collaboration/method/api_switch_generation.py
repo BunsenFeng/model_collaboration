@@ -122,7 +122,7 @@ def reward_model_scores(gpu_id, list_of_input, list_of_output):
         scores.append(score)
     return scores
 
-def get_all_inputs(task=None):
+def get_all_inputs(task=None, ratio=1.0):
     list_of_all_inputs = []
     files = os.listdir("model_collaboration/data/")
     for file in files:
@@ -130,7 +130,7 @@ def get_all_inputs(task=None):
             if file == task + ".json":
                 with open(os.path.join("model_collaboration/data/", file), "r") as f:
                     task_type = json.load(f)["task_type"]
-                inputs = eval.prepare_inputs(file[:-5], task_type, "dev")
+                inputs = eval.prepare_inputs(file[:-5], task_type, "dev", ratio=ratio)
                 list_of_all_inputs.extend(inputs)
         except:
             print("Error processing file: {}".format(file))
@@ -157,11 +157,12 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", gpu_ids[0])
     reward_model_name = hyperparameters.get("reward_model_name", "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2")
     wait_flag = hyperparameters.get("wait_flag", False)
+    ratio = hyperparameters.get("ratio", 1.0)
 
     if selector_model_name is None:
         # train a selector model
         print("Training selector model...")
-        input_list = get_all_inputs(task)
+        input_list = get_all_inputs(task, ratio=ratio)
         sft_data_points = []
 
         for iter in range(training_instance_num // batch_size):
@@ -293,7 +294,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         selector_model_name = "model_collaboration/logs/selector_sft_{}".format(task)
     else:
         print("Using pre-defined selector model: {}".format(selector_model_name))
-    test_inputs = eval.prepare_inputs(task, task_type, "test")
+    test_inputs = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     final_outputs, generation_logs = switch_generation(
         test_inputs,
         model_names,
@@ -306,7 +307,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         wait_flag=wait_flag
     )
 
-    test_scores = eval.get_scores(task, task_type, "test", final_outputs)
+    test_scores = eval.get_scores(task, task_type, "test", final_outputs, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Final test {} score switch generation: {}".format(task, avg_test_score))
 

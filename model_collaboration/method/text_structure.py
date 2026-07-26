@@ -110,6 +110,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         print("Warning: num_rounds is 1, which means no interaction between models will happen.")
     structure_type = hyperparameters.get("structure_type", "not_supported")
     structure_matrix = hyperparameters.get("structure_matrix", None)
+    ratio = hyperparameters.get("ratio", 1.0)
     assert structure_type in ["chain", "tree", "star", "circle", "complete", "other"], "Invalid structure type, please provide one of the supported types: chain, tree, star, circle, complete, other."
     if structure_type == "other":
         assert structure_matrix is not None, "Please provide a structure matrix (list of lists of size num_models x num_models) for 'other' structure type."
@@ -136,7 +137,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # 3. select best model for final score based on the dev set of the dataset
     print("Evaluating models on dev set to select the best model...")
-    dev_input_list = eval.prepare_inputs(task, task_type, "dev") # grab the inputs for the dev set
+    dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio) # grab the inputs for the dev set
     # evaluate every model on it through distributed generation
     list_of_input_list = [dev_input_list for _ in model_names] # replicate the dev inputs for each model
     list_of_output_list = distributed_generation.distributed_generation(
@@ -148,7 +149,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     list_of_dev_scores = []
     for i in range(len(model_names)):
         dev_outputs = list_of_output_list[i]
-        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs) # send the outputs to the eval module to get a list of per-input scores
+        dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio) # send the outputs to the eval module to get a list of per-input scores
         avg_dev_score = sum(dev_score) / len(dev_score)
         list_of_dev_scores.append(avg_dev_score)
         print("Model: {}, dev {} score: {}".format(model_names[i], task, avg_dev_score))
@@ -160,7 +161,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     # start the multi-round interaction between models
     print("Round 0: Starting multi-round interaction by generating initial outputs with each model...")
-    test_input_list = eval.prepare_inputs(task, task_type, "test") # grab the inputs for the test set
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio) # grab the inputs for the test set
     # evaluate every model on it through distributed generation
     list_of_input_list = [test_input_list for _ in model_names] # replicate the test inputs for each model
     list_of_output_list = distributed_generation.distributed_generation(
@@ -220,7 +221,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     for i in range(len(model_names)):
         # print("Final outputs from model {}: {}".format(model_names[i], all_output_list[-1][i][:2])) # print first 3 outputs as a sample
         cur_test_outputs = all_output_list[-1][i]
-        cur_test_score = eval.get_scores(task, task_type, "test", cur_test_outputs) #
+        cur_test_score = eval.get_scores(task, task_type, "test", cur_test_outputs, ratio=ratio) #
         cur_avg_test_score = sum(cur_test_score) / len(cur_test_score)
         test_scores_dict[model_names[i]] = cur_avg_test_score
         if model_names[i] == best_model_name:

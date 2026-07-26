@@ -18,13 +18,32 @@ from openai import AzureOpenAI
 from collections import Counter
 from multiprocessing import Pool
 from sklearn.metrics.pairwise import cosine_similarity
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, AutoModelForSequenceClassification, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSequenceClassification
 
 
 # Disable tokenizer thread parallelism to avoid fork warnings emitted during evaluation.
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Datasets too large to commit to git — downloaded on first use from Hugging Face.
+_HF_DATASETS = {
+    "assaybench": "BunsenFeng/assaybench",
+}
+
+def _ensure_dataset(task):
+    path = os.path.join(DATA_DIR, f"{task}.json")
+    if os.path.exists(path):
+        return
+    if task not in _HF_DATASETS:
+        return
+    print(f"Downloading {task} dataset from Hugging Face...")
+    from huggingface_hub import hf_hub_download
+    tmp = hf_hub_download(repo_id=_HF_DATASETS[task], filename=f"{task}.json", repo_type="dataset")
+    os.makedirs(DATA_DIR, exist_ok=True)
+    import shutil
+    shutil.copy(tmp, path)
+    print(f"Downloaded {task} dataset to {path}")
 
 VERIFIER_PROMPT_TEMPLATE = (
     "User: ### Question: {question}\n\n"
@@ -45,6 +64,80 @@ CODE_EXECUTION_TIMEOUT = 10  # seconds per test case
 CODE_EXECUTION_MEMORY_LIMIT_MB = 512
 CODE_EXECUTION_FSIZE_LIMIT_MB = 5
 CODE_EXECUTION_MAX_PROCESSES = 4
+
+# One-shot example for kernel_bench prompts (element-wise addition, from KernelBench)
+_KB_ONE_SHOT_INPUT = """\
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class Model(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, a, b):
+        return a + b
+
+
+def get_inputs():
+    a = torch.randn(1, 128).cuda()
+    b = torch.randn(1, 128).cuda()
+    return [a, b]
+
+
+def get_init_inputs():
+    return []
+"""
+
+_KB_ONE_SHOT_OUTPUT = """\
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.cpp_extension import load_inline
+
+elementwise_add_source = \"\"\"
+#include <torch/extension.h>
+#include <cuda_runtime.h>
+
+__global__ void elementwise_add_kernel(const float* a, const float* b, float* out, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        out[idx] = a[idx] + b[idx];
+    }
+}
+
+torch::Tensor elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {
+    auto size = a.numel();
+    auto out = torch::zeros_like(a);
+    const int block_size = 256;
+    const int num_blocks = (size + block_size - 1) / block_size;
+    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(), b.data_ptr<float>(), out.data_ptr<float>(), size);
+    return out;
+}
+\"\"\"
+
+elementwise_add_cpp_source = "torch::Tensor elementwise_add_cuda(torch::Tensor a, torch::Tensor b);"
+
+elementwise_add = load_inline(
+    name="elementwise_add",
+    cpp_sources=elementwise_add_cpp_source,
+    cuda_sources=elementwise_add_source,
+    functions=["elementwise_add_cuda"],
+    verbose=True,
+    extra_cflags=[""],
+    extra_ldflags=[""],
+)
+
+
+class ModelNew(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.elementwise_add = elementwise_add
+
+    def forward(self, a, b):
+        return self.elementwise_add.elementwise_add_cuda(a, b)
+"""
 
 SANDBOX_PREAMBLE = """
 import sys
@@ -142,7 +235,13 @@ def normalize_answer(s: str) -> str:
         return ' '.join(text.split())
 
     def remove_punc(text):
-        return text.translate(str.maketrans('', '', string.punctuation))
+        # Preserve math operators so expressions like "x+1" and "x-1" stay distinct.
+        math_chars = set('+-*/^=<>%')
+        punc_to_remove = ''.join(c for c in string.punctuation if c not in math_chars)
+        text = text.translate(str.maketrans('', '', punc_to_remove))
+        # Remove spaces around math operators so "x + 1" and "x+1" normalize identically.
+        text = re.sub(r'\s*([+\-*/^=<>%])\s*', r'\1', text)
+        return text
 
     def lower(text):
         try:
@@ -300,6 +399,8 @@ def parse_model_response_mcq(response_text, options):
     return None, None # No valid option found
 
 def is_noncompliance(text, category):
+    # Normalize curly apostrophes to ASCII so keyword checks work uniformly
+    text = text.replace('‘', "'").replace('’', "'")
     if category.lower() == "false presuppositions":
         if "never" in text.lower() or "not " in text or "no " in text.lower() or "none " in text.lower() or "was not" in text or "did not" in text or "actually" in text or "was never" in text or "does not" in text or "there is no" in text.lower():
             return True
@@ -313,7 +414,7 @@ def is_noncompliance(text, category):
         return True
     if "sorry" in text or "apologi" in text:
         return True
-    if "i’m not sure" in text.lower() or "cannot fulfill" in text or "can’t fulfill" in text or "not able to" in text or "don’t have access" in text or "not publicly available" in text or "have the ability" in text or "cannot" in text or "not possible" in text or "impossible" in text or "unable to" in text or "I do not have" in text or "I don’t have" in text or "actually" in text:
+    if "i’m not sure" in text.lower() or "cannot fulfill" in text or "can’t fulfill" in text or "can’t help" in text or "can’t provide" in text or "can’t assist" in text or "not able to" in text or "don’t have access" in text or "not publicly available" in text or "have the ability" in text or "cannot" in text or "not possible" in text or "impossible" in text or "unable to" in text or "I do not have" in text or "I don’t have" in text or "actually" in text:
         return True
     if "unethical" in text or "racist" in text or "derogatory" in text or "discriminatory" in text or "harmful" in text or "stereotype" in text or "prejudice" in text:
         return True
@@ -331,13 +432,13 @@ def extract_code_block(response: str, language: str = "python") -> str:
     pattern = rf"```(?:{language})?\s*\n(.*?)```"
     matches = re.findall(pattern, response, flags=re.DOTALL | re.IGNORECASE)
     if matches:
-        return matches[-1].strip()
-    
+        return matches[0].strip()
+
     # Try to find any fenced code block
     pattern = r"```\s*\n?(.*?)```"
     matches = re.findall(pattern, response, flags=re.DOTALL)
     if matches:
-        return matches[-1].strip()
+        return matches[0].strip()
     
     # Fall back to the entire response
     return response.strip()
@@ -514,6 +615,7 @@ def clear_reward_model():
 
 def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
 
+    _ensure_dataset(task)
     input_list = []
 
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
@@ -556,6 +658,32 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
             # Support various field names for the problem description
             problem = item.get("input", item.get("question", item.get("prompt", "")))
             input_list.append(problem)
+    elif task_type == "kernel_bench":
+        for item in data:
+            prompt = (
+                "You write custom CUDA operators to replace the pytorch operators in the given architecture to get speedups.\n\n"
+                "You have complete freedom to choose the set of operators you want to replace. You may replace multiple operators "
+                "with custom implementations, consider operator fusion opportunities (combining multiple operators into a single "
+                "kernel), or algorithmic changes. You are only limited by your imagination.\n\n"
+                "Here's an example to show you the syntax of inline embedding custom CUDA operators in PyTorch:\n\n"
+                "Input architecture:\n\n"
+                f"{_KB_ONE_SHOT_INPUT}\n\n"
+                "Optimized with CUDA operators:\n\n"
+                f"{_KB_ONE_SHOT_OUTPUT}\n\n"
+                "You are given the following architecture:\n\n"
+                f"{item['input']}\n\n"
+                "Note: The kernels should be optimized for FP32 (32-bit floating point) precision.\n\n"
+                "Optimize the architecture named Model with custom CUDA operators! Name your optimized output architecture "
+                "ModelNew. Output the new code in codeblocks. Please generate real code, NOT pseudocode, make sure the code "
+                "compiles and is fully functional. Just output the new model code, no other text, and NO testing code!"
+            )
+            input_list.append(prompt)
+    elif task_type == "gene_ranking":
+        for item in data:
+            input_list.append(item["input"])
+    elif task_type == "ifeval":
+        for item in data:
+            input_list.append(item["input"])
     else:
         print("Your task_type {} is not supported.".format(task_type))
         raise NotImplementedError
@@ -565,8 +693,24 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
         return input_list[:int(len(input_list)*ratio)], id_list[:int(len(input_list)*ratio)]
     return input_list[:int(len(input_list)*ratio)]
 
+def _kernel_eval_worker(conn, ref_src, custom_src, device, build_dir=None):
+    """Isolated subprocess worker: eval one kernel and send result back via Pipe.
+    build_dir isolates this eval's TORCH_EXTENSIONS_DIR so concurrent workers on
+    different GPUs never collide on the torch-extension build cache."""
+    try:
+        from model_collaboration.utils.kernelbench_eval import eval_kernel_against_ref
+        result = eval_kernel_against_ref(ref_src=ref_src, custom_src=custom_src,
+                                         device=device, build_dir=build_dir)
+        conn.send(("ok", result))
+    except Exception as e:
+        conn.send(("error", str(e)))
+    finally:
+        conn.close()
+
+
 def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, id_list=None):
 
+    _ensure_dataset(task)
     with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
         data = json.load(f)[split]
         data = data[:int(len(data)*ratio)]
@@ -578,6 +722,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
     parsed_outputs = []
 
     if task_type == "generation_diversity":
+        from transformers import pipeline
         feature_extractor = pipeline("feature-extraction", framework="pt", model="FacebookAI/roberta-base", device=0)
 
         assert len(outputs) == len(data), "Length of outputs must match length of data for generation diversity evaluation."
@@ -678,6 +823,90 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
             score = evaluate_code_solution(code, test_code, CODE_EXECUTION_TIMEOUT, language)
             scores.append(score)
             parsed_outputs.append(code)
+
+    if task_type == "kernel_bench":
+        import multiprocessing
+        import tempfile
+        from model_collaboration.utils.kernelbench_eval import score_kernel_result
+        n_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+        assert n_gpus > 0, "kernel_bench evaluation requires a CUDA GPU"
+        _spawn_ctx = multiprocessing.get_context("spawn")
+        KERNEL_EVAL_TIMEOUT = 300
+
+        # Pre-parse every item so results stay index-aligned regardless of order.
+        parsed = []
+        for item, output in zip(data, outputs):
+            parsed.append((
+                item["id"],
+                item["input"],                        # ref_src
+                int(item["id"].split("_")[0][1:]),    # level: "l1_42" -> 1
+                extract_code_block(output, "python"), # custom_src
+            ))
+        scores = [0.0] * len(parsed)
+        parsed_outputs = [p[3] for p in parsed]
+
+        # Compile+benchmark is the dominant cost (the dev summarizer-selection
+        # evaluates n_models x items kernels). The coalition already holds one GPU
+        # per model but scoring used only GPU 0 serially, leaving the rest idle.
+        # Evaluate in waves of n_gpus, one kernel per GPU concurrently -- an ~n_gpus
+        # speedup. Each GPU slot gets its own persistent TORCH_EXTENSIONS_DIR so
+        # concurrent compiles in a wave never collide on the build cache; the dirs
+        # are reused across waves (torch rebuilds by source hash) and left for the
+        # ephemeral node tmpdir to reclaim -- we must NOT delete them here, since the
+        # module's audit hook forbids removing paths outside cwd.
+        slot_build_dirs = [os.path.join(tempfile.gettempdir(), f"kb_build_slot_{s}")
+                           for s in range(n_gpus)]
+        for base in range(0, len(parsed), n_gpus):
+            wave = list(range(base, min(base + n_gpus, len(parsed))))
+            procs = {}
+            for slot, idx in enumerate(wave):
+                _id, ref_src, level, custom_src = parsed[idx]
+                parent_conn, child_conn = _spawn_ctx.Pipe(duplex=False)
+                p = _spawn_ctx.Process(
+                    target=_kernel_eval_worker,
+                    args=(child_conn, ref_src, custom_src, slot, slot_build_dirs[slot]),
+                )
+                p.start()
+                child_conn.close()
+                procs[idx] = (p, parent_conn, level, time.time())
+            for idx, (p, parent_conn, level, t0) in procs.items():
+                _id = parsed[idx][0]
+                remaining = max(1.0, KERNEL_EVAL_TIMEOUT - (time.time() - t0))
+                try:
+                    if parent_conn.poll(timeout=remaining):
+                        status, payload = parent_conn.recv()
+                        if status == "ok":
+                            scores[idx] = score_kernel_result(payload, level)
+                        else:
+                            print(f"[kernelbench] eval error on {_id}: {payload}")
+                    else:
+                        print(f"[kernelbench] timeout on {_id}, killing subprocess")
+                        p.kill()
+                except Exception as e:
+                    print(f"[kernelbench] subprocess error on {_id}: {e}")
+                finally:
+                    parent_conn.close()
+                    p.join()
+    if task_type == "gene_ranking":
+        from model_collaboration.utils.assaybench_scoring import score_gene_ranking
+        for item, output in zip(data, outputs):
+            score = score_gene_ranking(
+                output,
+                item["relevance_genes"],
+                item["relevance_scores"],
+            )
+            scores.append(score)
+            parsed_outputs.append(output)
+    if task_type == "ifeval":
+        from model_collaboration.utils.ifeval_eval import score_ifeval_response
+        for item, output in zip(data, outputs):
+            score = score_ifeval_response(
+                output,
+                item["instruction_id_list"],
+                item["kwargs"],
+            )
+            scores.append(score)
+            parsed_outputs.append(output)
 
     if task == "culturebench":
         question_to_indices = {}

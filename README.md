@@ -10,10 +10,13 @@ Technical report: [paper](https://arxiv.org/abs/2601.21257)
 
 ## Quick Start
 
+We use [uv](https://github.com/astral-sh/uv) for package management. Install it first if you haven't already.
+
 ```
-conda env create -f environment.yml
-conda activate model_collaboration
-pip install modelco
+uv venv --python 3.11 moco
+source moco/bin/activate
+uv pip install -r requirements.txt
+uv pip install mergekit
 ```
 
 Run your first model collaboration experiment (if you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):
@@ -54,6 +57,7 @@ moco -c model_collaboration/test_config.json --log_dir model_collaboration/logs/
 | Text: BBMAS | blackboard-based collaboration among LLMs | [link](model_collaboration/method/text_bbmas.py) | [link](examples/text_bbmas.json) | [link](docs/user_readme.md#text-level-blackboard-multi-agent-system-bbmas) |
 | Text: Sparta Alignment | models compete and combat for collective alignment | [link](model_collaboration/method/text_sparta.py) | [link](examples/text_sparta.json) | [link](docs/user_readme.md#text-level-sparta) |
 | Text: Stackelberg Alignment | extension of Sparta with adversarial instruction selection | [link](model_collaboration/method/text_sparta_stackelberg.py) | [link](examples/text_sparta_stackelberg.json) | [link](docs/user_readme.md#text-level-sparta-stackelberg) |
+| Text: SLM-Mux  | Orchestraing small models | [link](model_collaboration/method/text_slm_mux.py) | [link](examples/text_slm_mux.json) | [link](docs/user_readme.md#text-level-slm-mux) |
 | Text: AggLM | RL to train a solution aggregation model | [link](model_collaboration/method/text_agglm.py) | [link](examples/text_agglm.json) | [link](docs/user_readme.md#text-level-agglm) |
 | Logit: Logit Fusion | merge the next-token logits from multiple models | [link](model_collaboration/method/logit_logit_fusion.py) | [link](examples/logit_logit_fusion.json) | [link](docs/user_readme.md#logit-level-logit-fusion) |
 | Logit: Logit Contrastive | contrast the logits from best/worst models | [link](model_collaboration/method/logit_logit_contrastive.py) | [link](examples/logit_logit_contrastive.json) | [link](docs/user_readme.md#logit-level-logit-contrastive) |
@@ -87,11 +91,12 @@ The single-multi evolution loop: multiple LMs collaborate, distill the collabora
 If `MoCo` is helpful for you, please consider citing:
 
 ```
-@article{feng2025one,
+@inproceedings{feng2026one,
   title={When one llm drools, multi-llm collaboration rules},
-  author={Feng, Shangbin and Ding, Wenxuan and Liu, Alisa and Wang, Zifeng and Shi, Weijia and Wang, Yike and Shen, Zejiang and Han, Xiaochuang and Lang, Hunter and Lee, Chen-Yu and others},
-  journal={arXiv preprint arXiv:2502.04506},
-  year={2025}
+  author={Feng, Shangbin and Ding, Wenxuan and Liu, Alisa and Wang, Zifeng and Shi, Weijia and Wang, Yike and Shen, Shannon Zejiang and Han, Xiaochuang and Lang, Hunter and Lee, Chen-Yu and others},
+  booktitle={Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  pages={17048--17063},
+  year={2026}
 }
 
 @article{feng2026moco,

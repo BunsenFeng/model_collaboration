@@ -61,6 +61,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     temperature = hyperparameters.get("temperature", 1.0)
     batch_size = hyperparameters.get("train_batch_size", 4)
     s = hyperparameters.get("sample_size", 2)
+    ratio = hyperparameters.get("ratio", 1.0)
     m = len(model_names)
 
     # prepare training data
@@ -70,7 +71,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         if os.path.exists(agglm_log_path + '/' + file_name):
             dev_res_list = json.load(open(agglm_log_path + '/' + file_name, 'r'))
         else:
-            dev_input_list, dev_id_list = eval.prepare_inputs(task, task_type, 'dev', return_id=True)
+            dev_input_list, dev_id_list = eval.prepare_inputs(task, task_type, 'dev', ratio=ratio, return_id=True)
             dev_res_list = [{'id': _id, 'input': _input, 'generation': []} for _input, _id in zip(dev_input_list, dev_id_list)]
             dev_output_list = distributed_generation.distributed_generation(
                 model_names,
@@ -83,7 +84,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
         for i in range(s * m):
             judge_list = [data['generation'][i] for data in dev_res_list]
-            score_list, parsed_output_list = eval.get_scores(task, task_type, "dev", judge_list, return_output=True)
+            score_list, parsed_output_list = eval.get_scores(task, task_type, "dev", judge_list, ratio=ratio, return_output=True)
             for data, parsed_output, score in zip(dev_res_list, parsed_output_list, score_list):
                 if i == 0:
                     data['parsed_generation'] = [parsed_output]
@@ -168,7 +169,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
         def reward_func(prompts, completions, **kwargs):
             responses = [completion[0]['content'] for completion in completions]
-            return eval.get_scores(task, task_type, "dev", responses, id_list=kwargs['id'])
+            return eval.get_scores(task, task_type, "dev", responses, ratio=ratio, id_list=kwargs['id'])
 
         trainer = GRPOTrainer(
             model=agg_model,
@@ -191,7 +192,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             dist.destroy_process_group()
 
     new_gpu_ids = [i for i in range(len(gpu_ids))]
-    test_input_list = eval.prepare_inputs(task, task_type, 'test')
+    test_input_list = eval.prepare_inputs(task, task_type, 'test', ratio=ratio)
     list_of_test_output_list = distributed_generation.distributed_generation(
         model_names,
         [test_input_list for _ in model_names],
@@ -206,7 +207,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         [agg_input_list],
         [new_gpu_ids[0]]
     )
-    test_scores = eval.get_scores(task, task_type, "test", agg_output_list[0])
+    test_scores = eval.get_scores(task, task_type, "test", agg_output_list[0], ratio=ratio)
 
     avg_test_score = sum(test_scores) / len(test_scores)
     print("Agglm test {} score: {}".format(task, avg_test_score))

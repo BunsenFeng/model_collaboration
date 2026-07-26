@@ -1247,6 +1247,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     score_type = hyperparameters.get("score_type", "normal")  # normal / dynamic / static
     freeze_ratings = bool(hyperparameters.get("freeze_ratings", False))
     debug = bool(hyperparameters.get("debug", False))
+    ratio = hyperparameters.get("ratio", 1.0)
 
     # Track current model paths (for adapter handling across iterations)
     # model_names are already HuggingFace identifiers, use them directly
@@ -1288,7 +1289,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
                 pass
 
         # ------------------------- 3. Prepare dev instructions -------------------------
-        all_instructions = eval.prepare_inputs(task, task_type, "dev")
+        all_instructions = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         if num_instructions < len(all_instructions):
             instructions = all_instructions[:num_instructions]
         else:
@@ -1611,7 +1612,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     # If no adapters were found (e.g., no preference_pairs), fall back to using the final current_model_paths
     if not all_adapter_entries:
         print("[Sparta] No DPO adapters found across iterations; falling back to final models only.")
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         list_of_input_list = [dev_input_list for _ in model_names]
         final_model_paths = [current_model_paths.get(m, m) for m in model_names]
         list_of_output_list = distributed_generation.distributed_generation(
@@ -1623,7 +1624,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         list_of_dev_scores = []
         for i in range(len(model_names)):
             dev_outputs = list_of_output_list[i]
-            dev_score = eval.get_scores(task, task_type, "dev", dev_outputs)
+            dev_score = eval.get_scores(task, task_type, "dev", dev_outputs, ratio=ratio)
             avg_dev_score = sum(dev_score) / len(dev_score)
             list_of_dev_scores.append(avg_dev_score)
             print(f"[Sparta] Final model {model_names[i]}: dev {task} score: {avg_dev_score}")
@@ -1642,7 +1643,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         }
     else:
         # 2) Evaluate every (iteration, model, adapter_path) on dev set
-        dev_input_list = eval.prepare_inputs(task, task_type, "dev")
+        dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         list_of_input_list = [dev_input_list for _ in all_adapter_entries]
         adapter_paths = [entry[2] for entry in all_adapter_entries]
 
@@ -1659,7 +1660,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         for idx, ((it, m, path), outputs) in enumerate(
             zip(all_adapter_entries, list_of_output_list)
         ):
-            dev_score = eval.get_scores(task, task_type, "dev", outputs)
+            dev_score = eval.get_scores(task, task_type, "dev", outputs, ratio=ratio)
             avg_dev_score = sum(dev_score) / len(dev_score)
             adapter_dev_scores.append(avg_dev_score)
             key = f"{m}_iter{it}"
@@ -1678,7 +1679,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         )
     
     # 4) Evaluate best model on test set
-    test_input_list = eval.prepare_inputs(task, task_type, "test")
+    test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     test_output_list = distributed_generation.distributed_generation(
         [best_model_path],
         [test_input_list],
@@ -1687,7 +1688,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     final_output_list = test_output_list[0]
     
     # Evaluate the final outputs
-    test_scores = eval.get_scores(task, task_type, "test", final_output_list)
+    test_scores = eval.get_scores(task, task_type, "test", final_output_list, ratio=ratio)
     avg_test_score = sum(test_scores) / len(test_scores)
     print(f"[Sparta] Final test {task} score: {avg_test_score}")
     
