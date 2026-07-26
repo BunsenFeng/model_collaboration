@@ -1021,18 +1021,19 @@ def general_verifier_score(task, split, outputs, ratio=1.0, id_list=None):
 
     generated_texts = []
     batch_size = GENERAL_VERIFIER_BATCH_SIZE
-    for i in tqdm(range(0, len(prompts), batch_size), desc="Verifying"):
-        batch_prompts = prompts[i:i+batch_size]
-        inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(model.device)
-        batch_outputs = model.generate(
-            **inputs,
-            max_new_tokens=1024,
-            temperature=0.0,
-            do_sample=False
-        )
-        generated_tokens = batch_outputs[:, inputs.input_ids.shape[1]:]
-        decoded_outputs = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        generated_texts.extend(decoded_outputs)
+    with torch.inference_mode():
+        for i in tqdm(range(0, len(prompts), batch_size), desc="Verifying"):
+            batch_prompts = prompts[i:i+batch_size]
+            inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(model.device)
+            batch_outputs = model.generate(
+                **inputs,
+                max_new_tokens=1024,
+                temperature=0.0,
+                do_sample=False
+            )
+            generated_tokens = batch_outputs[:, inputs.input_ids.shape[1]:]
+            decoded_outputs = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+            generated_texts.extend(decoded_outputs)
 
     if len(generated_texts) != len(prompts):
         raise RuntimeError(
