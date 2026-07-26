@@ -58,7 +58,11 @@ VERIFIER_PASS_TAG = "Final Decision: Yes"
 GENERAL_VERIFIER_MODEL_NAME = "TIGER-Lab/general-verifier"
 GENERAL_VERIFIER_MAX_TOKENS = 1024
 GENERAL_VERIFIER_TEMPERATURE = 0.0
-GENERAL_VERIFIER_BATCH_SIZE = 32
+GENERAL_VERIFIER_BATCH_SIZE = 64
+
+# Cached verifier model and tokenizer — loaded once, reused across all calls.
+_general_verifier_model = None
+_general_verifier_tokenizer = None
 
 CODE_EXECUTION_TIMEOUT = 10  # seconds per test case
 CODE_EXECUTION_MEMORY_LIMIT_MB = 512
@@ -987,14 +991,26 @@ def general_verifier_score(task, split, outputs, ratio=1.0, id_list=None):
         )
         prompts.append(prompt)
 
-    torch.cuda.empty_cache()
-    _dynamo.reset_code_caches()
+    global _general_verifier_model, _general_verifier_tokenizer
 
-    model = AutoModelForCausalLM.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
-    tokenizer = AutoTokenizer.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, use_fast=True)
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "left"
-    tokenizer.pad_token_id = tokenizer.eos_token_id
+    if _general_verifier_model is None:
+        torch.cuda.empty_cache()
+        _dynamo.reset_code_caches()
+        _general_verifier_model = AutoModelForCausalLM.from_pretrained(
+            GENERAL_VERIFIER_MODEL_NAME,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+        _general_verifier_tokenizer = AutoTokenizer.from_pretrained(
+            GENERAL_VERIFIER_MODEL_NAME, use_fast=True
+        )
+        _general_verifier_tokenizer.pad_token = _general_verifier_tokenizer.eos_token
+        _general_verifier_tokenizer.padding_side = "left"
+        _general_verifier_tokenizer.pad_token_id = _general_verifier_tokenizer.eos_token_id
+
+    model = _general_verifier_model
+    tokenizer = _general_verifier_tokenizer
 
     generated_texts = []
     batch_size = GENERAL_VERIFIER_BATCH_SIZE
