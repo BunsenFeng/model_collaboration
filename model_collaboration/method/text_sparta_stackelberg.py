@@ -8,12 +8,6 @@ from typing import List, Dict, Any, Tuple, Optional, Iterable, Sequence
 from collections import defaultdict, deque
 from pathlib import Path
 import csv
-try:
-    from google import genai
-except Exception:  # pragma: no cover
-    genai = None
-from dotenv import load_dotenv
-
 import numpy as np
 from model_collaboration.data import eval
 from model_collaboration.method import distributed_generation
@@ -22,7 +16,6 @@ import logging
 import inspect
 
 logger = logging.getLogger(__name__)
-load_dotenv()
 
 def _safe_name(model_path: str) -> str:
     """
@@ -36,178 +29,6 @@ def _safe_name(model_path: str) -> str:
         import hashlib
         safe_name = hashlib.md5(model_path.encode()).hexdigest()[:16]
     return safe_name
-
-def _get_gemini_response_text(response: Any) -> str:
-    """
-    Extract text from a Gemini response object
-    """
-    if hasattr(response, "text") and response.text:
-        return response.text
-
-    try:
-        parts = response.candidates[0].content.parts
-        return "\n".join(
-            getattr(part, "text", "")
-            for part in parts
-            if getattr(part, "text", "")
-        )
-    except Exception:
-        return str(response)
-
-def _extract_json_array(text: str) -> List[Dict[str, Any]]:
-    """
-    Parse a JSON array from Gemini output, tolerating markdown fences
-    """
-    text = text.strip()
-
-    text = re.sub(r"^```json\s*", "", text)
-    text = re.sub(r"^```\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
-
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r"\[[\s\S]*\]", text)
-        if match is None:
-            raise
-        payload = json.loads(match.group(0))
-
-    if not isinstance(payload, list):
-        raise ValueError("Expected Gemini selector output to be a JSON list.")
-
-    return payload
-
-def _score_instructions(
-    instructions: List[str],
-    task: str,
-    task_type: str,
-    max_retries: int,
-    model_name: str = "gemini-2.5-flash",
-    batch_size: int = 50
-) -> List[Dict[str, Any]]:
-    """
-    Ask Gemini to score instructions for adversarial curriculum value
-    """
-    client = genai.Client(vertexai=True)
-
-    all_rows: List[Dict[str, Any]] = []
-
-    for start in range(0, len(instructions), batch_size):
-        end = min(start + batch_size, len(instructions))
-
-        batch_items = [
-            {
-                "instruction_idx": i,
-                "instruction": instructions[i],
-            }
-            for i in range(start, end)
-        ]
-
-        prompt = f"""
-You are selecting prompts for an adversarial Stackelberg curriculum for LLM preference training.
-
-Task: {task}
-Task type: {task_type}
-
-Score each instruction for adversarial curriculum value.
-
-A high score means:
-- the prompt is likely to be difficult for current open-source LLMs,
-- but still learnable, not impossible or purely ambiguous,
-- likely to produce meaningful differences between model responses,
-- likely to generate useful preference data for DPO,
-- likely to expose reasoning, truthfulness, instruction-following, coding, or domain-knowledge weaknesses.
-
-A low score means:
-- too easy,
-- too ambiguous,
-- too subjective,
-- too impossible,
-- unlikely to produce useful preference comparisons.
-
-Return ONLY a JSON array.
-Each element must have:
-- "instruction_idx": integer
-- "adversarial_score": number between 0 and 1
-- "reason": short string
-
-Instructions:
-{json.dumps(batch_items, ensure_ascii=False, indent=2)}
-""".strip()
-
-        for attempt in range(max_retries):
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                )
-
-                text = _get_gemini_response_text(response)
-                rows = _extract_json_array(text)
-                break
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    raise RuntimeError(
-                        f"Gemini instruction scoring failed after {max_retries} attempts."
-                    ) from e
-
-        for row in rows:
-            idx = int(row["instruction_idx"])
-            score = float(row["adversarial_score"])
-            score = float(np.clip(score, 0.0, 1.0))
-
-            all_rows.append({
-                "instruction_idx": idx,
-                "adversarial_score": score,
-                "reason": str(row.get("reason", "")),
-            })
-
-    by_idx = {}
-    for row in all_rows:
-        by_idx[int(row["instruction_idx"])] = row
-
-    missing = sorted(set(range(len(instructions))) - set(by_idx.keys()))
-    if missing:
-        raise ValueError(
-            f"Gemini did not return scores for {len(missing)} instructions. "
-            f"First missing indices: {missing[:10]}"
-        )
-
-    return [by_idx[i] for i in range(len(instructions))]
-
-def _scores_to_weights(
-    selector_rows: List[Dict[str, Any]],
-    num_instructions: int,
-    beta: float = 4.0,
-    uniform_mix: float = 0.05,
-) -> np.ndarray:
-    """
-    Convert Gemini adversarial scores into initial EXP3 weights
-    """
-    scores = np.zeros(num_instructions, dtype=float)
-
-    for row in selector_rows:
-        idx = int(row["instruction_idx"])
-        if 0 <= idx < num_instructions:
-            scores[idx] = float(row["adversarial_score"])
-
-    beta = float(beta)
-    uniform_mix = float(np.clip(uniform_mix, 0.0, 1.0))
-
-    logits = beta * scores
-    logits -= np.max(logits)
-
-    prior = np.exp(logits)
-    prior = prior / prior.sum()
-
-    uniform = np.ones(num_instructions, dtype=float) / num_instructions
-    prior = (1.0 - uniform_mix) * prior + uniform_mix * uniform
-
-    # EXP3 only needs relative weights.
-    weights = prior / max(prior.mean(), 1e-12)
-    weights = np.maximum(weights, 1e-12)
-
-    return weights
 
 def _judge_batch_with_model(
     judge_name: str,
@@ -1559,7 +1380,7 @@ class RatingSystemStaticWeighted(RatingSystem):
 
 _GLOBAL_LEADER_KEY = "__global__"
 _VALID_TRAINING_ALGORITHMS = {"dpo", "grpo"}
-_VALID_LEADER_TYPES = {"probabilistic", "gemini", "uniform"}
+_VALID_LEADER_TYPES = {"probabilistic", "uniform"}
 _VALID_LEADER_SCOPES = {"global", "per_model"}
 
 
@@ -1606,8 +1427,6 @@ def _normalize_leader_type(value: Any) -> str:
     aliases = {
         "exp3": "probabilistic",
         "bandit": "probabilistic",
-        "llm": "gemini",
-        "llm_leader": "gemini",
         "random": "uniform",
     }
     value = aliases.get(value, value)
@@ -1677,52 +1496,6 @@ def _leader_keys(scope: str, model_names: Sequence[str]) -> List[str]:
     return [_GLOBAL_LEADER_KEY] if scope == "global" else list(model_names)
 
 
-def _gemini_prior_rows(
-    base_dir: str,
-    instructions: List[str],
-    task: str,
-    task_type: str,
-    selector_model: str,
-    batch_size: int,
-    max_retries: int,
-) -> List[Dict[str, Any]]:
-    analysis_dir = os.path.join(base_dir, "analysis")
-    os.makedirs(analysis_dir, exist_ok=True)
-    cache_path = os.path.join(analysis_dir, "gemini_instruction_prior.json")
-    if os.path.exists(cache_path):
-        payload = _read_json(cache_path)
-        rows = payload.get("selector_rows", [])
-        cached_instructions = payload.get("instructions", [])
-        if len(rows) == len(instructions) and len(cached_instructions) == len(instructions):
-            print(f"[Stackelberg] Loaded Gemini instruction prior from {cache_path}")
-            return rows
-        print("[Stackelberg] Gemini prior cache size does not match the current prompt pool; rescoring.")
-
-    if genai is None:
-        raise ImportError("google-genai is required for a Gemini leader or Gemini initialization.")
-    rows = _score_instructions(
-        instructions=instructions,
-        task=task,
-        task_type=task_type,
-        max_retries=max_retries,
-        model_name=selector_model,
-        batch_size=batch_size,
-    )
-    payload = {
-        "task": task,
-        "task_type": task_type,
-        "selector_model": selector_model,
-        "selector_rows": rows,
-        "instructions": [
-            {"instruction_idx": i, "instruction": instruction}
-            for i, instruction in enumerate(instructions)
-        ],
-    }
-    _save_json(cache_path, payload)
-    print(f"[Stackelberg] Saved Gemini instruction prior to {cache_path}")
-    return rows
-
-
 def _initialize_leader_state(
     base_dir: str,
     instructions: List[str],
@@ -1736,33 +1509,6 @@ def _initialize_leader_state(
     k = len(instructions)
     keys = _leader_keys(leader_scope, model_names)
     initial_vector = np.ones(k, dtype=float)
-
-    initialization = str(
-        hyperparameters.get(
-            "leader_initialization",
-            "gemini" if leader_type == "gemini" else "uniform",
-        )
-    ).strip().lower()
-    if initialization not in {"uniform", "gemini"}:
-        raise ValueError("leader_initialization must be 'uniform' or 'gemini'.")
-
-    if initialization == "gemini":
-        selector_model = hyperparameters.get("leader_model", "gemini-3.5-flash")
-        rows = _gemini_prior_rows(
-            base_dir=base_dir,
-            instructions=instructions,
-            task=task,
-            task_type=task_type,
-            selector_model=selector_model,
-            batch_size=int(hyperparameters.get("leader_init_batch_size", 50)),
-            max_retries=int(hyperparameters.get("max_retries", 5)),
-        )
-        initial_vector = _scores_to_weights(
-            selector_rows=rows,
-            num_instructions=k,
-            beta=float(hyperparameters.get("leader_init_beta", 4.0)),
-            uniform_mix=float(hyperparameters.get("leader_uniform_mix", 0.05)),
-        )
 
     return {
         "leader_type": leader_type,
@@ -1862,22 +1608,7 @@ def _load_leader_state(
             raise ValueError(f"Leader checkpoint prompt count mismatch at {path}.")
         return {"leader_type": expected_type, "leader_scope": expected_scope, "weights": weights}
 
-    # Backward-compatible fallbacks for the two old scripts.
-    if expected_type == "gemini" and expected_scope == "global":
-        legacy = os.path.join(
-            base_dir,
-            f"iteration_{checkpoint_iteration}",
-            "analysis",
-            "gemini_leader_weights.json",
-        )
-        if os.path.exists(legacy):
-            vector = np.asarray(_read_json(legacy)["weights"], dtype=float)
-            return {
-                "leader_type": expected_type,
-                "leader_scope": expected_scope,
-                "weights": {_GLOBAL_LEADER_KEY: vector},
-            }
-
+    # Backward-compatible fallback for the old exp3 script.
     if expected_type == "probabilistic":
         legacy = os.path.join(
             base_dir,
@@ -2204,194 +1935,6 @@ def _build_rating_system(
     return RatingSystem(**common)
 
 
-def _request_gemini_multipliers(
-    selector_model: str,
-    prompt: str,
-    observed_indices: set,
-    min_multiplier: float,
-    max_multiplier: float,
-    max_retries: int,
-) -> Tuple[Dict[int, float], str]:
-    if genai is None:
-        raise ImportError("google-genai is not importable.")
-    client = genai.Client(vertexai=True)
-    raw_text = ""
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(model=selector_model, contents=prompt)
-            raw_text = _get_gemini_response_text(response)
-            rows = _extract_json_array(raw_text)
-            multipliers: Dict[int, float] = {}
-            for row in rows:
-                idx = int(row["instruction_idx"])
-                if idx in observed_indices:
-                    multipliers[idx] = float(
-                        np.clip(float(row.get("multiplier", 1.0)), min_multiplier, max_multiplier)
-                    )
-            return multipliers, raw_text
-        except Exception:
-            if attempt == max_retries - 1:
-                raise
-    return {}, raw_text
-
-
-def _gemini_reweight_vector(
-    base_dir: str,
-    iteration: int,
-    leader_key: str,
-    previous_weights: np.ndarray,
-    instructions: List[str],
-    judged_duels: List[Dict[str, Any]],
-    task: str,
-    task_type: str,
-    training_algorithm: str,
-    hyperparameters: Dict[str, Any],
-) -> np.ndarray:
-    observed: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
-    for duel in judged_duels:
-        scores = duel.get("scores")
-        if not isinstance(scores, list) or len(scores) < 2:
-            continue
-        observed[int(duel["instruction_idx"])].append(duel)
-    if not observed:
-        return np.asarray(previous_weights, dtype=float)
-
-    uniform_mix = float(hyperparameters.get("leader_uniform_mix", 0.05))
-    probs = _weights_to_probs(previous_weights, uniform_mix=uniform_mix)
-    records: List[Dict[str, Any]] = []
-    for instruction_idx, rows in observed.items():
-        all_scores: List[float] = []
-        all_rewards: List[float] = []
-        gaps: List[float] = []
-        response_examples: List[Dict[str, Any]] = []
-        for duel in rows:
-            scores = [float(x) for x in duel.get("scores", [])[:2]]
-            if len(scores) == 2:
-                all_scores.extend(scores)
-                gaps.append(abs(scores[0] - scores[1]))
-            rewards = duel.get("model_level_rewards", {})
-            if isinstance(rewards, dict):
-                all_rewards.extend(float(x) for x in rewards.values())
-            for model_name, examples in duel.get("response_summaries", {}).items():
-                for example in examples[:1]:
-                    response_examples.append(
-                        {
-                            "model": model_name,
-                            "reward": example.get("reward"),
-                            "raw_score_1_to_10": example.get("raw_score_1_to_10"),
-                            "completion_excerpt": str(example.get("completion_excerpt", ""))[:400],
-                        }
-                    )
-        records.append(
-            {
-                "instruction_idx": int(instruction_idx),
-                "instruction": instructions[instruction_idx],
-                "old_weight": float(previous_weights[instruction_idx]),
-                "old_prob": float(probs[instruction_idx]),
-                "num_duels": len(rows),
-                "mean_model_score_1_to_10": float(np.mean(all_scores)) if all_scores else 5.0,
-                "mean_reward": float(np.mean(all_rewards)) if all_rewards else 0.5,
-                "std_reward": float(np.std(all_rewards)) if len(all_rewards) > 1 else 0.0,
-                "mean_model_score_gap": float(np.mean(gaps)) if gaps else 0.0,
-                "response_examples": response_examples[:4],
-            }
-        )
-
-    top_indices = np.argsort(probs)[::-1][: min(20, len(probs))]
-    context = {
-        "iteration": int(iteration),
-        "leader_key": leader_key,
-        "training_algorithm": training_algorithm,
-        "task": task,
-        "task_type": task_type,
-        "num_total_instructions": len(instructions),
-        "current_distribution_entropy_normalized": _entropy_normalized(probs),
-        "top_weighted_instructions": [
-            {
-                "instruction_idx": int(i),
-                "prob": float(probs[i]),
-                "weight": float(previous_weights[i]),
-                "instruction": instructions[i][:500],
-            }
-            for i in top_indices
-        ],
-        "observed_instruction_records": records,
-    }
-    min_multiplier = float(hyperparameters.get("leader_min_update_multiplier", 1.0 / 3.0))
-    max_multiplier = float(hyperparameters.get("leader_max_update_multiplier", 3.0))
-    selector_model = hyperparameters.get("leader_model", "gemini-3.5-flash")
-    prompt = f"""
-You are the Stackelberg leader for a multi-LLM alignment curriculum.
-The follower optimizer is {training_algorithm.upper()}.
-
-Increase prompt weights when the evidence suggests a prompt is difficult but learnable and produces useful alignment signal: meaningful response-quality variation, informative peer-judge scores, and non-trivial but not impossible score gaps. Decrease weights for prompts that are too easy, impossible, ambiguous, noisy, or uninformative.
-
-Return ONLY a JSON array with one object for every observed instruction_idx. Each object must contain:
-- "instruction_idx": integer
-- "multiplier": number in [{min_multiplier}, {max_multiplier}]
-- "reason": short string
-
-Do not invent indices and do not include prose outside the JSON array.
-
-Context:
-{json.dumps(context, ensure_ascii=False, indent=2)}
-""".strip()
-
-    raw_text = ""
-    multipliers: Dict[int, float] = {}
-    try:
-        multipliers, raw_text = _request_gemini_multipliers(
-            selector_model=selector_model,
-            prompt=prompt,
-            observed_indices=set(observed),
-            min_multiplier=min_multiplier,
-            max_multiplier=max_multiplier,
-            max_retries=int(hyperparameters.get("max_retries", 5)),
-        )
-    except Exception as exc:
-        print(f"[Stackelberg] Gemini update failed for {leader_key} ({exc}); using deterministic fallback.")
-        qualities: List[float] = []
-        for record in records:
-            score = float(record["mean_model_score_1_to_10"])
-            difficulty = 1.0 - (score - 1.0) / 9.0
-            normalized_gap = float(record["mean_model_score_gap"]) / 9.0
-            gap_quality = math.exp(-((normalized_gap - 0.35) ** 2) / (2.0 * 0.25**2))
-            reward_variance = float(record["std_reward"])
-            qualities.append(0.45 * difficulty + 0.35 * gap_quality + 0.20 * reward_variance)
-        center = float(np.mean(qualities)) if qualities else 0.0
-        for record, quality in zip(records, qualities):
-            multipliers[int(record["instruction_idx"])] = float(
-                np.clip(math.exp(quality - center), min_multiplier, max_multiplier)
-            )
-
-    new_weights = np.maximum(np.asarray(previous_weights, dtype=float).copy(), 1e-12)
-    for idx, multiplier in multipliers.items():
-        new_weights[idx] *= multiplier
-    new_weights = _apply_entropy_floor(
-        new_weights,
-        entropy_floor=float(hyperparameters.get("leader_entropy_floor", 0.30)),
-    )
-    safe_key = _safe_name(leader_key)
-    _save_json(
-        os.path.join(
-            base_dir,
-            f"iteration_{iteration}",
-            "analysis",
-            f"gemini_leader_update_{safe_key}.json",
-        ),
-        {
-            "iteration": int(iteration),
-            "leader_key": leader_key,
-            "context": context,
-            "raw_gemini_text": raw_text,
-            "applied_multipliers": {str(k): float(v) for k, v in multipliers.items()},
-            "old_entropy": _entropy_normalized(probs),
-            "new_entropy": _entropy_normalized(_weights_to_probs(new_weights, uniform_mix=uniform_mix)),
-        },
-    )
-    return new_weights
-
-
 def _update_leader_state(
     state: Dict[str, Any],
     judged_duels: List[Dict[str, Any]],
@@ -2418,25 +1961,6 @@ def _update_leader_state(
     ]
     if not valid_duels:
         print("[Stackelberg] No complete scored duels; preserving leader weights.")
-        return state
-
-    if leader_type == "gemini":
-        for key in list(state["weights"]):
-            relevant = valid_duels
-            if state["leader_scope"] == "per_model":
-                relevant = [duel for duel in valid_duels if duel.get("models", [None])[0] == key]
-            state["weights"][key] = _gemini_reweight_vector(
-                base_dir=base_dir,
-                iteration=iteration,
-                leader_key=key,
-                previous_weights=np.asarray(state["weights"][key], dtype=float),
-                instructions=instructions,
-                judged_duels=relevant,
-                task=task,
-                task_type=task_type,
-                training_algorithm=training_algorithm,
-                hyperparameters=hyperparameters,
-            )
         return state
 
     # Probabilistic EXP3 leader.

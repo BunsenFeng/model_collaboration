@@ -360,9 +360,8 @@ Without further ado, a complete list of all supported methods and configurations
 - method-specific hyperparameters:
     - See above: Stackelberg inherits all hyperparameters from Sparta Alignment
     - `run_id`, default current datetime: the user must provide this to resume a run. If starting a new run, the date and time will be appended to `run_id` to avoid overwriting later.
-    - `training_algorithm`, default `dpo`: can be either `dpo` or `grpo`. If `grpo` is selected, you must have a `.env` file in the root of the repository exporting the variables `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`, and `GOOGLE_CLOUD_LOCATION`.
-    - `leader_type`, default `probabilistic`: can be either `probabilistic`, `gemini`, or `uniform`. 
-    - `gemini_leader_model`, default `gemini-3.5-flash`: the LLM leader model. Only Gemini models are currently supported.
+    - `training_algorithm`, default `dpo`: can be either `dpo` or `grpo`.
+    - `leader_type`, default `probabilistic`: can be either `probabilistic` or `uniform`.
     - `instruction_selection`, default `exp3`: instruction sampling method. Can be either `uniform`, `exp3`, or `exp3_per_model`.
     - `instr_sample_gamma`, default 0.2: probability of uniform sampling. This is relevant if `instruction_selection` is either `exp3` or `exp3_per_model`, since the algorithm necessitates a hyperparameter gamma that determines the probability of prompts bing sampled from a uniform vs. weighted distribution.
     - `reward_method`, default `weighted`: how to calculate instruction selector reward. Can be either `weighted`, `difficulty_only`, or `preference_quality_only`.
