@@ -58,7 +58,7 @@ VERIFIER_PASS_TAG = "Final Decision: Yes"
 GENERAL_VERIFIER_MODEL_NAME = "TIGER-Lab/general-verifier"
 GENERAL_VERIFIER_MAX_TOKENS = 1024
 GENERAL_VERIFIER_TEMPERATURE = 0.0
-GENERAL_VERIFIER_BATCH_SIZE = 64
+GENERAL_VERIFIER_BATCH_SIZE = 32
 
 # Cached verifier model and tokenizer — loaded once, reused across all calls.
 _general_verifier_model = None
