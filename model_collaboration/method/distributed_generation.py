@@ -38,17 +38,45 @@ def _strip_assistant_final(text: str) -> str:
         return text[idx + len("assistantfinal"):].strip()
     return text
 
+def _register_embedding_long_hook(model):
+    """Recover Long embedding indices at the embedding boundary.
+    Loading bfloat16 models can cause input_ids to be cast to a float dtype under
+    some transformers/PEFT versions, breaking nn.Embedding lookups. Only float32/
+    float64 indices are recovered (they represent vocab-size ints exactly); a
+    fp16/bf16 index is rejected -- it is already lossy (bf16 is exact only to 256,
+    fp16 to 2048), so casting it to Long would silently corrupt token IDs."""
+    import torch.nn as nn
+    def _cast_to_long(module, args):
+        def to_long(x):
+            if isinstance(x, torch.Tensor) and x.is_floating_point():
+                if x.dtype in (torch.float16, torch.bfloat16):
+                    raise TypeError(
+                        f"nn.Embedding received a {x.dtype} index tensor; casting to "
+                        f"Long would silently corrupt token IDs (fp16/bf16 cannot "
+                        f"exactly represent vocab indices). Fix the upstream cast."
+                    )
+                return x.long()
+            return x
+        return tuple(to_long(x) for x in args)
+    for module in model.modules():
+        if isinstance(module, nn.Embedding):
+            module.register_forward_pre_hook(_cast_to_long)
+
+
 def _load_model(model_name, device_map, load_in_8bit=False):
     if load_in_8bit and model_name not in NO_8BIT_MODELS:
         quant_config = BitsAndBytesConfig(load_in_8bit=True)
-        return AutoModelForCausalLM.from_pretrained(
+        model = AutoModelForCausalLM.from_pretrained(
             model_name, quantization_config=quant_config,
             device_map=device_map, trust_remote_code=True
         )
-    return AutoModelForCausalLM.from_pretrained(
-        model_name, torch_dtype=torch.bfloat16,
-        device_map=device_map, trust_remote_code=True
-    )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, torch_dtype=torch.bfloat16,
+            device_map=device_map, trust_remote_code=True
+        )
+    _register_embedding_long_hook(model)
+    return model
 
 def update_generation_hyperparameters(max_response_length, temperature, top_p, batch_size, big_model_mode=False, load_in_8bit=False):
     global MAX_RESPONSE_LENGTH, TEMPERATURE, TOP_P, BATCH_SIZE, BIG_MODEL_MODE, LOAD_IN_8BIT
