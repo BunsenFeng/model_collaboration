@@ -993,21 +993,28 @@ def general_verifier_score(task, split, outputs, ratio=1.0, id_list=None):
 
     global _general_verifier_model, _general_verifier_tokenizer
 
-    if _general_verifier_model is None:
+    if _general_verifier_model is None or _general_verifier_tokenizer is None:
         torch.cuda.empty_cache()
         _dynamo.reset_code_caches()
-        _general_verifier_model = AutoModelForCausalLM.from_pretrained(
-            GENERAL_VERIFIER_MODEL_NAME,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            trust_remote_code=True,
-        )
-        _general_verifier_tokenizer = AutoTokenizer.from_pretrained(
-            GENERAL_VERIFIER_MODEL_NAME, use_fast=True
-        )
-        _general_verifier_tokenizer.pad_token = _general_verifier_tokenizer.eos_token
-        _general_verifier_tokenizer.padding_side = "left"
-        _general_verifier_tokenizer.pad_token_id = _general_verifier_tokenizer.eos_token_id
+        try:
+            _model = AutoModelForCausalLM.from_pretrained(
+                GENERAL_VERIFIER_MODEL_NAME,
+                torch_dtype=torch.float16,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+            _tokenizer = AutoTokenizer.from_pretrained(
+                GENERAL_VERIFIER_MODEL_NAME, use_fast=True
+            )
+            _tokenizer.pad_token = _tokenizer.eos_token
+            _tokenizer.padding_side = "left"
+            _tokenizer.pad_token_id = _tokenizer.eos_token_id
+        except Exception:
+            _general_verifier_model = None
+            _general_verifier_tokenizer = None
+            raise
+        _general_verifier_model = _model
+        _general_verifier_tokenizer = _tokenizer
 
     model = _general_verifier_model
     tokenizer = _general_verifier_tokenizer
