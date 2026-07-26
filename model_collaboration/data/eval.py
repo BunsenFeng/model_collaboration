@@ -617,6 +617,17 @@ def clear_reward_model():
     torch.cuda.empty_cache()
     _dynamo.reset_code_caches()
 
+def clear_general_verifier():
+    global _general_verifier_model, _general_verifier_tokenizer
+    if _general_verifier_model is not None:
+        del _general_verifier_model
+        _general_verifier_model = None
+    if _general_verifier_tokenizer is not None:
+        del _general_verifier_tokenizer
+        _general_verifier_tokenizer = None
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
+
 def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
 
     _ensure_dataset(task)
