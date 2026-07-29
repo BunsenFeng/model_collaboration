@@ -60,6 +60,10 @@ GENERAL_VERIFIER_MAX_TOKENS = 1024
 GENERAL_VERIFIER_TEMPERATURE = 0.0
 GENERAL_VERIFIER_BATCH_SIZE = 32
 
+# Cached verifier model and tokenizer — loaded once, reused across all calls.
+_general_verifier_model = None
+_general_verifier_tokenizer = None
+
 CODE_EXECUTION_TIMEOUT = 10  # seconds per test case
 CODE_EXECUTION_MEMORY_LIMIT_MB = 512
 CODE_EXECUTION_FSIZE_LIMIT_MB = 5
@@ -613,6 +617,17 @@ def clear_reward_model():
     torch.cuda.empty_cache()
     _dynamo.reset_code_caches()
 
+def clear_general_verifier():
+    global _general_verifier_model, _general_verifier_tokenizer
+    if _general_verifier_model is not None:
+        del _general_verifier_model
+        _general_verifier_model = None
+    if _general_verifier_tokenizer is not None:
+        del _general_verifier_tokenizer
+        _general_verifier_tokenizer = None
+    torch.cuda.empty_cache()
+    _dynamo.reset_code_caches()
+
 def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
 
     _ensure_dataset(task)
@@ -987,29 +1002,49 @@ def general_verifier_score(task, split, outputs, ratio=1.0, id_list=None):
         )
         prompts.append(prompt)
 
-    torch.cuda.empty_cache()
-    _dynamo.reset_code_caches()
+    global _general_verifier_model, _general_verifier_tokenizer
 
-    model = AutoModelForCausalLM.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, torch_dtype=torch.float16, device_map="auto", trust_remote_code=True)
-    tokenizer = AutoTokenizer.from_pretrained(GENERAL_VERIFIER_MODEL_NAME, use_fast=True)
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "left"
-    tokenizer.pad_token_id = tokenizer.eos_token_id
+    if _general_verifier_model is None or _general_verifier_tokenizer is None:
+        torch.cuda.empty_cache()
+        _dynamo.reset_code_caches()
+        try:
+            _model = AutoModelForCausalLM.from_pretrained(
+                GENERAL_VERIFIER_MODEL_NAME,
+                torch_dtype=torch.float16,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+            _tokenizer = AutoTokenizer.from_pretrained(
+                GENERAL_VERIFIER_MODEL_NAME, use_fast=True
+            )
+            _tokenizer.pad_token = _tokenizer.eos_token
+            _tokenizer.padding_side = "left"
+            _tokenizer.pad_token_id = _tokenizer.eos_token_id
+        except Exception:
+            _general_verifier_model = None
+            _general_verifier_tokenizer = None
+            raise
+        _general_verifier_model = _model
+        _general_verifier_tokenizer = _tokenizer
+
+    model = _general_verifier_model
+    tokenizer = _general_verifier_tokenizer
 
     generated_texts = []
     batch_size = GENERAL_VERIFIER_BATCH_SIZE
-    for i in tqdm(range(0, len(prompts), batch_size), desc="Verifying"):
-        batch_prompts = prompts[i:i+batch_size]
-        inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(model.device)
-        batch_outputs = model.generate(
-            **inputs,
-            max_new_tokens=1024,
-            temperature=0.0,
-            do_sample=False
-        )
-        generated_tokens = batch_outputs[:, inputs.input_ids.shape[1]:]
-        decoded_outputs = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        generated_texts.extend(decoded_outputs)
+    with torch.inference_mode():
+        for i in tqdm(range(0, len(prompts), batch_size), desc="Verifying"):
+            batch_prompts = prompts[i:i+batch_size]
+            inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(model.device)
+            batch_outputs = model.generate(
+                **inputs,
+                max_new_tokens=1024,
+                temperature=0.0,
+                do_sample=False
+            )
+            generated_tokens = batch_outputs[:, inputs.input_ids.shape[1]:]
+            decoded_outputs = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+            generated_texts.extend(decoded_outputs)
 
     if len(generated_texts) != len(prompts):
         raise RuntimeError(
