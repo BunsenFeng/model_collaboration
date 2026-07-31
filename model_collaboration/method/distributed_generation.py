@@ -303,6 +303,15 @@ def distributed_generation_adapter_aware(
     if not list_of_gpu_id:
         list_of_gpu_id = [0]
 
+    # Resolve unset args from the module globals HERE, in the parent process, so
+    # concrete values reach spawn-ed workers (children re-import the module and
+    # reset these globals to None). Legacy callers pass none of these and rely on
+    # update_generation_hyperparameters() having populated the globals.
+    max_response_length = MAX_RESPONSE_LENGTH if max_response_length is None else max_response_length
+    temperature = TEMPERATURE if temperature is None else temperature
+    top_p = TOP_P if top_p is None else top_p
+    batch_size = BATCH_SIZE if batch_size is None else batch_size
+
     if BIG_MODEL_MODE:
         results = [
             batch_generate_text_adapter_aware(
