@@ -373,6 +373,54 @@ Without further ado, a complete list of all supported methods and configurations
     - `freeze_ratings`, default false: if true, model ratings are not updated during the competition phase. Useful for testing or when you want to use fixed ratings.
     - `debug`, default false: if true, prints detailed rating update information (update count, K value, deviation changes) for debugging purposes.
 
+#### Text-level: Stackelberg
+- file: `text_sparta_stackelberg.py`
+- description: extends the SPARTA alignment algorithm (see above) with an adversarial instruction selection mechanism and support for GRPO training. Rather than uniformly sampling instructions for models to duel on, the instruction selector acts as the Stackelberg leader while the LLMs in the model pool act as followers. The leader maintains a probability distribution over the instruction pool and updates it each iteration using EXP3 (an online bandit algorithm) based on duel outcomes — rewarding instructions that are difficult but learnable and produce informative preference gaps. Two training algorithms are supported: DPO (same as SPARTA) and GRPO (online RL, where models generate completions and receive rewards from peer judges during training).
+- method-specific hyperparameters:
+    - See above: Stackelberg inherits all hyperparameters from Sparta Alignment (rating system, judging, opponent selection, etc.)
+    - `run_id`, default current datetime: a unique identifier for the run directory. Must be provided when resuming (`current_iteration > 0`). For new runs, the timestamp is appended automatically.
+    - `training_algorithm`, default `dpo`: training algorithm for the follower models. Either `dpo` or `grpo`.
+    - `leader_type`, default `probabilistic`: instruction selection strategy for the Stackelberg leader. `probabilistic` uses EXP3 to maintain and update a weighted distribution over instructions. `uniform` samples instructions uniformly (effectively disabling the leader).
+    - `leader_scope`, default `global`: whether the leader maintains one shared weight vector (`global`) or a separate weight vector per model (`per_model`). `per_model` allows the leader to tailor instruction difficulty to each individual model's current level.
+    - `leader_uniform_mix` / `instr_sample_gamma`, default 0.2: probability of sampling from a uniform distribution rather than the leader's learned weights (exploration parameter for EXP3). `leader_uniform_mix` is the canonical name; `instr_sample_gamma` is accepted as a legacy alias.
+    - `num_instructions`, default 500 (DPO) / 128 (GRPO): number of instructions drawn from the dev set to form the instruction pool for duels each iteration.
+    - `num_duels_per_iteration`, default `num_instructions`: number of pairwise duels to run per iteration. Each duel samples one instruction from the leader's distribution and one opponent for the active model.
+    - `opponent_selection`, default `schedule_decreasing`: opponent sampling strategy. `lowest_diff` picks opponents with similar reputation; `highest_diff` picks the most different; `schedule_decreasing` starts with high reputation gaps and narrows over iterations; `schedule_increasing` does the reverse.
+    - `reputation_gap_sigma`, default 0.15: width of the Gaussian used to score candidate opponents by reputation gap. Relevant for `schedule_decreasing` and `schedule_increasing`.
+    - **EXP3 leader reward hyperparameters** (only relevant when `leader_type` is `probabilistic`):
+        - `reward_method`, default `weighted`: how to compute the per-duel reward signal for the EXP3 leader. `weighted` combines difficulty and preference-quality components; `difficulty_only` uses only difficulty; `preference_quality_only` uses only preference quality.
+        - `difficulty_reward_weight`, default 0.3: weight of the difficulty component. Only used when `reward_method` is `weighted`.
+        - `score_threshold`, default 3.0: judge scores below this value indicate a problem that is too hard and yield zero difficulty reward. The difficulty reward peaks at this threshold and decreases as scores rise above it.
+        - `preference_quality_reward_weight`, default 0.7: weight of the preference-quality component. Only used when `reward_method` is `weighted`.
+        - `ideal_start_gap`, default 0.6: target normalized preference score gap (between the two dueling models) at the start of training.
+        - `ideal_end_gap`, default 0.15: target normalized preference score gap at the end of training. Together with `ideal_start_gap`, this schedules the curriculum from high-gap (easy to distinguish winners) to low-gap (harder) duels.
+        - `preference_gap_sigma`, default 0.15: Gaussian width for the preference-quality reward around the scheduled ideal gap. Smaller values enforce stricter gap targeting.
+    - **DPO training hyperparameters** (only used when `training_algorithm` is `dpo`):
+        - `dpo_batch_size`, default 1: per-GPU batch size for DPO training.
+        - `dpo_gradient_accumulation_steps`, default 16: gradient accumulation steps for DPO.
+        - `dpo_learning_rate`, default 1e-6: learning rate for DPO.
+        - `dpo_epoch`, default 1.0: number of training epochs per DPO step.
+        - `parallel_dpo_training`, default true: whether to train all models in parallel (requires enough GPUs).
+    - **GRPO training hyperparameters** (only used when `training_algorithm` is `grpo`):
+        - `grpo_batch_size`, default 1: per-GPU batch size for GRPO training.
+        - `grpo_gradient_accumulation_steps`, default 4: gradient accumulation steps for GRPO.
+        - `grpo_learning_rate`, default 1e-6: learning rate for GRPO.
+        - `grpo_epoch`, default 1.0: number of training epochs per GRPO step.
+        - `grpo_num_generations`, default 4: number of completions to sample per prompt for group-relative reward normalization.
+        - `grpo_max_completion_length`, default 256: maximum token length for GRPO completions.
+        - `grpo_beta`, default 0.0: KL penalty coefficient (0 disables KL regularization).
+        - `grpo_epsilon`, default 0.2: clipping ratio for the GRPO policy update.
+        - `grpo_scale_rewards`, default `group`: how to normalize rewards within the GRPO group. `group` normalizes within the sampled group; other values depend on the underlying trainer.
+        - `grpo_loss_type`, default `grpo`: loss variant for the GRPO trainer.
+        - `reward_scale`, default `zero_one`: how raw judge scores (1–10) are mapped to GRPO rewards. `zero_one` maps linearly to [0, 1].
+        - `parallel_grpo_training`, default false: whether to train models in parallel.
+        - `gpus_per_grpo_job`, default 1: number of GPUs per GRPO training job.
+        - `max_parallel_grpo_jobs`, default `len(gpu_ids)`: maximum number of concurrent GRPO jobs.
+        - `online_judge_gpu_ids`: list of GPU IDs reserved for online judging during GRPO. Defaults to `gpu_ids`.
+- notes:
+    - Requires at least 3 models: in each duel, two models generate responses and at least one remaining model acts as judge.
+    - `instruction_selection` is a legacy alias: `exp3` maps to `leader_type=probabilistic, leader_scope=global`; `exp3_per_model` maps to `leader_type=probabilistic, leader_scope=per_model`; `uniform` maps to `leader_type=uniform`. Prefer setting `leader_type` and `leader_scope` directly.
+
 #### Text-level: AggLM
 - file: `text_agglm.py`
 - description: trains an aggregator model to synthesize final solutions from multiple candidate solutions using reinforcement learning from verifiable rewards (RLVR). Given a problem and m candidate solutions from one or more LLMs, AggLM learns to review, reconcile, and combine them into a superior final answer. The method uses GRPO (Group-Relative Policy Optimization) with LoRA fine-tuning and carefully balances training on "hard" examples (where majority voting fails) and "easy" examples (where majority voting succeeds) to learn both minority-answer recovery and reliable aggregation.

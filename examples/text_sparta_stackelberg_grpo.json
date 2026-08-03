@@ -1,0 +1,37 @@
+{
+    "method": "text_sparta_stackelberg",
+    "task": "agieval_tiny",
+    "task_type": "multiple_choice",
+    "gpu_ids": [0,1,2,3],
+    "model_names": [
+        "chtmp223/Qwen2.5-7B-CLIPPER",
+        "chengq9/ToolRL-Qwen2.5-3B",
+        "AgentFlow/agentflow-planner-7b",
+        "bunsenfeng/parti_3_full"
+    ],
+    "hyperparameters": {
+        "run_id": "example_grpo",
+        "training_algorithm": "grpo",
+        "leader_type": "probabilistic",
+        "opponent_selection": "lowest_diff",
+        "num_iterations": 2,
+        "num_instructions": 32,
+        "num_duels_per_iteration": 32,
+        "num_iterations": 1,
+        "max_response_length": 256,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 8,
+        "grpo_batch_size": 1,
+        "grpo_gradient_accumulation_steps": 4,
+        "grpo_learning_rate": 1e-6,
+        "grpo_epoch": 1.0,
+        "grpo_num_generations": 2,
+        "grpo_max_completion_length": 128,
+        "gpus_per_grpo_job": 2,
+        "parallel_grpo_training": true,
+        "max_parallel_grpo_jobs": 2,
+        "judge_batch_size": 8,
+        "judge_max_response_length": 64
+    }
+}
