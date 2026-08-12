@@ -673,6 +673,28 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
             # Support various field names for the problem description
             problem = item.get("input", item.get("question", item.get("prompt", "")))
             input_list.append(problem)
+    elif task_type == "smdd":
+        for item in data:
+            if item["subtype"] == "pharmacophore":
+                actives_text = "\n".join(item["train_actives"])
+                decoys_text = "\n".join(item["train_decoys"])
+                prompt = (
+                    "You are given a set of active molecules and decoy molecules for a biological target.\n\n"
+                    "Active molecules (bind the target):\n"
+                    f"{actives_text}\n\n"
+                    "Decoy molecules (do not bind the target):\n"
+                    f"{decoys_text}\n\n"
+                    "Write a Python function `check_pharmacophore(smiles: str) -> bool` that returns True "
+                    "if the input SMILES matches the pharmacophore of the active molecules, and False otherwise.\n"
+                    "Use RDKit. Stick to well-established RDKit APIs: rdkit.Chem.MolFromSmiles, "
+                    "rdkit.Chem.rdMolDescriptors (Morgan fingerprints), rdkit.Chem.MACCSkeys, "
+                    "rdkit.Chem.rdMolChemicalFeatures, or SMARTS-based substructure matching via mol.HasSubstructMatch. "
+                    "Do not use rdkit.Chem.Pharm2D or rdkit.Chem.Pharm3D. "
+                    "Output only the Python function, no other text."
+                )
+            else:  # lead_opt
+                prompt = item["input"]
+            input_list.append(prompt)
     elif task_type == "kernel_bench":
         for item in data:
             prompt = (
@@ -838,6 +860,25 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
             score = evaluate_code_solution(code, test_code, CODE_EXECUTION_TIMEOUT, language)
             scores.append(score)
             parsed_outputs.append(code)
+
+    if task_type == "smdd":
+        from model_collaboration.utils.pharmacophore_eval import score_pharmacophore
+        from model_collaboration.utils.lead_opt_eval import score_lead_opt
+        for item, output in zip(data, outputs):
+            if item["subtype"] == "pharmacophore":
+                code = extract_code_block(output, "python")
+                score = score_pharmacophore(code, item["hidden_actives"], item["hidden_decoys"])
+                parsed_outputs.append(code)
+            else:  # lead_opt
+                score = score_lead_opt(
+                    output,
+                    item["reference_smiles"],
+                    item["baseline_values"],
+                    item["objectives"],
+                    item["hold_constant"],
+                )
+                parsed_outputs.append(output)
+            scores.append(score)
 
     if task_type == "kernel_bench":
         import multiprocessing

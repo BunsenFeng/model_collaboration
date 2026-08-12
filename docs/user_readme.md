@@ -227,6 +227,14 @@ Without further ado, a complete list of all supported methods and configurations
 - method-specific hyperparameters:
     - `round`, default 3: the number of refinement rounds.
 
+#### Text-level: Mixture of Agents (MoA)
+- file: `text_moa.py`
+- description: a layered ensemble method where all LLMs first generate candidate responses (proposer round), and then the best-performing LLM on the dev set synthesizes all candidates into a single final response (aggregator). The aggregator model participates in candidate generation as well, making the effective sequence `[model_1, ..., model_N, aggregator]`. Multiple proposer rounds are supported, with each intermediate round injecting the previous round's candidates as numbered references.
+- related paper(s):
+    - [Mixture-of-Agents Enhances Large Language Model Capabilities](https://arxiv.org/abs/2406.04692)
+- method-specific hyperparameters:
+    - `round`, default 1: the number of proposer rounds before aggregation.
+
 #### Text-level: Multiagent Feedback
 - file: `text_multiagent_feedback.py`
 - description: multiple LLMs collaborate by providing feedback to each other. First, evaluate all models on the dev set to select a final summarizer. For each query, each LLM generates an initial answer, then provides feedback to other LLMs' answers, and finally refines its answer based on the received feedback. After several rounds, the final answers are aggregated by the summarizer LLM.
