@@ -371,8 +371,8 @@ def score_kernel_result(result: KernelExecResult, level: int) -> float:
 
     Scoring:
       - 0.00      : failed to compile or incorrect output
-      - 0.25      : correct but not faster than baseline (speedup < 1.01)
-      - 0.50      : correct and any faster (speedup > 1.0)
+      - 0.25      : correct but not faster than baseline (speedup ≤ 1.0×)
+      - 0.50      : correct and faster (speedup > 1.0×)
       - 0.50–1.00 : correct and faster; the remaining 0.5 scales linearly
                     from 1× → cap[level]× (L1=10×, L2=5×, L3=2×)
     """
