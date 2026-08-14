@@ -123,8 +123,13 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         overall_dataset = hard_dataset + easy_dataset
         overall_dataset = Dataset.from_list(overall_dataset)
 
-        gpu_id_str = ",".join([str(i) for i in gpu_ids])
-        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_str
+        # Pin the aggregator's GRPO training to a SINGLE GPU. Exposing all the
+        # coalition's GPUs makes HF Trainer wrap the (tiny ~1.5B) aggregator in
+        # nn.DataParallel, which gathers per-token logps onto GPU 0 and OOMs
+        # once the coalition has many GPUs (e.g. 7-model pools). One 80GB card
+        # is ample for a 1.5B LoRA GRPO run; visibility is restored to all GPUs
+        # after training for the multi-model test-set generation below.
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_ids[0])
 
         training_args = GRPOConfig(
             num_generations=batch_size,
@@ -171,25 +176,38 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             responses = [completion[0]['content'] for completion in completions]
             return eval.get_scores(task, task_type, "dev", responses, ratio=ratio, id_list=kwargs['id'])
 
-        trainer = GRPOTrainer(
-            model=agg_model,
-            args=training_args,
-            reward_funcs=reward_func,
-            train_dataset=overall_dataset,
-            peft_config=peft_config
-        )
-        trainer.train()
-        if trainer.accelerator.is_main_process:
-            trainer.save_model(agglm_log_path + '/' + file_name[:-5])
-        trainer.accelerator.wait_for_everyone()
+        trainer = None
+        try:
+            trainer = GRPOTrainer(
+                model=agg_model,
+                args=training_args,
+                reward_funcs=reward_func,
+                train_dataset=overall_dataset,
+                peft_config=peft_config
+            )
+            # Force single-GPU training. torch.cuda.device_count() is often already
+            # cached >1 (CUDA init'd earlier during generation/scoring), so HF Trainer
+            # still sees n_gpu>1 and wraps the ~1.5B aggregator in nn.DataParallel --
+            # which gathers per-token logps onto GPU 0 and OOMs on many-GPU coalitions.
+            # Overriding _n_gpu=1 disables that wrap; one card is ample.
+            trainer.args._n_gpu = 1
+            trainer.train()
+            if trainer.accelerator.is_main_process:
+                trainer.save_model(agglm_log_path + '/' + file_name[:-5])
+            trainer.accelerator.wait_for_everyone()
+        finally:
+            # Restore full GPU visibility regardless of success or failure so
+            # subsequent generation/scoring steps are not left pinned to one GPU.
+            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in gpu_ids])
+            if trainer is not None:
+                del trainer
+            del agg_model
+            torch.cuda.empty_cache()
+            _dynamo.reset_code_caches()
+            if dist.is_initialized():
+                dist.barrier()
+                dist.destroy_process_group()
 
-        del trainer
-        del agg_model
-        torch.cuda.empty_cache()
-        _dynamo.reset_code_caches()
-        if dist.is_initialized():
-            dist.barrier()
-            dist.destroy_process_group()
 
     new_gpu_ids = [i for i in range(len(gpu_ids))]
     test_input_list = eval.prepare_inputs(task, task_type, 'test', ratio=ratio)
