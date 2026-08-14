@@ -103,6 +103,7 @@ pyparsing==3.3.2
 python-dateutil==2.9.0.post0
 pytz==2025.2
 PyYAML==6.0.2
+rdkit
 regex==2026.5.9
 requests==2.32.4
 rich==15.0.0

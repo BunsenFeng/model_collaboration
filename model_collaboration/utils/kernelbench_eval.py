@@ -370,20 +370,21 @@ def score_kernel_result(result: KernelExecResult, level: int) -> float:
     Convert a KernelExecResult to a scalar score in [0, 1].
 
     Scoring:
-      - 0.0    : failed to compile or incorrect output
-      - 0.5    : correct but not faster than baseline (speedup < 1.01)
-      - 0.5–1.0: correct and faster; speedup scales the remaining 0.5
-                 linearly from 1× → cap[level]× (L1=10×, L2=5×, L3=2×)
+      - 0.00      : failed to compile or incorrect output
+      - 0.25      : correct but not faster than baseline (speedup ≤ 1.0×)
+      - 0.50      : correct and faster (speedup > 1.0×)
+      - 0.50–1.00 : correct and faster; the remaining 0.5 scales linearly
+                    from 1× → cap[level]× (L1=10×, L2=5×, L3=2×)
     """
     if result is None or not result.compiled or not result.correctness:
         return 0.0
 
     if result.runtime <= 0 or result.ref_runtime <= 0:
-        return 0.5  # correct but timing unavailable
+        return 0.25  # correct but timing unavailable
 
     speedup = result.ref_runtime / result.runtime
-    if speedup < 1.01:
-        return 0.5
+    if speedup <= 1.0:
+        return 0.25
 
     cap = SPEEDUP_CAPS.get(level, 2.0)
     speedup_score = min(0.5, 0.5 * (speedup - 1.0) / (cap - 1.0))

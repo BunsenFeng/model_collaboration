@@ -49,6 +49,10 @@ The sections below list all currently supported values for these parameters.
 | `value_drifts` | `reward_model` | [Bhatia et al., 2026](https://arxiv.org/abs/2510.26707) | Value-probing prompts across 11 contentious topics (V-PRISM subset) |
 | `infinite_chat_diversity` | `generation_diversity` | [Jiang et al., 2025](https://arxiv.org/abs/2510.22954) | Average distance of generated responses to references (generations by existing models) |
 | `kernelbench` | `kernel_bench` | [Ouyang et al., 2025](https://arxiv.org/abs/2502.10517) | GPU kernel optimization: rewrite PyTorch operators as faster custom CUDA kernels (250 problems across Levels 1–3) |
+| `bixbench` | `multiple_choice` | [Rodriques et al., 2025](https://arxiv.org/abs/2503.00096) | Bioinformatics MCQ requiring computational biology analysis (RNA-seq, differential expression, statistical tests); 102 dev / 103 test |
+| `lab_bench` | `multiple_choice` | [Laurent et al., 2024](https://arxiv.org/abs/2407.10362) | Biology lab skills MCQ across 6 subtasks: SeqQA, DbQA, LitQA2, ProtocolQA, SuppQA, CloningScenarios; 192 dev / 193 test |
+| `chembench` | `multiple_choice` | [Mirza et al., 2024](https://arxiv.org/abs/2404.01475) | Chemistry MCQ across 9 subfields (organic, analytical, physical, toxicity, etc.); 498 dev / 500 test, stratified |
+| `smdd` | `smdd` | [Han et al., 2026](https://arxiv.org/abs/2605.21740) | Drug discovery tasks with two subtypes per item (field `subtype`): `pharmacophore` (write a `check_pharmacophore(smiles) -> bool` function, scored by recall + specificity) and `lead_opt` (propose an optimized SMILES, scored by RDKit hard constraint satisfaction); 135 dev / 137 test |
 | `assaybench` | `gene_ranking` | [De Brouwer et al., 2026](https://arxiv.org/abs/2605.10876) | CRISPR genetic screen gene ranking, scored by Adjusted nDCG@100 |
 | `mmluprox` | `general_verifier` (`multiple_choice`) | [Li et al., 2025](https://huggingface.co/datasets/li-lab/MMLU-ProX-Lite) | Multilingual MMLU-Pro with up to 10 options per question, sampled uniformly across 20 languages supported by Qwen 2.5 |
 | `communitybench` | `general_verifier` (`multiple_choice`) | [Lin et al., 2025](https://huggingface.co/datasets/jylin001206/CommunityBench) | Preference identification: given a Reddit community profile and thread context, predict which response the community would most prefer, across 35 subreddits |
@@ -74,6 +78,7 @@ See [General Verifier](#general-verifier) for details on when and why to prefer 
 | `coding` | Executes code in sandbox and runs test assertions |
 | `text_generation` | Generates outputs; dev split is scored with the reward model, test split returns 0 scores |
 | `ifeval` | Programmatic rule-based checking of 25 instruction constraint types; score = fraction of constraints satisfied per prompt |
+| `smdd` | Unified drug discovery evaluation: dispatches per item by `subtype` — `pharmacophore` items run model-submitted `check_pharmacophore` code in a sandbox and score balanced accuracy (0.5 × recall + 0.5 × specificity); `lead_opt` items check proposed SMILES against RDKit hard constraints (MW, LogP, TPSA, HBD, HBA, RotBonds, formal charge, SA score, PAINS, Brenk, Tanimoto ≥ 0.7 to reference) |
 
 ### General Verifier
 
