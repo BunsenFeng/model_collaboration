@@ -320,7 +320,7 @@ class CoLLMTrainer:
         config_kwargs = {
             "cache_dir": self.model_args.cache_dir,
             "revision": self.model_args.model_revision,
-            "use_auth_token": True if self.model_args.use_auth_token else None,
+            "token": True if self.model_args.use_auth_token else None,
         }
         if self.model_args.config_name:
             config = AutoConfig.from_pretrained(self.model_args.config_name, **config_kwargs)
@@ -334,7 +334,7 @@ class CoLLMTrainer:
             "cache_dir": self.model_args.cache_dir,
             "use_fast": self.model_args.use_fast_tokenizer,
             "revision": self.model_args.model_revision,
-            "use_auth_token": True if self.model_args.use_auth_token else None,
+            "token": True if self.model_args.use_auth_token else None,
         }
         if self.model_args.tokenizer_name:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_args.tokenizer_name, **tokenizer_kwargs)
