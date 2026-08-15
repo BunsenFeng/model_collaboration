@@ -29,8 +29,7 @@
         "grpo_num_generations": 2,
         "grpo_max_completion_length": 128,
         "gpus_per_grpo_job": 2,
-        "parallel_grpo_training": true,
-        "max_parallel_grpo_jobs": 2,
+        "parallel_grpo_training": false,
         "judge_batch_size": 8,
         "judge_max_response_length": 64
     }
