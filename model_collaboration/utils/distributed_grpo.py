@@ -1180,7 +1180,16 @@ def single_grpo_with_judges(
     save_steps: int = 1000,
     logging_steps: int = 10,
     seed: int = 42,
-    use_custom_rollout: bool = True,
+    # Default False under trl>=1.0: MoCo's custom stable_rollout_func (trl's
+    # experimental rollout_func hook) has an internal count mismatch in trl
+    # 1.10.0 -- the reward function receives completions correctly expanded
+    # by num_generations but prompts/dataset-extra-columns un-expanded,
+    # which trl's own reward-count validation then rejects. trl's built-in
+    # (non-custom) rollout path does not hit this. If custom_rollout was
+    # originally added to work around a different trl<1.0 issue, that issue
+    # is untested here -- flip this back to True if problems resurface on
+    # an older trl.
+    use_custom_rollout: bool = False,
     rollout_do_sample: bool = True,
     rollout_temperature: float = 0.7,
     rollout_top_p: float = 0.8,
