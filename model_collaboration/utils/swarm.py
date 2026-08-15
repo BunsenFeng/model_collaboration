@@ -41,81 +41,15 @@ def lora_merge(weights, lora_name_list, output_path, gpu_id, directly_load_safet
 
     output_name = output_path
 
-    # the slow merge
+    # the slow merge: native linear merge (was mergekit merge_method: linear;
+    # see full_model_linear_merge for the no-mergekit implementation).
     if not directly_load_safetensors:
-        # mergekit implementation
-        with open("model_collaboration/logs/mergekit_args.yml", "w") as f:
-            f.write("models:\n")
-            for i in range(len(lora_name_list)):
-                f.write("  - model: " + lora_name_list[i] + "\n")
-                f.write("    parameters:\n")
-                f.write("      weight: " + str(weights[i]) + "\n")
-            f.write("merge_method: linear\n")
-            f.write("dtype: float16\n")
-        
-        # executing it
-        os.system("mergekit-yaml model_collaboration/logs/mergekit_args.yml " + output_name + " --cuda --device cuda:" + str(gpu_id))
-
-        # lora_state_dict_list = []
-        # for lora_name in lora_name_list:
-        #     model = AutoModelForCausalLM.from_pretrained(lora_name)
-        #     # lora_state_dict_list.append(get_peft_model_state_dict(model))
-        #     lora_state_dict_list.append(model.state_dict())
-        #     if not lora_name == lora_name_list[-1]:
-        #         del model
-        #     # torch.cuda.empty_cache()
-        
-        # final_state_dict = {}
-
-        # # for key in lora_state_dict_list[0].keys():
-        # #     for i in range(len(lora_state_dict_list)):
-        # #         assert key in lora_state_dict_list[i].keys()
-        # #     final_state_dict[key] = uneven_fuse(weights, [lora_state_dict_list[i][key] for i in range(len(lora_state_dict_list))])
-
-        # # multiprocessing of uneven_fuse over keys
-        # uneven_fuse_args = []
-        # for key in lora_state_dict_list[0].keys():
-        #     for i in range(len(lora_state_dict_list)):
-        #         assert key in lora_state_dict_list[i].keys()
-        #     uneven_fuse_args.append((weights, [lora_state_dict_list[i][key] for i in range(len(lora_state_dict_list))]))
-        
-        # # with Pool(processes=8) as p:
-        # #     uneven_fuse_results = p.starmap(uneven_fuse, uneven_fuse_args)
-        
-        # # non-multiprocessing version
-        # uneven_fuse_results = []
-        # for args in uneven_fuse_args:
-        #     uneven_fuse_results.append(uneven_fuse(*args))
-        
-        # for i, key in enumerate(lora_state_dict_list[0].keys()):
-        #     final_state_dict[key] = uneven_fuse_results[i]
-
-        # # for i in range(len(lora_state_dict_list)):
-        # #     if i == 0:
-        # #         for key in lora_state_dict_list[i].keys():
-        # #             final_state_dict[key] = weights[i] * lora_state_dict_list[i][key]
-        # #     else:
-        # #         for key in lora_state_dict_list[i].keys():
-        # #             assert key in final_state_dict.keys()
-        # #             final_state_dict[key] += weights[i] * lora_state_dict_list[i][key]
-        
-        # # model = AutoModelForCausalLM.from_pretrained(lora_name_list[0]).to(f"cuda:{gpu_id}")
-        # # set_peft_model_state_dict(model, final_state_dict)
-        # # set model state dict directly
-        # try:
-        #     model = AutoModelForCausalLM.from_pretrained(base_model)
-        #     model.load_state_dict(final_state_dict, strict=False)
-        # except:
-        #     for i in range(len(lora_name_list)):
-        #         try:
-        #             model = AutoModelForCausalLM.from_pretrained(lora_name_list[i])
-        #             model.load_state_dict(final_state_dict, strict=False)
-        #             break
-        #         except:
-        #             continue
-        # if os.path.exists(output_name):
-        #     shutil.rmtree(output_name)
-        # model.save_pretrained(output_name)
+        full_model_linear_merge(
+            weights=weights,
+            model_path_list=lora_name_list,
+            output_path=output_name,
+            dtype=torch.float16,
+        )
     else:
         # the fast merge: load only state_dicts, merge them, save only state_dicts, gpu_id not used here
         # apply to the setting that models share the same architecture, sharding, and adapter format
