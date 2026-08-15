@@ -419,7 +419,7 @@ class ModelTrainer:
             gradient_accumulation_steps=gradient_accumulation_steps,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
-            warmup_ratio=warmup_ratio,
+            warmup_step=warmup_ratio,
             lr_scheduler_type=lr_scheduler_type,
             logging_steps=logging_steps,
             save_steps=save_steps,
@@ -999,7 +999,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             gradient_accumulation_steps=32,
             learning_rate=2e-5,
             lr_scheduler_type="linear",
-            warmup_ratio=0.04,
+            warmup_step=0.04,
             weight_decay=0.0,
             # Logging and saving
             logging_steps=1,
@@ -1044,7 +1044,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             gradient_checkpointing=True,  # Enable for phase 2
             learning_rate=2e-5,
             lr_scheduler_type="linear",
-            warmup_ratio=0.04,
+            warmup_step=0.04,
             weight_decay=0.0,
             # Logging and saving
             logging_steps=1,

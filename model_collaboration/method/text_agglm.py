@@ -148,7 +148,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             lr_scheduler_type=lr_scheduler,
             weight_decay=weight_decay,
             num_train_epochs=max_epochs,
-            warmup_ratio=0.1,
+            warmup_step=0.1,
             dataloader_pin_memory=False,
             remove_unused_columns=False,
             dataloader_num_workers=0,
