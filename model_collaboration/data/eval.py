@@ -45,6 +45,16 @@ def _ensure_dataset(task):
     shutil.copy(tmp, path)
     print(f"Downloaded {task} dataset to {path}")
 
+
+@retry(wait=wait_random_exponential(min=1, max=5), stop=stop_after_attempt(4))
+def _load_task_json(task):
+    """Load a task's dataset JSON from DATA_DIR, retrying on transient
+    filesystem errors (seen under concurrent multi-process load on shared
+    networked filesystems -- the file and path are correct, the read just
+    occasionally fails with ENOENT and succeeds on retry)."""
+    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
+        return json.load(f)
+
 VERIFIER_PROMPT_TEMPLATE = (
     "User: ### Question: {question}\n\n"
     "### Ground Truth Answer: {ground_truth}\n\n"
@@ -633,9 +643,8 @@ def prepare_inputs(task, task_type, split, ratio=1.0, return_id=False):
     _ensure_dataset(task)
     input_list = []
 
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-        data = json.load(f)
-        data = data[split]
+    data = _load_task_json(task)
+    data = data[split]
 
     if task_type == "multiple_choice":
         assert "choices" in data[0], "Are you sure this is a multiple choice task?"
@@ -748,9 +757,8 @@ def _kernel_eval_worker(conn, ref_src, custom_src, device, build_dir=None):
 def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, id_list=None):
 
     _ensure_dataset(task)
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-        data = json.load(f)[split]
-        data = data[:int(len(data)*ratio)]
+    data = _load_task_json(task)[split]
+    data = data[:int(len(data)*ratio)]
     if id_list is not None:
         id_to_index = {d['id']: idx for idx, d in enumerate(data)}
         data = [data[id_to_index[i]] for i in id_list]
@@ -830,10 +838,9 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
                 scores.append(f1_score)
     if task_type == "noncompliance":
         category_list = []
-        with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-            full_data = json.load(f)
-            for item in full_data[split]:
-                category_list.append(item["category"])
+        full_data = _load_task_json(task)
+        for item in full_data[split]:
+            category_list.append(item["category"])
         category_list = category_list[:len(outputs)]
         assert len(category_list) == len(outputs), "Length mismatch between categories and outputs."
         parsed_outputs = outputs
@@ -984,8 +991,7 @@ def get_scores(task, task_type, split, outputs, ratio=1.0, return_output=False, 
     return scores
 
 def general_verifier_score(task, split, outputs, ratio=1.0, id_list=None):
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-        dataset = json.load(f)[split]
+    dataset = _load_task_json(task)[split]
     if id_list is not None:
         id_to_index = {d['id']: idx for idx, d in enumerate(dataset)}
         dataset = [dataset[id_to_index[i]] for i in id_list]
