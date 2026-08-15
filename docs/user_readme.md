@@ -491,11 +491,11 @@ Without further ado, a complete list of all supported methods and configurations
 
 ### Weight-level collaboration
 
-**Known issue (`transformers>=5.0`):** `weight_greedy_soup` and `weight_dare_ties` both shell out to `mergekit-yaml`, which currently fails with `pydantic.errors.PydanticUserError: ConfiguredModuleArchitecture is not fully defined` under mergekit's own (still-WIP) `transformers` v5 support — see the README for details. Not a MoCo bug; blocked upstream.
+**Known issue (`transformers>=5.0`):** `weight_dare_ties` shells out to `mergekit-yaml`, which currently fails with `pydantic.errors.PydanticUserError: ConfiguredModuleArchitecture is not fully defined` under mergekit's own (still-WIP) `transformers` v5 support — see the README for details. Not a MoCo bug; blocked upstream. `weight_greedy_soup` is unaffected: it only ever needs linear (weighted-average) merging, which now uses a native `transformers`/`torch` implementation (`utils/swarm.py`'s `full_model_linear_merge`) instead of mergekit.
 
 #### Weight-level: Greedy Soup
 - file: `weight_greedy_soup.py`
-- description: average the weights of multiple LLMs in a greedy manner. **All LLMs must share the same architecture.** First, evaluate all LLMs on the dev set and sort them by performance. Then, starting from the best model, iteratively add one model at a time to the soup if it improves performance on the dev set. We provide a bridge to the MergeKit implementation.
+- description: average the weights of multiple LLMs in a greedy manner. **All LLMs must share the same architecture.** First, evaluate all LLMs on the dev set and sort them by performance. Then, starting from the best model, iteratively add one model at a time to the soup if it improves performance on the dev set. Uses a native linear (weighted-average) state_dict merge — no mergekit dependency.
 - related paper(s):
     - [Model soups: averaging weights of multiple fine-tuned models improves accuracy without increasing inference time](https://arxiv.org/abs/2203.05482)
 - method-specific hyperparameters:
