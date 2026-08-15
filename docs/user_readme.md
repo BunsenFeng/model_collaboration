@@ -491,7 +491,7 @@ Without further ado, a complete list of all supported methods and configurations
 
 ### Weight-level collaboration
 
-**Known issue (`transformers>=5.0`):** `weight_dare_ties` shells out to `mergekit-yaml`, which currently fails with `pydantic.errors.PydanticUserError: ConfiguredModuleArchitecture is not fully defined` under mergekit's own (still-WIP) `transformers` v5 support — see the README for details. Not a MoCo bug; blocked upstream. `weight_greedy_soup` is unaffected: it only ever needs linear (weighted-average) merging, which now uses a native `transformers`/`torch` implementation (`utils/swarm.py`'s `full_model_linear_merge`) instead of mergekit.
+Neither `weight_greedy_soup` nor `weight_dare_ties` depend on mergekit anymore — both use native `transformers`/`torch` merge implementations in `utils/swarm.py` (`full_model_linear_merge` and `dare_ties_merge` respectively), added to work around mergekit's own unresolved `transformers` v5 incompatibility (`pydantic.errors.PydanticUserError: ConfiguredModuleArchitecture is not fully defined` under mergekit's still-WIP v5 support — see the README for details). `dare_ties_merge` was verified against mergekit's actual documented formula (`consensus_method=sum`, `sparsification_method=random`/Bernoulli, `normalize=False`, `rescale=True`/L1) via unit tests plus an end-to-end run. Note: `weight_expo`'s `topk_bottomk` mode (`k>1`) still calls the old mergekit-backed `lora_merge` path and hasn't been migrated or tested against the v5 upgrade — same underlying bug would apply there if exercised.
 
 #### Weight-level: Greedy Soup
 - file: `weight_greedy_soup.py`
@@ -503,13 +503,14 @@ Without further ado, a complete list of all supported methods and configurations
 
 #### Weight-level: Dare Ties
 - file: `weight_dare_ties.py`
-- description: average the weights of multiple LLMs with DARE-TIES. **All LLMs must share the same architecture.** Two modes: the average mode, where models have equal weight, the optimized mode, where weights are optimized on the dev set by particle swarm optimization. We provide a bridge to the MergeKit implementation.
+- description: average the weights of multiple LLMs with DARE-TIES. **All LLMs must share the same architecture.** Two modes: the average mode, where models have equal weight, the optimized mode, where weights are optimized on the dev set by particle swarm optimization. Uses a native DARE-TIES implementation (`utils/swarm.py`'s `dare_ties_merge`) — no mergekit dependency.
 - related paper(s):
     - [Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch](https://arxiv.org/abs/2311.03099)
     - [TIES-Merging: Resolving Interference When Merging Models](https://arxiv.org/abs/2306.01708)
 - method-specific hyperparameters:
     - `base_model_name`: the common base that these finetuned models share. For example, `Qwen/Qwen2.5-7B-Instruct` for ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].
     - `mode`, default `average`: `average` or `optimized`.
+    - `density`, default `1.0`: fraction of each model's delta-from-base kept by DARE's random pruning before rescaling survivors (L1-norm preserving). `1.0` disables DARE pruning entirely, reducing to plain TIES merging (the long-standing default behavior, since earlier configs never set this).
     - `population`, default 5: the population size for particle swarm optimization (only used in `optimized` mode).
     - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization (only used in `optimized` mode).
     - There are more hyperparameters in `optimized` mode for particle swarm optimization, please refer to `weight_dare_ties.py`. Only change them if you know what you are doing.
