@@ -3,7 +3,7 @@ import json
 import shutil
 from model_collaboration.data import eval
 from model_collaboration.utils import lora_check
-from model_collaboration.utils.swarm import lora_merge
+from model_collaboration.utils.swarm import full_model_linear_merge
 from model_collaboration.method import distributed_generation
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
@@ -56,15 +56,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         current_weights = [1.0 / len(current_selected_models)] * len(current_selected_models)
         merged_model_path = "model_collaboration/logs/greedy_soup"
 
-        # remove existing merged model path if any
-        if os.path.exists(merged_model_path):
-            shutil.rmtree(merged_model_path)
-
-        lora_merge(
+        full_model_linear_merge(
             weights=current_weights,
-            lora_name_list=current_selected_models,
+            model_path_list=current_selected_models,
             output_path=merged_model_path,
-            gpu_id=gpu_ids[0]
         )
         # evaluate the merged model on the dev set
         list_of_input_list = [dev_input_list]
@@ -102,16 +97,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     else:
         final_weights = [1.0 / len(final_selected_models)] * len(final_selected_models)
 
-        if os.path.exists("model_collaboration/logs/greedy_soup"):
-            # remove existing merged model path if any
-            shutil.rmtree("model_collaboration/logs/greedy_soup")
-
         # save the final greedy soup model
-        lora_merge(
+        full_model_linear_merge(
             weights=final_weights,
-            lora_name_list=final_selected_models,
+            model_path_list=final_selected_models,
             output_path="model_collaboration/logs/greedy_soup",
-            gpu_id=gpu_ids[0]
         )
 
         # evaluate it on the test set

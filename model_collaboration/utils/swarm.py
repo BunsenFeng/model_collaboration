@@ -143,6 +143,45 @@ def lora_merge(weights, lora_name_list, output_path, gpu_id, directly_load_safet
 # sanity check example
 # lora_merge([0.3, 0.6, 0.8], ["./initial_experts/lima", "./initial_experts/cot", "./initial_experts/oasst1"], "./new", 0, directly_load_safetensors=1)
 
+def full_model_linear_merge(weights, model_path_list, output_path, dtype=torch.bfloat16):
+    """
+    Weighted-average (linear) merge of full models sharing the same architecture.
+    Native transformers/torch implementation -- no mergekit dependency. Only
+    covers merge_method: linear (uniform or weighted state_dict averaging);
+    use mergekit directly for other merge methods (e.g. dare_ties).
+
+    Loads models one at a time (not all simultaneously) to keep memory bounded,
+    on CPU by default to avoid contending with concurrent GPU generation.
+    """
+    assert len(weights) == len(model_path_list), "weights and model_path_list must be the same length"
+
+    merged_state_dict = None
+    for path, weight in zip(model_path_list, weights):
+        model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
+        state_dict = model.state_dict()
+        if merged_state_dict is None:
+            merged_state_dict = {k: weight * v.clone() for k, v in state_dict.items()}
+        else:
+            assert set(merged_state_dict.keys()) == set(state_dict.keys()), (
+                f"State dict keys mismatch between {model_path_list[0]} and {path}; "
+                "models must share the same architecture."
+            )
+            for k in merged_state_dict:
+                merged_state_dict[k] += weight * state_dict[k]
+        del model
+
+    final_model = AutoModelForCausalLM.from_pretrained(model_path_list[0], torch_dtype=dtype)
+    final_model.load_state_dict(merged_state_dict)
+
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    final_model.save_pretrained(output_path)
+
+    tokenizer = AutoTokenizer.from_pretrained(model_path_list[0])
+    tokenizer.save_pretrained(output_path)
+
+    del final_model, merged_state_dict
+
 # define the swarm class
 # managing initialization and update of the swarm
 
