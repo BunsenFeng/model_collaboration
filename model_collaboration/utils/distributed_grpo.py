@@ -1322,7 +1322,7 @@ def single_grpo_with_judges(
         generation_kwargs=generation_kwargs,
         top_p=float(top_p),
         lr_scheduler_type="cosine",
-        warmup_step=0.1,
+        warmup_steps=0.1,
         bf16=True,
         gradient_checkpointing=True,
         num_train_epochs=float(epoch),

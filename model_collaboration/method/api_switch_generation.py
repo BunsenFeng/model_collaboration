@@ -260,7 +260,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             bf16=True,
             learning_rate=1e-5,
             lr_scheduler_type="cosine",
-            warmup_step = 0.1,
+            warmup_steps = 0.1,
             gradient_checkpointing=True,
             eval_strategy="epoch",
             num_train_epochs=5,
