@@ -143,16 +143,32 @@ def build_model_and_tokenizer_for_generation(
     torch_dtype: torch.dtype = torch.bfloat16,
     trust_remote_code: bool = True,
 ) -> Tuple[Any, Any]:
-    visible_devices, _ = _normalize_visible_devices(gpu_id)
-    if visible_devices is not None:
-        os.environ["CUDA_VISIBLE_DEVICES"] = visible_devices
+    # Load directly onto the physical GPU index instead of restricting
+    # CUDA_VISIBLE_DEVICES + device_map={"": 0}: CUDA caches the visible
+    # device list at first initialization in a process, and if anything
+    # (e.g. a peft/bitsandbytes import side effect, triggered simply by
+    # importing this module in a freshly-spawned worker, before this
+    # function's os.environ assignment ever runs) touches CUDA first, the
+    # CUDA_VISIBLE_DEVICES restriction is silently a no-op -- every
+    # worker's device_map={"": 0} then resolves to the SAME literal
+    # physical GPU 0 regardless of the intended per-worker gpu_id.
+    # Targeting the real physical index directly sidesteps this ordering
+    # fragility entirely (confirmed via instrumentation: device_count()
+    # reported 4, not 1, and all workers shared one physical GPU UUID).
+    target_device_index: Union[int, str] = 0
+    if isinstance(gpu_id, int):
+        target_device_index = gpu_id
+    else:
+        visible_devices, _ = _normalize_visible_devices(gpu_id)
+        if visible_devices is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = visible_devices
 
     model_kwargs: Dict[str, Any] = {
         "torch_dtype": torch_dtype,
         "trust_remote_code": trust_remote_code,
     }
     if torch.cuda.is_available():
-        model_kwargs["device_map"] = "auto" if BIG_MODEL_MODE else {"": 0}
+        model_kwargs["device_map"] = "auto" if BIG_MODEL_MODE else {"": target_device_index}
 
     if _is_lora_adapter(model_name_or_path):
         model = AutoPeftModelForCausalLM.from_pretrained(model_name_or_path, **model_kwargs)
