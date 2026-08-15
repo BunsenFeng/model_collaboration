@@ -16,10 +16,9 @@ Technical report: [paper](https://arxiv.org/abs/2601.21257)
 uv venv --python 3.11 moco
 source moco/bin/activate
 uv pip install -r requirements.txt
-uv pip install --no-deps git+https://github.com/arcee-ai/mergekit.git
 ```
 
-Note: install `mergekit` from its git `main` branch with `--no-deps`, not from PyPI. The latest PyPI release (`0.1.4`) predates `transformers` v5 and hard-pins an incompatible `safetensors` version; `main` has been updated for `transformers>=5.0` but hasn't cut a new release yet, and still has an unrelated, unresolved pydantic-schema bug in its `transformers` v5 support (a `Task[torch.Tensor]` dynamically-created model is missing `arbitrary_types_allowed=True` in some code paths) — track upstream for a fix. `weight_greedy_soup` and `weight_dare_ties` no longer depend on mergekit at all (both now use native `transformers`/`torch` merge implementations). mergekit is still needed for `weight_model_swarms` with `fast_merge_flag: false` and `weight_expo`'s `topk_bottomk` mode with `k>1` (the latter untested against the v5 upgrade — same bug likely applies if exercised).
+Note: `mergekit` is no longer required by any MoCo weight-level method — all weight merging (`weight_greedy_soup`, `weight_dare_ties`, `weight_model_swarms`, `weight_expo`) now uses native `transformers`/`torch` implementations. If you want mergekit for something outside MoCo, install it from its git `main` branch with `--no-deps` (`uv pip install --no-deps git+https://github.com/arcee-ai/mergekit.git`), not from PyPI: the latest PyPI release (`0.1.4`) predates `transformers` v5 and hard-pins an incompatible `safetensors` version, and even `main` still has an unrelated, unresolved pydantic-schema bug under `transformers` v5 (a `Task[torch.Tensor]` dynamically-created model is missing `arbitrary_types_allowed=True` in some code paths).
 
 Run your first model collaboration experiment (if you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):
 
