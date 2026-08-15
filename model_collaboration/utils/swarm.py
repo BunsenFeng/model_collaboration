@@ -182,6 +182,107 @@ def full_model_linear_merge(weights, model_path_list, output_path, dtype=torch.b
 
     del final_model, merged_state_dict
 
+
+def _dare_sparsify(delta, density, generator=None):
+    """
+    DARE sparsification of a single delta tensor: randomly zero out a
+    (1 - density) fraction of entries (Bernoulli mask, keep-probability =
+    density), then rescale survivors to preserve the tensor's L1 norm.
+    Matches mergekit's sparsify.bernoulli() + rescaled_masked_tensor(l1).
+    """
+    if density >= 1.0:
+        return delta
+    mask = torch.bernoulli(
+        torch.full_like(delta, density), generator=generator
+    )
+    masked = delta * mask
+    before = delta.abs().sum()
+    after = masked.abs().sum()
+    if before < 1e-7 or after < 1e-7:
+        return masked
+    return masked * (before / after)
+
+
+def _ties_sign_consensus_merge(weighted_deltas):
+    """
+    TIES sign-election + disjoint merge (mergekit's consensus_method="sum",
+    normalize=False): elect the majority sign per-position by summing the
+    weighted deltas, keep only the deltas that agree with that sign, and
+    sum (not average) the survivors.
+
+    weighted_deltas: list of tensors (one per model), same shape, already
+    multiplied by each model's weight (and already DARE-sparsified).
+    """
+    stacked = torch.stack(weighted_deltas, dim=0)
+    sign_sum = stacked.sum(dim=0)
+    majority_sign = torch.where(sign_sum >= 0, 1.0, -1.0).to(stacked.dtype)
+    mask = stacked.sign() == majority_sign.unsqueeze(0)
+    return (stacked * mask).sum(dim=0)
+
+
+def dare_ties_merge(weights, model_path_list, base_model_path, output_path, density=1.0, seed=None, dtype=torch.bfloat16):
+    """
+    Native transformers/torch implementation of mergekit's dare_ties merge
+    method (consensus_method=sum, sparsification_method=random/Bernoulli,
+    normalize=False, rescale=True/l1) -- no mergekit dependency.
+
+    Per parameter tensor:
+      delta_i        = model_i - base
+      delta_i        = DARE(delta_i, density)          # random dropout + L1 rescale
+      weighted_i     = delta_i * weight_i
+      majority_sign  = sign(sum_i(weighted_i))
+      mixed_delta    = sum_i(weighted_i where sign(weighted_i) == majority_sign)
+      merged         = base + mixed_delta
+
+    density=1.0 (the default, matching MoCo's existing dare_ties config which
+    never sets it) disables DARE's random dropout entirely -- this reduces to
+    plain TIES merging, which is deterministic.
+    """
+    assert len(weights) == len(model_path_list), "weights and model_path_list must be the same length"
+
+    generator = None
+    if seed is not None:
+        generator = torch.Generator()
+        generator.manual_seed(seed)
+
+    base_model = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=dtype)
+    base_state_dict = base_model.state_dict()
+    del base_model
+
+    per_model_weighted_deltas = []
+    for path, weight in zip(model_path_list, weights):
+        model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
+        state_dict = model.state_dict()
+        assert set(state_dict.keys()) == set(base_state_dict.keys()), (
+            f"State dict keys mismatch between base ({base_model_path}) and {path}; "
+            "models must share the same architecture."
+        )
+        weighted_delta = {}
+        for k in base_state_dict:
+            delta = state_dict[k] - base_state_dict[k]
+            delta = _dare_sparsify(delta, density, generator=generator)
+            weighted_delta[k] = delta * weight
+        per_model_weighted_deltas.append(weighted_delta)
+        del model
+
+    merged_state_dict = {}
+    for k in base_state_dict:
+        mixed_delta = _ties_sign_consensus_merge([wd[k] for wd in per_model_weighted_deltas])
+        merged_state_dict[k] = base_state_dict[k] + mixed_delta
+
+    final_model = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=dtype)
+    final_model.load_state_dict(merged_state_dict)
+
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    final_model.save_pretrained(output_path)
+
+    tokenizer = AutoTokenizer.from_pretrained(base_model_path)
+    tokenizer.save_pretrained(output_path)
+
+    del final_model, merged_state_dict, per_model_weighted_deltas
+
+
 # define the swarm class
 # managing initialization and update of the swarm
 
