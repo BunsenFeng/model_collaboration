@@ -10,14 +10,16 @@ Technical report: [paper](https://arxiv.org/abs/2601.21257)
 
 ## Quick Start
 
-We use [uv](https://github.com/astral-sh/uv) for package management. Install it first if you haven't already.
+`MoCo` requires `transformers>=5.0`. We use [uv](https://github.com/astral-sh/uv) for package management. Install it first if you haven't already.
 
 ```
 uv venv --python 3.11 moco
 source moco/bin/activate
 uv pip install -r requirements.txt
-uv pip install mergekit
+uv pip install --no-deps git+https://github.com/arcee-ai/mergekit.git
 ```
+
+Note: install `mergekit` from its git `main` branch with `--no-deps`, not from PyPI. The latest PyPI release (`0.1.4`) predates `transformers` v5 and hard-pins an incompatible `safetensors` version; `main` has been updated for `transformers>=5.0` but hasn't cut a new release yet. Weight-level merging methods that shell out to `mergekit-yaml` (`weight_dare_ties`, `weight_greedy_soup`) are currently blocked by an unrelated, unresolved pydantic-schema bug in mergekit's own `transformers` v5 support (a `Task[torch.Tensor]` dynamically-created model is missing `arbitrary_types_allowed=True` in some code paths) — track upstream for a fix.
 
 Run your first model collaboration experiment (if you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):
 

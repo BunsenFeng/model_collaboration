@@ -428,6 +428,7 @@ Without further ado, a complete list of all supported methods and configurations
 - notes:
     - Requires at least 3 models: in each duel, two models generate responses and at least one remaining model acts as judge.
     - `instruction_selection` is a legacy alias: `exp3` maps to `leader_type=probabilistic, leader_scope=global`; `exp3_per_model` maps to `leader_type=probabilistic, leader_scope=per_model`; `uniform` maps to `leader_type=uniform`. Prefer setting `leader_type` and `leader_scope` directly.
+- known issue (`training_algorithm: grpo`): fails with `ValueError: reward function returned N rewards, but N/2 were expected` under `transformers>=5.0` / `trl>=1.0`. Likely cause: `utils/distributed_grpo.py`'s custom `_ensure_repeated_inputs_for_grpo` pre-repeats prompts by `num_generations` to work around a trl 0.x limitation, and trl's `GRPOTrainer._generate_and_score_completions` may now repeat them natively too, double-counting. Not yet fixed; `training_algorithm: dpo` is unaffected.
 
 #### Text-level: AggLM
 - file: `text_agglm.py`
@@ -488,6 +489,9 @@ Without further ado, a complete list of all supported methods and configurations
 - warning: you might need very small batch sizes. len(gpu_ids) has to == len(model_names).
 
 ### Weight-level collaboration
+
+**Known issue (`transformers>=5.0`):** `weight_greedy_soup` and `weight_dare_ties` both shell out to `mergekit-yaml`, which currently fails with `pydantic.errors.PydanticUserError: ConfiguredModuleArchitecture is not fully defined` under mergekit's own (still-WIP) `transformers` v5 support — see the README for details. Not a MoCo bug; blocked upstream.
+
 #### Weight-level: Greedy Soup
 - file: `weight_greedy_soup.py`
 - description: average the weights of multiple LLMs in a greedy manner. **All LLMs must share the same architecture.** First, evaluate all LLMs on the dev set and sort them by performance. Then, starting from the best model, iteratively add one model at a time to the soup if it improves performance on the dev set. We provide a bridge to the MergeKit implementation.
