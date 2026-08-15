@@ -8,7 +8,7 @@ from peft import LoraConfig
 from collections import Counter
 from datasets import load_dataset
 from model_collaboration.method import distributed_generation
-from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
+from trl import SFTConfig, SFTTrainer
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModelForCausalLM
 
 def selector_model_prompt(generation_log, model_list):
@@ -118,7 +118,7 @@ def reward_model_scores(gpu_id, list_of_input, list_of_output):
         conv = [{"role": "user", "content": list_of_input[i]}, {"role": "assistant", "content": list_of_output[i]}]
         conv_tokenized = rm_tokenizer.apply_chat_template(conv, tokenize=True, return_tensors="pt").to("cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu")
         with torch.no_grad():
-            score = rm(conv_tokenized).logits[0][0].item()
+            score = rm(**conv_tokenized).logits[0][0].item()
         scores.append(score)
     return scores
 
@@ -260,7 +260,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             bf16=True,
             learning_rate=1e-5,
             lr_scheduler_type="cosine",
-            warmup_ratio = 0.1,
+            warmup_step = 0.1,
             gradient_checkpointing=True,
             eval_strategy="epoch",
             num_train_epochs=5,
