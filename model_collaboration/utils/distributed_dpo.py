@@ -13,7 +13,7 @@ from multiprocessing import Pool
 from datasets import load_dataset
 from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
+from trl import DPOConfig, DPOTrainer
 from model_collaboration.utils import lora_check
 
 
@@ -151,7 +151,7 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         bf16=False,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
-        warmup_ratio = 0.1,
+        warmup_step = 0.1,
         gradient_checkpointing=True,
         eval_strategy="epoch",
         num_train_epochs=epoch,
