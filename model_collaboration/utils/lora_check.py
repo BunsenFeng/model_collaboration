@@ -36,6 +36,7 @@ def lora_to_full(model_names):
             full_model_name = "model_collaboration/logs/" + model_names[i].split("/")[-1] + "_full"
             if os.path.exists(full_model_name):
                 shutil.rmtree(full_model_name)
+            os.makedirs(full_model_name, exist_ok=True)
             model.save_pretrained(full_model_name)
             tokenizer.save_pretrained(full_model_name)
             model_names[i] = full_model_name
