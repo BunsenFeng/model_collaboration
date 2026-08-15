@@ -151,7 +151,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=1,
-        max_seq_length=4096,
+        max_length=4096,
+        # trl's default loss_type resolves to "chunked_nll", which patches
+        # the model's forward via inspect.signature(original_forward.__func__)
+        # -- crashes with AttributeError on PEFT models. "nll" avoids it.
+        loss_type="nll",
         run_name="router_sft_{}".format(task),
     )
 

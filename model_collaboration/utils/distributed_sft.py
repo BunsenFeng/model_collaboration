@@ -62,7 +62,13 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=1,
-        max_seq_length=4096
+        max_length=4096,
+        # trl's default loss_type resolves to "chunked_nll", which patches
+        # the model's forward via inspect.signature(original_forward.__func__)
+        # -- crashes with AttributeError on PEFT models where the base
+        # model's forward isn't a plain bound method. "nll" is the classic,
+        # stable loss and avoids that patching path entirely.
+        loss_type="nll",
     )
 
     trainer = SFTTrainer(
