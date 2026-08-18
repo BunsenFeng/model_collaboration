@@ -999,7 +999,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             gradient_accumulation_steps=32,
             learning_rate=2e-5,
             lr_scheduler_type="linear",
-            warmup_steps=0.04,
+            warmup_ratio=0.04,
             weight_decay=0.0,
             # Logging and saving
             logging_steps=1,
@@ -1044,7 +1044,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             gradient_checkpointing=True,  # Enable for phase 2
             learning_rate=2e-5,
             lr_scheduler_type="linear",
-            warmup_steps=0.04,
+            warmup_ratio=0.04,
             weight_decay=0.0,
             # Logging and saving
             logging_steps=1,
