@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 from peft import PeftConfig, AutoPeftModelForCausalLM
 from peft.utils import PeftType
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -33,9 +34,11 @@ def lora_to_full(model_names):
             model = AutoPeftModelForCausalLM.from_pretrained(model_names[i], torch_dtype="bfloat16")
             model = model.merge_and_unload()
             tokenizer = AutoTokenizer.from_pretrained(model_names[i])
-            full_model_name = "model_collaboration/logs/" + model_names[i].split("/")[-1] + "_full"
-            if os.path.exists(full_model_name):
-                shutil.rmtree(full_model_name)
+            # Unique per call (not just per model name): two concurrent MoCo
+            # runs that both reference this same LoRA model would otherwise
+            # race on an identical shared path -- one run's rmtree/makedirs
+            # can wipe another's in-progress save_pretrained() out from under it.
+            full_model_name = "model_collaboration/logs/" + model_names[i].split("/")[-1] + "_full_" + uuid.uuid4().hex[:8]
             os.makedirs(full_model_name, exist_ok=True)
             model.save_pretrained(full_model_name)
             tokenizer.save_pretrained(full_model_name)

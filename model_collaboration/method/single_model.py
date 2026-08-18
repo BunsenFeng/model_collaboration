@@ -70,8 +70,7 @@ def checkpoint_path(task, simple_model_name):
 def load_checkpoint(task, simple_model_name):
     path = checkpoint_path(task, simple_model_name)
     if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
+        return eval._retry_read_json(path)
     return None
 
 def save_checkpoint(task, simple_model_name, input_list, output_list):
@@ -120,8 +119,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         else:
             existing_log = find_existing_log(task, simple_model_name)
             if existing_log:
-                with open(existing_log) as f:
-                    existing_data = json.load(f)
+                existing_data = eval._retry_read_json(existing_log)
                 existing_map = {e["input"]: e["output"] for e in existing_data.get("logs", [])}
         if existing_map:
             for i, inp in enumerate(test_input_list):

@@ -55,14 +55,6 @@ from collections import Counter
 from typing import List, Dict, Tuple, Any
 
 from model_collaboration.data import eval
-
-# Directory where the evaluation data JSON files reside.  This mirrors the
-# convention used in text_majority_vote.py.  We rely on this constant
-# when loading the raw data for answer extraction during the debate and
-# evaluation phases.  Without access to the original questions and
-# multiple‑choice options it is not possible to accurately extract the
-# model's chosen answer.
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 from model_collaboration.method import distributed_generation
 from model_collaboration.utils import distributed_sft
 
@@ -218,8 +210,7 @@ def run_method(task: str,
     # and take a matching subset when training_ratio < 1.0.
     # ------------------------------------------------------------------
     # Load the full dev split data
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f_data:
-        full_data = json.load(f_data)
+    full_data = eval._load_task_json(task)
     dev_data_full = full_data.get("dev", [])
     dev_data_full = dev_data_full[:int(len(dev_data_full) * ratio)]
     # Format questions using helper
@@ -560,8 +551,7 @@ def run_method(task: str,
     # majority vote per question using extracted answers
     # Load the test data for answer extraction
     test_inputs_list = test_inputs  # alias
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f_data:
-        full_data = json.load(f_data)
+    full_data = eval._load_task_json(task)
     test_data = full_data.get("test", [])
     test_data = test_data[:int(len(test_data) * ratio)]
     assert len(test_inputs_list) == len(test_data), "Mismatch between test inputs and data length"

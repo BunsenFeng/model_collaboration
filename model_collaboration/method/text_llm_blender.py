@@ -233,9 +233,7 @@ def _train_fuser_on_dev(
     # Try to load gold dev outputs to use as supervision targets.
     dev_gold_outputs = None
     try:
-        dataset_path = os.path.join(eval.DATA_DIR, f"{task}.json")
-        with open(dataset_path, "r") as f:
-            full_data = json.load(f)
+        full_data = eval._load_task_json(task)
         dev_data = full_data.get("dev", [])
         dev_gold_outputs = []
         if task_type == "multiple_choice":

@@ -128,8 +128,7 @@ def get_all_inputs(task=None, ratio=1.0):
     for file in files:
         try:
             if file == task + ".json":
-                with open(os.path.join("model_collaboration/data/", file), "r") as f:
-                    task_type = json.load(f)["task_type"]
+                task_type = eval._load_task_json(file[:-5])["task_type"]
                 inputs = eval.prepare_inputs(file[:-5], task_type, "dev", ratio=ratio)
                 list_of_all_inputs.extend(inputs)
         except:
