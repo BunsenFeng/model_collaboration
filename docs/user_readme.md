@@ -50,6 +50,8 @@ Qwen3 models (`Qwen/Qwen3-*`) are supported and will automatically run in non-th
 
 DeepSeek-R1 distill models (e.g. `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`) are supported: `<think>...</think>` blocks are automatically stripped from outputs before evaluation.
 
+NemotronH models (e.g. `nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16`) currently need a manual one-line patch to their `trust_remote_code` modeling file, confirmed still required as of `transformers==5.15.0` (not fixed upstream). Without it, generation crashes with `TypeError: 'NoneType' object is not subscriptable` in `prepare_inputs_for_generation`, because `transformers`' `_prefill()` passes `cache_position=None` but NemotronH's code indexes it unconditionally. To fix: after the model has been downloaded once (so the file exists), find `modeling_nemotron_h.py` under `$HF_HOME/modules/transformers_modules/nvidia/<model>/<revision>/modeling_nemotron_h.py` and guard the two `cache_position` accesses in `prepare_inputs_for_generation` with `cache_position is not None and ...` (and similarly for the `elif` branch). This must be reapplied any time the cached file is redownloaded (e.g. after clearing `HF_HOME`).
+
 These are vibe implementations (and your future implementations can be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 
 Without further ado, a complete list of all supported methods and configurations.

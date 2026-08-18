@@ -78,7 +78,7 @@ See [General Verifier](#general-verifier) for details on when and why to prefer 
 | `coding` | Executes code in sandbox and runs test assertions |
 | `text_generation` | Generates outputs; dev split is scored with the reward model, test split returns 0 scores |
 | `ifeval` | Programmatic rule-based checking of 25 instruction constraint types; score = fraction of constraints satisfied per prompt |
-| `smdd` | Unified drug discovery evaluation: dispatches per item by `subtype` — `pharmacophore` items run model-submitted `check_pharmacophore` code in a sandbox and score balanced accuracy (0.5 × recall + 0.5 × specificity); `lead_opt` items check proposed SMILES against RDKit hard constraints (MW, LogP, TPSA, HBD, HBA, RotBonds, formal charge, SA score, PAINS, Brenk, Tanimoto ≥ 0.7 to reference) |
+| `smdd` | Unified drug discovery evaluation: dispatches per item by `subtype` — `pharmacophore` items run model-submitted `check_pharmacophore` code in a sandbox and score balanced accuracy (0.5 × recall + 0.5 × specificity); `lead_opt` items check proposed SMILES against RDKit hard constraints (MW, LogP, TPSA, HBD, HBA, RotBonds, formal charge, SA score, PAINS, Brenk, Tanimoto ≥ 0.7 to reference) plus a canonical-SMILES check that the proposed molecule differs from the reference |
 
 ### General Verifier
 
