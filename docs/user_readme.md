@@ -52,6 +52,24 @@ DeepSeek-R1 distill models (e.g. `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`) are
 
 NemotronH models (e.g. `nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16`) currently need a manual one-line patch to their `trust_remote_code` modeling file, confirmed still required as of `transformers==5.15.0` (not fixed upstream). Without it, generation crashes with `TypeError: 'NoneType' object is not subscriptable` in `prepare_inputs_for_generation`, because `transformers`' `_prefill()` passes `cache_position=None` but NemotronH's code indexes it unconditionally. To fix: after the model has been downloaded once (so the file exists), find `modeling_nemotron_h.py` under `$HF_HOME/modules/transformers_modules/nvidia/<model>/<revision>/modeling_nemotron_h.py` and guard the two `cache_position` accesses in `prepare_inputs_for_generation` with `cache_position is not None and ...` (and similarly for the `elif` branch). This must be reapplied any time the cached file is redownloaded (e.g. after clearing `HF_HOME`).
 
+If NemotronH (or anything else calling into `mamba_ssm`/`causal-conv1d`'s CUDA kernels) crashes with `no kernel image is available for execution on the device` on some GPUs but not others, it's a build-time architecture mismatch, not an environment or code bug: `causal-conv1d`'s and `mamba-ssm`'s `setup.py` hardcode their own `nvcc` `-gencode` list (confirmed against their current `main` branch) and completely ignore `TORCH_CUDA_ARCH_LIST` — the compiled kernel only runs on GPUs with an exact SASS match for one of `sm_75`, `sm_80`, `sm_87`, or `sm_90`/`100`/`120` (CUDA-version-gated), with no PTX fallback for anything else. Notably **`sm_86` (RTX 3090, A40, A10, RTX A6000) and `sm_89` (L40, L40S, RTX 4090) are never covered, on any CUDA version** — these are common GPUs, so this will affect real clusters, not just edge cases. `sm_80` (A100) and `sm_90` (H100/H200) both happen to be covered, which is why this doesn't show up if that's the only hardware you've tested against.
+
+To fix, clone and patch each package locally before installing (`pip`/`uv`'s `git+https://...` install clones into an ephemeral temp dir you can't patch in place, so patch a local clone first and install from that path instead):
+
+```
+git clone https://github.com/Dao-AILab/causal-conv1d.git
+git clone https://github.com/state-spaces/mamba.git
+# in each setup.py, add the missing architectures to the cc_flag/-gencode list, e.g.:
+#   -gencode arch=compute_86,code=sm_86
+#   -gencode arch=compute_89,code=sm_89
+# plus a PTX entry one architecture ahead of the newest SASS target for forward-compat
+# with future GPUs, e.g. -gencode arch=compute_90,code=compute_90
+uv pip install --no-build-isolation --no-deps ./causal-conv1d
+uv pip install --no-build-isolation --no-deps ./mamba
+```
+
+`causal-conv1d` and `mamba-ssm` don't necessarily have identical `setup.py` structure — check each independently rather than assuming the same patch applies verbatim to both. Since this tracks `git main` (not a pinned release), make the patch step fail loudly if its match pattern isn't found, rather than silently producing an unpatched build.
+
 These are vibe implementations (and your future implementations can be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 
 Without further ado, a complete list of all supported methods and configurations.
