@@ -12,9 +12,14 @@
 #
 # Some packages (mergekit, directsearch, annotated-doc) may not be on PyPI or require a custom index / build from source.
 #
-# The following must be installed AFTER this file due to dependency conflicts:
+# The following are deliberately NOT pinned above and must be installed AFTER
+# this file, one command at a time, due to dependency conflicts:
 #   pip install git+https://github.com/Dao-AILab/causal-conv1d.git  (triton conflict with torch)
 #   pip install git+https://github.com/state-spaces/mamba.git        (triton conflict with torch)
+#     mamba-ssm's PyPI/git releases require triton>=3.5.0, which conflicts
+#     with the triton==3.3.1 this file pins for torch==2.7.1 compatibility --
+#     including mamba-ssm/causal-conv1d in this file makes `pip install -r
+#     requirements.txt` itself unsolvable. Install them as a separate step.
 #   pip install --no-deps git+https://github.com/arcee-ai/mergekit.git
 #     mergekit==0.1.4 on PyPI predates transformers v5 (Oct 2025) and hard-pins
 #     safetensors~=0.5.2 / accelerate~=1.6.0, which conflicts with transformers
@@ -37,7 +42,6 @@ bayesian-optimization==1.4.0
 bitsandbytes==0.50.1
 boto3==1.39.3
 botocore==1.39.3
-causal-conv1d==1.6.2.post1
 certifi==2025.6.15
 charset-normalizer==3.4.2
 click==8.4.2
@@ -74,12 +78,10 @@ joblib==1.5.3
 jupyter_client==8.9.1
 jupyter_core==5.9.1
 line_profiler==5.0.0
-mamba-ssm==2.3.2.post1
 markdown-it-py==4.2.0
 MarkupSafe==3.0.2
 matplotlib-inline==0.2.2
 mdurl==0.1.2
-mergekit==0.1.4  # installed from git main with --no-deps, see NOTE above
 mpmath==1.3.0
 multidict==6.6.3
 multiprocess==0.70.16

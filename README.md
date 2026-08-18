@@ -10,13 +10,30 @@ Technical report: [paper](https://arxiv.org/abs/2601.21257)
 
 ## Quick Start
 
-`MoCo` requires `transformers>=5.0`. We use [uv](https://github.com/astral-sh/uv) for package management. Install it first if you haven't already.
+`MoCo` requires `transformers>=5.0`. We use [uv](https://github.com/astral-sh/uv) for package management. Install it first if you haven't already. `requirements.txt` is a pinned snapshot of the exact package set this codebase is developed and tested against (Python 3.10); match that Python version to avoid resolver drift.
+
+Note: if `$HOME` is a small/quota-limited volume (common on shared clusters), redirect `uv`'s package cache elsewhere first — the install below downloads several large wheels (`torch` alone is ~800MB, `nvidia-cudnn-cu12` ~545MB) and `uv`'s default cache (`~/.cache/uv`) can hit `ENOSPC` partway through:
 
 ```
-uv venv --python 3.11 moco
+export UV_CACHE_DIR=/path/to/roomy/volume/cache/uv
+```
+
+```
+uv venv --python 3.10 moco
 source moco/bin/activate
 uv pip install -r requirements.txt
 ```
+
+The `nvidia-*-cu12` entries in `requirements.txt` are bundled CUDA wheels; if your system already has CUDA drivers installed, skip those, or install `torch` via the PyTorch index instead (`uv pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu126`).
+
+Two packages must be installed *after* `requirements.txt` because they conflict with it at resolve time (both need a `torch` install already present to build against, and both pull in a `triton` version that clashes with the one `requirements.txt` pins). Use `--no-build-isolation --no-deps`: `--no-build-isolation` makes their build pick up the `torch` you just installed instead of resolving its own (unpinned) `torch` into an isolated build env, which can silently grab a `torch` compiled against a different CUDA version than your system toolkit and fail with a CUDA mismatch; `--no-deps` stops their own loosely-pinned runtime dependencies from upgrading `torch`/`triton` in place and breaking the versions `requirements.txt` just installed:
+
+```
+uv pip install --no-build-isolation --no-deps git+https://github.com/Dao-AILab/causal-conv1d.git
+uv pip install --no-build-isolation --no-deps git+https://github.com/state-spaces/mamba.git
+```
+
+These provide the `mamba_ssm`/`causal-conv1d` Triton kernels needed to train NemotronH's hybrid Mamba/SSM layers (e.g. via DPO/GRPO); skip them if you don't plan to use NemotronH models.
 
 Note: `mergekit` is no longer required by any MoCo weight-level method — all weight merging (`weight_greedy_soup`, `weight_dare_ties`, `weight_model_swarms`, `weight_expo`) now uses native `transformers`/`torch` implementations. If you want mergekit for something outside MoCo, install it from its git `main` branch with `--no-deps` (`uv pip install --no-deps git+https://github.com/arcee-ai/mergekit.git`), not from PyPI: the latest PyPI release (`0.1.4`) predates `transformers` v5 and hard-pins an incompatible `safetensors` version, and even `main` still has an unrelated, unresolved pydantic-schema bug under `transformers` v5 (a `Task[torch.Tensor]` dynamically-created model is missing `arbitrary_types_allowed=True` in some code paths).
 
@@ -27,6 +44,13 @@ python -m model_collaboration.main -c model_collaboration/test_config.json
 ```
 
 You will see the outputs and evaluation results in the `model_collaboration/logs/` folder.
+
+Note: if your `$HOME` is a small/quota-limited volume (common on shared clusters), redirect the HuggingFace and Triton caches elsewhere before running training methods (e.g. DPO/GRPO), since Triton kernel compilation (used by e.g. NemotronH's `mamba_ssm` kernels) writes to `$HOME/.triton` by default and can fail with `ENOSPC` once it fills up:
+
+```
+export HF_HOME=/path/to/roomy/volume/cache/huggingface
+export TRITON_CACHE_DIR=/path/to/roomy/volume/cache/triton
+```
 
 You can also directly use the PyPI package version:
 
