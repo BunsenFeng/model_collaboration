@@ -29,6 +29,8 @@ uv pip install --no-build-isolation --no-deps git+https://github.com/Dao-AILab/c
 uv pip install --no-build-isolation --no-deps git+https://github.com/state-spaces/mamba.git
 ```
 
+If this crashes at runtime with `no kernel image is available for execution on the device` on GPUs like RTX 3090/A40/A10 or L40/L40S/RTX 4090, see `docs/user_readme.md` for why and how to fix it.
+
 ### Running Your First Collaboration
 
 If you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`.
