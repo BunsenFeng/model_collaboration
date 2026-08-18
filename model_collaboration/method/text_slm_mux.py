@@ -43,7 +43,7 @@ def _consistency(extracted_k):
     return random.choice(top) if len(top) > 1 else top[0], max_c / total, dict(counts)
 
 
-def _generate_k_samples(model_names, input_list, gpu_ids, k):
+def _generate_k_samples(model_names, input_list, gpu_ids, k, max_parallel_models=None):
     """Generate k samples per model by stacking inputs k times in one call.
 
     Returns list-of-list-of-list: [model_idx][sample_idx][question_idx] -> output.
@@ -51,7 +51,9 @@ def _generate_k_samples(model_names, input_list, gpu_ids, k):
     """
     n = len(input_list)
     stacked = [input_list * k for _ in model_names]  # each: n*k inputs
-    flat = distributed_generation.distributed_generation(model_names, stacked, gpu_ids)
+    flat = distributed_generation.distributed_generation(
+        model_names, stacked, gpu_ids, max_parallel_models=max_parallel_models
+    )
     out = []
     for mi in range(len(model_names)):
         per_sample = [flat[mi][s * n : (s + 1) * n] for s in range(k)]
@@ -71,6 +73,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     )
     seed = int(hyperparameters.get("seed", 42))
     ratio = hyperparameters.get("ratio", 1.0)
+    max_parallel_generation_models = hyperparameters.get("max_parallel_generation_models", None)
     random.seed(seed)
 
     # 1. (Optional) compute per-model dev accuracy for tie-breaking
@@ -79,7 +82,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         dev_inputs = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         list_of_inputs = [dev_inputs for _ in model_names]
         dev_outputs = distributed_generation.distributed_generation(
-            model_names, list_of_inputs, gpu_ids
+            model_names, list_of_inputs, gpu_ids, max_parallel_models=max_parallel_generation_models
         )
         for i, name in enumerate(model_names):
             scores = eval.get_scores(task, task_type, "dev", dev_outputs[i], ratio=ratio)
@@ -92,7 +95,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("[SLM-MUX] generating k={} samples per model on {} test items".format(
         samples_per_model, len(test_inputs)
     ))
-    samples = _generate_k_samples(model_names, test_inputs, gpu_ids, samples_per_model)
+    samples = _generate_k_samples(
+        model_names, test_inputs, gpu_ids, samples_per_model,
+        max_parallel_models=max_parallel_generation_models,
+    )
     # samples[model_idx][sample_idx][question_idx] = raw output string
 
     # 3. Extract answers and scores per (model, sample, question)

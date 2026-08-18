@@ -47,6 +47,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", gpu_ids[0])
     reward_model_name = hyperparameters.get("reward_model_name", "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2")
     ratio = hyperparameters.get("ratio", 1.0)
+    num_train_epochs = hyperparameters.get("num_train_epochs", 5)
 
     # preparing router SFT data
     dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
@@ -144,7 +145,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         warmup_steps = 0.1,
         gradient_checkpointing=True,
         eval_strategy="epoch",
-        num_train_epochs=5,
+        num_train_epochs=num_train_epochs,
         # logging strategies 
         logging_strategy="steps",
         logging_steps=100,

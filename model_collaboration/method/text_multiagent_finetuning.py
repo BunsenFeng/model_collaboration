@@ -198,6 +198,7 @@ def run_method(task: str,
     sft_learning_rate = float(hyperparameters.get("sft_learning_rate", 1e-5))
     sft_batch_size = int(hyperparameters.get("sft_batch_size", 1))
     sft_grad_accum = int(hyperparameters.get("sft_grad_accum", 16))
+    max_parallel_generation_models = hyperparameters.get("max_parallel_generation_models", None)
 
     # ------------------------------------------------------------------
     # Prepare the development inputs and corresponding raw data items.
@@ -262,7 +263,8 @@ def run_method(task: str,
         gen_outputs = distributed_generation.distributed_generation(
             current_generation_models,
             list_of_input_list,
-            gpu_ids
+            gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )  # shape: N x len(dev_inputs)
         # Extract answers for round 0
         extracted_round = []  # will be list of length N, each a list of len(dev_inputs)
@@ -323,7 +325,8 @@ def run_method(task: str,
             critic_outputs = distributed_generation.distributed_generation(
                 current_critic_models,
                 list_of_input_list_round,
-                gpu_ids
+                gpu_ids,
+                max_parallel_models=max_parallel_generation_models,
             )  # N x len(dev_inputs)
             answers.append(critic_outputs)
             # Extract answers for this critic round
@@ -523,7 +526,8 @@ def run_method(task: str,
     test_gen_outputs = distributed_generation.distributed_generation(
         current_generation_models,
         list_of_input_list,
-        gpu_ids
+        gpu_ids,
+        max_parallel_models=max_parallel_generation_models,
     )
     # Round m >= 1: critics refine answers
     answers_test = []
@@ -544,7 +548,8 @@ def run_method(task: str,
         critic_outputs_test = distributed_generation.distributed_generation(
             current_critic_models,
             list_of_input_list_round,
-            gpu_ids
+            gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )
         answers_test.append(critic_outputs_test)
     final_round_test = answers_test[-1]

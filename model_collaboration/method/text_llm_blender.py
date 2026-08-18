@@ -302,7 +302,7 @@ def _train_fuser_on_dev(
             best_idx = sorted_idx[0]
 
             top_candidates = [(idx, cand_list[idx]) for idx in top_indices]
-            prompt = _build_fusion_prompt(q, top_candidates, model_names)
+            prompt = _build_fusion_prompt(q, top_candidates, model_names, task_type=task_type)
             # Prefer gold dev answer when available; otherwise fall back to best candidate.
             completion = None
             if dev_gold_outputs is not None and idx < len(dev_gold_outputs):
@@ -433,6 +433,7 @@ def _build_fusion_prompt(
     question: str,
     top_candidates: List[Tuple[int, str]],
     model_names: List[str],
+    task_type: str = None,
 ) -> str:
     """
     Build a fusion prompt for the fuser model.
@@ -457,6 +458,22 @@ def _build_fusion_prompt(
     prompt_lines.append(
         "Now write the final answer to the question based on these candidates."
     )
+    # Give the fuser a parseable answer marker to end on, matching what
+    # parse_model_response_mcq/extract_answer_text look for -- without this
+    # the fuser's answer has no predictable format to extract from. Only for
+    # task types with a rule-based extractor that expects one; anything else
+    # (coding, kernel_bench, smdd, ...) gets no instruction, unchanged.
+    if task_type == "multiple_choice":
+        prompt_lines.append(
+            "IMPORTANT: end your response with a line of exactly the form 'Answer: X', where X is "
+            "the single letter of the option you are committing to (e.g. 'Answer: C')."
+        )
+    elif task_type in ("exact_match", "f1_match"):
+        prompt_lines.append(
+            "IMPORTANT: end your response with a line of exactly the form "
+            "'Final Answer: \\boxed{ANSWER}', where ANSWER is your final answer stated explicitly "
+            "(e.g. 'Final Answer: \\boxed{42}')."
+        )
     prompt_lines.append(
         "Final answer:"
     )
@@ -574,6 +591,7 @@ def _simple_rank_and_fuse(
             question=question,
             top_candidates=top_candidates,
             model_names=model_names,
+            task_type=task_type,
         )
         fuser_input_list.append(fusion_prompt)
 

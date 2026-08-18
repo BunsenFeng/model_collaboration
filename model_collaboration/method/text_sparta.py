@@ -26,6 +26,7 @@ def _pairwise_competition(
     temperature: float = 0.7,
     top_p: float = 0.9,
     batch_size: int = 1,
+    max_parallel_models: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """
     Build pairwise competitions between models on a list of instructions.
@@ -132,6 +133,7 @@ def _pairwise_competition(
         active_model_names,
         list_of_input_list,
         gpu_ids,
+        max_parallel_models=max_parallel_models,
     )
 
     # Build an index: {model_name: {instruction: response}}
@@ -1221,7 +1223,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     temperature = float(hyperparameters.get("temperature", 0.7))
     top_p = float(hyperparameters.get("top_p", 0.9))
     batch_size = int(hyperparameters.get("batch_size", 1))
-    
+    max_parallel_generation_models = hyperparameters.get("max_parallel_generation_models", None)
+
     # Judge operational parameters (judges are dynamically selected from model_names pool for each pair)
     judge_batch_size = int(hyperparameters.get("judge_batch_size", 8))
     judge_rounds = int(hyperparameters.get("judge_rounds", 1))
@@ -1303,6 +1306,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             temperature=temperature,
             top_p=top_p,
             batch_size=batch_size,
+            max_parallel_models=max_parallel_generation_models,
         )
         print(f"[Sparta] Iter {iteration}: Generated {len(raw_pairs)} raw pairs.")
         if not raw_pairs:
@@ -1613,6 +1617,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             final_model_paths,
             list_of_input_list,
             gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )
 
         list_of_dev_scores = []
@@ -1645,6 +1650,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             adapter_paths,
             list_of_input_list,
             gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )
 
         adapter_dev_scores: List[float] = []
