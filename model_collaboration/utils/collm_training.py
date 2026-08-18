@@ -456,7 +456,7 @@ class CoLLMTrainer:
         DeferralTrainer = deferral_training_tools.ALL_DEFERRAL_TRAINERS[self.model_args.deferral_trainer_version]
         self.trainer = DeferralTrainer(
             model=self.model,
-            tokenizer=self.tokenizer,
+            processing_class=self.tokenizer,
             args=self.training_args,
             **self.data_module,
         )
