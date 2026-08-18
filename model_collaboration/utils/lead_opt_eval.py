@@ -2,17 +2,24 @@
 Lead optimization evaluation for SMDD-Bench Type-4 tasks (ADMET-only, no Boltz2).
 
 Scoring in [0, 1]:
-  - 0.0 : invalid SMILES or any RDKit hard constraint fails
+  - 0.0 : invalid SMILES, unchanged-from-reference molecule, or any RDKit hard constraint fails
   - 1.0 : all hard constraints pass
 
 Note: ADMET objective evaluation (admet_ai) is omitted due to container dependency
-conflicts. Hard constraint satisfaction is a necessary (though not sufficient)
-condition for a valid lead optimization result.
+conflicts, so this can't verify the agent's molecule actually IMPROVED on the
+optimization objective vs. baseline (the real SMDD-Bench scoring does, via
+assess_optimization_objectives). Hard constraint satisfaction is a necessary
+(though not sufficient) condition for a valid lead optimization result. As a
+partial stand-in for the missing objective check, a molecule canonically
+identical to the reference is rejected outright -- it has zero improvement by
+definition, which fails every objective threshold in this dataset (all > 0),
+so without this guard echoing the reference back verbatim scored a free 1.0.
 
 RDKit is installed on first use if missing.
 """
 
 import importlib
+import importlib.util
 import os
 import subprocess
 import sys
@@ -76,6 +83,20 @@ def _check_hard_constraints(smiles: str, reference_smiles: str) -> bool:
     ref_mol = Chem.MolFromSmiles(reference_smiles)
     if ref_mol is None:
         return False
+
+    # The reference molecule trivially satisfies every constraint above (it's
+    # already a valid, drug-like starting point) and has Tanimoto-to-self =
+    # 1.0, so echoing it back verbatim -- doing zero actual optimization --
+    # passes all of them for free. The real SMDD-Bench scoring catches this
+    # via assess_optimization_objectives (agent's ADMET-AI-predicted
+    # properties must improve on the baseline by each objective's threshold,
+    # and an unchanged molecule has improvement=0, which fails every
+    # threshold in this dataset since they're all > 0); that check is
+    # omitted here due to admet_ai's container dependency conflicts, so
+    # reject an unchanged molecule directly as the closest available proxy.
+    if Chem.MolToSmiles(mol) == Chem.MolToSmiles(ref_mol):
+        return False
+
     fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)
     fp_ref = AllChem.GetMorganFingerprintAsBitVect(ref_mol, 2, nBits=2048)
     if DataStructs.TanimotoSimilarity(fp, fp_ref) < 0.7:
