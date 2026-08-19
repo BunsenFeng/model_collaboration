@@ -1056,7 +1056,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             report_to="wandb",
             logging_first_step=True,
             tf32=True,
-            overwrite_output_dir=True,
         )
         phase2_trainer.run()
 
