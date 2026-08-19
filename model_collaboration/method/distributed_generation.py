@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import os
 from multiprocessing import get_context, Pool
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -274,6 +275,7 @@ def batch_generate_text_adapter_aware(
     finally:
         del model
         del tokenizer
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         _dynamo.reset_code_caches()
@@ -447,6 +449,7 @@ def batch_generate_text_with_score(
     finally:
         del model
         del tokenizer
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         _dynamo.reset_code_caches()

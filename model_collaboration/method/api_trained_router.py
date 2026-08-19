@@ -1,4 +1,5 @@
 import os
+import gc
 import json
 import torch
 import shutil
@@ -72,7 +73,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         dev_outputs = list_of_output_list[i]
         dev_reward_score = reward_model_scores(reward_model_gpu_id, dev_input_list, dev_outputs)
         list_of_dev_reward_scores.append(dev_reward_score)
-    
+
+    # rm/rm_tokenizer are only needed for the tie-break above; free them now so
+    # they don't sit on gpu_ids[0] through router SFT training and the final
+    # Pool-based generation phase (both reuse that GPU).
+    global rm, rm_tokenizer
+    del rm, rm_tokenizer
+    gc.collect()
+    torch.cuda.empty_cache()
+
     best_model_index = [] # len(dev_input_list)
     for j in range(len(dev_input_list)):
         best_score = -float("inf")
@@ -184,6 +193,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     del router_model
     del tokenizer
+    gc.collect()
     torch.cuda.empty_cache()
 
     router_model_name = "model_collaboration/logs/router_sft_{}".format(task)

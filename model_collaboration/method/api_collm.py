@@ -997,6 +997,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             num_train_epochs=2,
             per_device_train_batch_size=1,
             gradient_accumulation_steps=32,
+            gradient_checkpointing=True,  # phase 2 already sets this; phase 1 was missing it
             learning_rate=2e-5,
             lr_scheduler_type="linear",
             warmup_ratio=0.04,
@@ -1019,9 +1020,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         # ========== Phase 2: Main Deferral Training with Marginal Likelihood Loss ==========
         logger.info("=" * 80)
         logger.info("Phase 2: Main deferral training with marginal likelihood loss...")
-        logger.info("Using DeepSpeed ZeRO Stage 2 for memory optimization")
         logger.info("=" * 80)
 
+        # This process trains on a single GPU (see the _n_gpu=1 override in
+        # collm_training.py's ModelTrainer.__init__, needed to prevent an unrelated
+        # nn.DataParallel OOM), so it doesn't pass a deepspeed= config here: ZeRO's
+        # benefit is sharding optimizer state/gradients ACROSS ranks, and with only
+        # one rank there's nothing to shard. Memory is managed instead via
+        # gradient_checkpointing (below) and bf16.
         phase2_trainer = ModelTrainer(
             model_name_or_path=generator,
             tokenizer_name=generator,
