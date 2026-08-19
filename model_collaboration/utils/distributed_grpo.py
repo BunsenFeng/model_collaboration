@@ -1398,6 +1398,17 @@ def single_grpo_with_judges(
         trainer_kwargs["stable_rollout_log_path"] = rollout_log_path
 
     trainer = trainer_cls(**trainer_kwargs)
+    # _set_visible_devices() above deliberately exposes multiple GPUs here --
+    # the training GPU plus every judge GPU, since judge models need to be
+    # reachable directly in-process for reward computation. But that also
+    # means HF Trainer's n_gpu reads torch.cuda.device_count() > 1 (with
+    # local_rank left at its -1 default) and wraps the TRAINABLE model in
+    # nn.DataParallel across all of those visible GPUs -- including the ones
+    # meant to hold judge models, not replicas of the training model -- which
+    # OOMs on backward. Overriding _n_gpu=1 disables that wrap (same fix as
+    # text_agglm.py's separate GRPO training path, api_trained_router.py's
+    # and api_switch_generation.py's SFT).
+    trainer.args._n_gpu = 1
     trainer.model = _disable_cache_for_training(trainer.model)
     trainer.train()
     trainer.save_model(output_model_path)

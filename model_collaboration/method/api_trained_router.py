@@ -167,6 +167,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         eval_dataset=dataset,
         peft_config=peft_config,
     )
+    # router_model is explicitly pinned to a single GPU above (device_map),
+    # but all of gpu_ids stays visible via CUDA_VISIBLE_DEVICES for the
+    # process's other (generation) work, so HF Trainer's n_gpu still reads
+    # torch.cuda.device_count() > 1 and wraps the model in nn.DataParallel --
+    # which replicates it onto the other visible GPU and OOMs gathering
+    # gradients back onto GPU 0 on backward, regardless of the manual
+    # placement. Overriding _n_gpu=1 disables that wrap (same fix as
+    # text_agglm.py's GRPO training).
+    trainer.args._n_gpu = 1
 
     trainer.train()
     trainer.save_model("model_collaboration/logs/router_sft_{}".format(task))

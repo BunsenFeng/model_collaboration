@@ -460,6 +460,18 @@ class CoLLMTrainer:
             args=self.training_args,
             **self.data_module,
         )
+        # self.model is explicitly placed on a single GPU above (.cuda(), with
+        # local_rank left at its -1 default), but the caller (api_collm.py)
+        # exports every training GPU to CUDA_VISIBLE_DEVICES, so HF Trainer's
+        # n_gpu still reads torch.cuda.device_count() > 1 and wraps the model
+        # in nn.DataParallel -- which replicates it onto the other visible
+        # GPU(s) and OOMs gathering gradients back onto GPU 0 on backward,
+        # regardless of the manual placement (reproduced directly: with 2
+        # visible GPUs and local_rank=-1, Trainer._wrap_model() returns a real
+        # nn.DataParallel-wrapped model under this repo's pinned
+        # transformers==5.15.0). Overriding _n_gpu=1 disables that wrap (same
+        # fix as text_agglm.py's GRPO training).
+        self.trainer.args._n_gpu = 1
 
     def train(self, resume_from_checkpoint=None):
         """
