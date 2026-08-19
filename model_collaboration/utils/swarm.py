@@ -89,12 +89,20 @@ def full_model_linear_merge(weights, model_path_list, output_path, dtype=torch.b
     """
     assert len(weights) == len(model_path_list), "weights and model_path_list must be the same length"
 
+    # Accumulate in-place into the first model's own state_dict tensors, then reuse that same
+    # model as the one we save -- this keeps peak host memory to ~1 full model (the accumulator)
+    # plus ~1 more transiently while a subsequent model is loaded, instead of ~3 (accumulator +
+    # last loaded model's state_dict lingering past `del model` + a freshly-loaded final model).
+    final_model = None
     merged_state_dict = None
     for path, weight in zip(model_path_list, weights):
         model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
         state_dict = model.state_dict()
         if merged_state_dict is None:
-            merged_state_dict = {k: weight * v.clone() for k, v in state_dict.items()}
+            final_model = model
+            merged_state_dict = state_dict
+            for k in merged_state_dict:
+                merged_state_dict[k] *= weight
         else:
             assert set(merged_state_dict.keys()) == set(state_dict.keys()), (
                 f"State dict keys mismatch between {model_path_list[0]} and {path}; "
@@ -102,9 +110,8 @@ def full_model_linear_merge(weights, model_path_list, output_path, dtype=torch.b
             )
             for k in merged_state_dict:
                 merged_state_dict[k] += weight * state_dict[k]
-        del model
+            del model, state_dict
 
-    final_model = AutoModelForCausalLM.from_pretrained(model_path_list[0], torch_dtype=dtype)
     final_model.load_state_dict(merged_state_dict)
 
     if os.path.exists(output_path):
@@ -174,35 +181,62 @@ def dare_ties_merge(weights, model_path_list, base_model_path, output_path, dens
     """
     assert len(weights) == len(model_path_list), "weights and model_path_list must be the same length"
 
-    generator = None
+    # Derive one fixed, reproducible seed per model (rather than sharing a single generator's
+    # advancing stream across two passes over all models) so that each model's DARE dropout mask
+    # is identical in pass 1 and pass 2, while still differing between models.
+    model_seeds = [None] * len(model_path_list)
     if seed is not None:
-        generator = torch.Generator()
-        generator.manual_seed(seed)
+        model_seeds = [seed + i for i in range(len(model_path_list))]
 
+    def _generator_for(model_seed):
+        if model_seed is None:
+            return None
+        g = torch.Generator()
+        g.manual_seed(model_seed)
+        return g
+
+    # Two passes over per-tensor keys instead of materializing a complete weighted-delta dict
+    # per input model: pass 1 computes the (small) majority-sign consensus per key by streaming
+    # each model's delta one at a time; pass 2 re-streams the deltas to accumulate only the
+    # entries agreeing with that consensus. This keeps peak host memory to ~2 full models (base +
+    # whichever model is currently loaded) instead of accumulating a full weighted-delta state
+    # dict per input model simultaneously.
     base_model = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=dtype)
     base_state_dict = base_model.state_dict()
     del base_model
 
-    per_model_weighted_deltas = []
-    for path, weight in zip(model_path_list, weights):
+    keys = list(base_state_dict.keys())
+    sign_sum = {k: torch.zeros_like(base_state_dict[k]) for k in keys}
+
+    for path, weight, model_seed in zip(model_path_list, weights, model_seeds):
         model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
         state_dict = model.state_dict()
         assert set(state_dict.keys()) == set(base_state_dict.keys()), (
             f"State dict keys mismatch between base ({base_model_path}) and {path}; "
             "models must share the same architecture."
         )
-        weighted_delta = {}
-        for k in base_state_dict:
+        model_generator = _generator_for(model_seed)
+        for k in keys:
             delta = state_dict[k] - base_state_dict[k]
-            delta = _dare_sparsify(delta, density, generator=generator)
-            weighted_delta[k] = delta * weight
-        per_model_weighted_deltas.append(weighted_delta)
-        del model
+            delta = _dare_sparsify(delta, density, generator=model_generator)
+            sign_sum[k] += delta * weight
+        del model, state_dict
 
-    merged_state_dict = {}
-    for k in base_state_dict:
-        mixed_delta = _ties_sign_consensus_merge([wd[k] for wd in per_model_weighted_deltas])
-        merged_state_dict[k] = base_state_dict[k] + mixed_delta
+    majority_sign = {k: torch.where(sign_sum[k] >= 0, 1.0, -1.0).to(sign_sum[k].dtype) for k in keys}
+    del sign_sum
+
+    merged_state_dict = {k: base_state_dict[k].clone() for k in keys}
+    for path, weight, model_seed in zip(model_path_list, weights, model_seeds):
+        model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
+        state_dict = model.state_dict()
+        model_generator = _generator_for(model_seed)
+        for k in keys:
+            delta = state_dict[k] - base_state_dict[k]
+            delta = _dare_sparsify(delta, density, generator=model_generator)
+            weighted_delta = delta * weight
+            mask = weighted_delta.sign() == majority_sign[k]
+            merged_state_dict[k] += weighted_delta * mask
+        del model, state_dict
 
     final_model = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=dtype)
     final_model.load_state_dict(merged_state_dict)
@@ -214,7 +248,7 @@ def dare_ties_merge(weights, model_path_list, base_model_path, output_path, dens
     tokenizer = AutoTokenizer.from_pretrained(base_model_path)
     tokenizer.save_pretrained(output_path)
 
-    del final_model, merged_state_dict, per_model_weighted_deltas
+    del final_model, merged_state_dict, base_state_dict, majority_sign
 
 
 # define the swarm class

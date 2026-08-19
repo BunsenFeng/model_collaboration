@@ -558,15 +558,34 @@ def parse_model_response_mcq(response_text, options):
             i = letters.index(letter)
             return letter, options[i]
 
-    # 3. Fall back to full option-text matching -- prefer whichever option's full text appears
+    # 3. Exact match: the whole response (normalized) is exactly one option's text, e.g. a
+    # model that just restates the answer with no surrounding reasoning. Checked before the
+    # substring fallback below since it's unambiguous -- no risk of one option's text being a
+    # substring of another's.
+    normalized_response = re.sub(r"[\s.,;:!?]+$", "", response_text_lower).strip()
+    for i, option in enumerate(options):
+        normalized_option = re.sub(r"[\s.,;:!?]+$", "", option.lower()).strip()
+        if normalized_response == normalized_option:
+            return letters[i], options[i]
+
+    # 4. Fall back to full option-text matching -- prefer whichever option's full text appears
     # LAST in the response (closest to the conclusion), not the first textual mention, since a
     # model's reasoning routinely quotes/rules-out other options by their full text before
-    # committing to the final one.
-    best_i, best_pos = None, -1
+    # committing to the final one. Rank by the match's END position (not start): when one
+    # option's text is a substring of another's (e.g. correct "0.8 lb" vs distractor "8 lb", or
+    # correct "\frac{13}{2}" vs distractor "13"), the substring's rfind() start position can be
+    # later than the full text's start even though they end at the same/similar place -- ranking
+    # by start incorrectly favors the shorter, embedded distractor. Tie-break by option length so
+    # the longer (more specific) option wins when both end at the same position.
+    best_i, best_end, best_len = None, -1, -1
     for i, option in enumerate(options):
-        pos = response_text_lower.rfind(option.lower())
-        if pos > best_pos:
-            best_pos, best_i = pos, i
+        option_lower = option.lower()
+        pos = response_text_lower.rfind(option_lower)
+        if pos == -1:
+            continue
+        end = pos + len(option_lower)
+        if (end, len(option_lower)) > (best_end, best_len):
+            best_end, best_len, best_i = end, len(option_lower), i
     if best_i is not None:
         return letters[best_i], options[best_i]
 

@@ -29,6 +29,16 @@ def is_lora_adapter_peft(model_id: str) -> bool:
         return False
 
 def lora_to_full(model_names):
+    """
+    Converts any LoRA-adapter entries in model_names to full merged models on disk.
+
+    Returns:
+        tuple: (model_names, converted_dirs) where converted_dirs is the list of newly
+               created full-model directories. Callers are responsible for removing these
+               once they're done using them (e.g. after the final merge is saved) --
+               otherwise each run permanently leaks a full merged checkpoint per LoRA input.
+    """
+    converted_dirs = []
     for i in range(len(model_names)):
         if is_lora_adapter_peft(model_names[i]):
             model = AutoPeftModelForCausalLM.from_pretrained(model_names[i], torch_dtype="bfloat16")
@@ -43,4 +53,5 @@ def lora_to_full(model_names):
             model.save_pretrained(full_model_name)
             tokenizer.save_pretrained(full_model_name)
             model_names[i] = full_model_name
-    return model_names
+            converted_dirs.append(full_model_name)
+    return model_names, converted_dirs

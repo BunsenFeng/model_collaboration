@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import shutil
 from model_collaboration.data import eval
 import torch.nn.functional as F
 from model_collaboration.utils import lora_check
@@ -22,8 +23,16 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Make sure they share the same model architecture, or expect errors.")
 
     # check if the models are lora adapters
-    model_names = lora_check.lora_to_full(model_names)
+    model_names, _lora_converted_dirs = lora_check.lora_to_full(model_names)
 
+    try:
+        return _run_method_impl(task, task_type, gpu_ids, model_names, hyperparameters)
+    finally:
+        for d in _lora_converted_dirs:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def _run_method_impl(task, task_type, gpu_ids, model_names, hyperparameters):
     # method-specific hyperparameters
 
     base_model_name = hyperparameters.get("base_model_name")

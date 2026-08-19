@@ -139,8 +139,16 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("=" * 60)
     
     # Convert LoRA adapters to full models if necessary
-    model_names = lora_check.lora_to_full(model_names)
-    
+    model_names, _lora_converted_dirs = lora_check.lora_to_full(model_names)
+
+    try:
+        return _run_method_impl(task, task_type, gpu_ids, model_names, hyperparameters)
+    finally:
+        for d in _lora_converted_dirs:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def _run_method_impl(task, task_type, gpu_ids, model_names, hyperparameters):
     # Extract hyperparameters
     mode = hyperparameters.get("mode", "worst_to_best")
     alpha = hyperparameters.get("alpha", 0.3)

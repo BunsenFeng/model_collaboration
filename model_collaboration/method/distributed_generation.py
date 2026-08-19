@@ -157,8 +157,24 @@ def build_model_and_tokenizer_for_generation(
     # fragility entirely (confirmed via instrumentation: device_count()
     # reported 4, not 1, and all workers shared one physical GPU UUID).
     target_device_index: Union[int, str] = 0
+    max_memory: Optional[Dict[Any, Any]] = None
     if isinstance(gpu_id, int):
         target_device_index = gpu_id
+    elif isinstance(gpu_id, (list, tuple)) and gpu_id and torch.cuda.is_available():
+        # Same CUDA-already-initialized trap as the scalar case above, but a post-hoc
+        # CUDA_VISIBLE_DEVICES assignment can't be worked around here the way it is for the
+        # scalar case (there's no single physical index to target directly -- big_model_mode's
+        # device_map="auto" needs to shard across exactly this subset of GPUs). Instead,
+        # constrain accelerate's auto placement via max_memory: give every physical GPU not in
+        # the requested subset a 0 budget so it can't be selected, regardless of whether
+        # CUDA_VISIBLE_DEVICES actually took effect in this process.
+        allowed = {int(g) for g in gpu_id}
+        max_memory = {}
+        for idx in range(torch.cuda.device_count()):
+            if idx in allowed:
+                max_memory[idx] = int(torch.cuda.get_device_properties(idx).total_memory * 0.9)
+            else:
+                max_memory[idx] = 0
     else:
         visible_devices, _ = _normalize_visible_devices(gpu_id)
         if visible_devices is not None:
@@ -170,6 +186,8 @@ def build_model_and_tokenizer_for_generation(
     }
     if torch.cuda.is_available():
         model_kwargs["device_map"] = "auto" if BIG_MODEL_MODE else {"": target_device_index}
+        if max_memory is not None:
+            model_kwargs["max_memory"] = max_memory
 
     if _is_lora_adapter(model_name_or_path):
         model = AutoPeftModelForCausalLM.from_pretrained(model_name_or_path, **model_kwargs)
