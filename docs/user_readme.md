@@ -142,6 +142,7 @@ Without further ado, a complete list of all supported methods and configurations
     - `model_descriptions`, default None: a list of strings describing each candidate model, in the same order as `model_names`. Optional. If provided, the router model input will include model descriptions.
     - `reward_model_gpu_id`, default `gpu_ids[0]`: the GPU ID to load the reward model.
     - `reward_model_name`, default `Skywork/Skywork-Reward-Llama-3.1-8B-v0.2`: the reward model to evaluate generations when there is a tie on the task.
+    - `num_train_epochs`, default 5: number of epochs for training the router.
 
 #### API-level: Graph Routing
 - file: `api_graph_routing.py`
@@ -149,12 +150,17 @@ Without further ado, a complete list of all supported methods and configurations
 - related paper(s):
     - [GraphRouter: A Graph-based Router for LLM Selections](https://arxiv.org/pdf/2410.03834)
 - method-specific hyperparameters:
-    - `embedding_model`, default `sentence-transformers/all-MiniLM-L6-v2`: the model for extracting embedding.
+    - `embedding_model_name`, default `sentence-transformers/all-MiniLM-L6-v2`: the model for extracting embedding.
     - `model_descriptions`, default None: a list of strings describing each candidate model, in the same order as `model_names`. 
     - `task_description`, default task name: a string describing task. 
     - `hidden_features`, default 8: the hidden dimension for graph router.
     - `in_edges`, default 3: the input features number for graph router.
+    - `learning_rate`, default 1e-4: learning rate for training the graph router.
+    - `weight_decay`, default 1e-4: weight decay for training the graph router.
+    - `train_epochs`, default 500: number of epochs for training the graph router.
+    - `batch_size`, default 32: batch size for training the graph router (distinct from the general generation `batch_size`).
     - `train_mask_rate`, default 0.5: the rate to mask train data.
+    - `split_ratio`, default `[0.7, 0.15, 0.15]`: train/val/test split ratio for the graph router's own training data.
     - `scenario`, default `Performance First`: the balance between performance and cost.
 
 #### API-level: Cascade
@@ -196,7 +202,7 @@ Without further ado, a complete list of all supported methods and configurations
             - `example["solution"]`: the corresponding ground-truth solution
         - `training_split`, default `"train"`: dataset split to use for training data
         - `training_num`, default `10000`: number of training examples to use from the dataset
-        - `max_seq_length`, default `512`: sequence length that to be trained during deferral training
+        - `max_sequence_length`, default `2048`: sequence length that to be trained during deferral training
     - **Deferral parameters**:
         - `deferral_threshold`, default `0.5`: probability threshold for deferring to the mentor model. When the deferral token probability exceeds this threshold, the mentor model is consulted. Lower values (e.g., 0.3) increase mentor usage and performance but cost more; higher values (e.g., 0.7) rely more on the generator
         - `deferral_strategy`, default `"defer"`: how to use the mentor model when deferring. Options:
@@ -208,7 +214,7 @@ Without further ado, a complete list of all supported methods and configurations
             - `"cosine"`: use cosine schedule from 1.0 to target threshold
         - `threshold_warmup_steps`, default `15`: number of generation steps over which to apply threshold warmup (only used if warmup_schedule is not `"none"`)
     - **Generation parameters**:
-        - `max_response_length`, default `2048`: maximum number of tokens to generate during inference
+        - `max_response_length`, default `512`: maximum number of tokens to generate during inference
 - workflow:
     1. **Initialize training data**: load dataset (default: MATH) and create training samples
     2. **Score with generator**: compute log probabilities using the small (generator) model
@@ -507,6 +513,7 @@ Without further ado, a complete list of all supported methods and configurations
     - [Tuning Language Models by Proxy](https://arxiv.org/abs/2401.08565)
 - method-specific hyperparameters:
     - `k`, default 1: the number of top and bottom LLMs to use for contrastive decoding.
+    - `lambda_`, default 0.2: scaler applied to the summed bottom-k logits before subtracting from the summed top-k logits.
 - warning: you might need very small batch sizes. len(gpu_ids) has to == len(model_names).
 
 ### Weight-level collaboration
