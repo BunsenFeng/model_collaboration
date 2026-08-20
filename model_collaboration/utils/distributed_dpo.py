@@ -169,6 +169,12 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         save_total_limit=1,
         # Suppress label_names warning for PEFT models
         label_names=[],
+        # DPOTrainer tokenizes internally at __init__ and silently DROPS (not truncates) any
+        # example whose tokenized length exceeds these -- without explicit values, TRL's defaults
+        # can drop every example for long-prompt tasks (e.g. scitarc's multi-paragraph/table
+        # excerpts), leaving 0 training examples. Truncate instead of losing the data entirely.
+        max_length=2048,
+        max_prompt_length=1536,
     )
 
     trainer = DPOTrainer(
@@ -179,6 +185,24 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         processing_class=tokenizer,
         peft_config=peft_config
     )
+
+    # Belt-and-suspenders alongside max_length/max_prompt_length above: even with explicit
+    # limits, a tokenizer quirk on a specific model (e.g. a VLM tokenizer handling text-only
+    # pairs differently) could still filter every example to 0. RandomSampler then raises
+    # ValueError("num_samples should be a positive integer value, but got num_samples=0").
+    # Skip training but still save trainer.model (the peft_config-wrapped model with a freshly
+    # -- untrained, effectively identity -- LoRA adapter) to output_model_path: callers like
+    # text_sparta_stackelberg.py unconditionally point this iteration's model path at
+    # output_model_path afterward, so leaving it missing would break the *next* round instead
+    # of just skipping this one.
+    if len(trainer.train_dataset) == 0:
+        print(f"[DPO] Skipping training for {model_name}: 0 examples after tokenization/filtering. "
+              f"Carrying the model forward unchanged.")
+        trainer.save_model(output_model_path)
+        tokenizer.save_pretrained(output_model_path)
+        del model, tokenizer, trainer
+        torch.cuda.empty_cache()
+        return
 
     trainer.train()
     trainer.save_model(output_model_path)
