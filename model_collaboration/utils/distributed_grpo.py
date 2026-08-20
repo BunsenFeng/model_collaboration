@@ -19,6 +19,8 @@ from peft import AutoPeftModelForCausalLM, LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
+from model_collaboration.method import distributed_generation
+
 try:
     from accelerate.utils import gather, gather_object, is_peft_model
 except Exception:  # pragma: no cover
@@ -196,7 +198,9 @@ def _build_model_and_tokenizer_for_judge(
         model = AutoPeftModelForCausalLM.from_pretrained(model_name, **kwargs)
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), use_fast=True, trust_remote_code=True
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -1242,8 +1246,11 @@ def single_grpo_with_judges(
     if "instruction" in dataset.column_names and "prompt" not in dataset.column_names:
         dataset = dataset.rename_column("instruction", "prompt")
 
+    # A LoRA adapter's own cached snapshot only has adapter files -- no config.json -- so
+    # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig lookup
+    # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
+        distributed_generation._tokenizer_source(model_name),
         padding_side="left",
         use_fast=True,
         trust_remote_code=True,
@@ -1288,7 +1295,9 @@ def single_grpo_with_judges(
     reward_func.__name__ = "reputation_weighted_peer_judge_reward"
 
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left", use_fast=True, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), padding_side="left", use_fast=True, trust_remote_code=True
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id

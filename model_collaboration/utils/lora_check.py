@@ -43,7 +43,12 @@ def lora_to_full(model_names):
         if is_lora_adapter_peft(model_names[i]):
             model = AutoPeftModelForCausalLM.from_pretrained(model_names[i], torch_dtype="bfloat16")
             model = model.merge_and_unload()
-            tokenizer = AutoTokenizer.from_pretrained(model_names[i])
+            # A LoRA adapter's own cached snapshot only has adapter files (adapter_config.json,
+            # adapter_model.safetensors, tokenizer files) -- no config.json -- so
+            # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig
+            # lookup fails first). Redirect to the adapter's base model instead.
+            base_model_name = PeftConfig.from_pretrained(model_names[i]).base_model_name_or_path
+            tokenizer = AutoTokenizer.from_pretrained(base_model_name)
             # Unique per call (not just per model name): two concurrent MoCo
             # runs that both reference this same LoRA model would otherwise
             # race on an identical shared path -- one run's rmtree/makedirs

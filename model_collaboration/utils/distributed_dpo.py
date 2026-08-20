@@ -102,7 +102,13 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
     # Rename here so existing preference_pairs.json can be used directly.
     if "instruction" in dataset.column_names and "prompt" not in dataset.column_names:
         dataset = dataset.rename_column("instruction", "prompt")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+    # A LoRA adapter's own cached snapshot only has adapter files (adapter_config.json,
+    # adapter_model.safetensors, tokenizer files) -- no config.json -- so
+    # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig lookup
+    # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), padding_side="left"
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
