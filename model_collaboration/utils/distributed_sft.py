@@ -26,7 +26,12 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
     torch.cuda.set_device(0)
 
     dataset = load_dataset("json", data_files=sft_data_path, split="train")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+    # A LoRA adapter's own cached snapshot only has adapter files -- no config.json -- so
+    # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig lookup
+    # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), padding_side="left"
+    )
     tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 

@@ -19,8 +19,6 @@ from peft import AutoPeftModelForCausalLM, LoraConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
-from model_collaboration.method import distributed_generation
-
 try:
     from accelerate.utils import gather, gather_object, is_peft_model
 except Exception:  # pragma: no cover
@@ -198,6 +196,11 @@ def _build_model_and_tokenizer_for_judge(
         model = AutoPeftModelForCausalLM.from_pretrained(model_name, **kwargs)
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
+    # Local import, not top-level: distributed_generation imports peft at module level, which
+    # probes CUDA at import time. GRPO's spawn workers re-import every module from disk before
+    # running -- a top-level import here would initialize CUDA before _set_visible_devices()
+    # restricts CUDA_VISIBLE_DEVICES in this worker, silently exposing all GPUs to every worker.
+    from model_collaboration.method import distributed_generation
     tokenizer = AutoTokenizer.from_pretrained(
         distributed_generation._tokenizer_source(model_name), use_fast=True, trust_remote_code=True
     )
@@ -1249,6 +1252,10 @@ def single_grpo_with_judges(
     # A LoRA adapter's own cached snapshot only has adapter files -- no config.json -- so
     # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig lookup
     # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
+    # Local import, not top-level: distributed_generation imports peft at module level, which
+    # probes CUDA at import time; a top-level import would initialize CUDA in this spawn worker
+    # before _set_visible_devices() restricts CUDA_VISIBLE_DEVICES, exposing all GPUs to it.
+    from model_collaboration.method import distributed_generation
     tokenizer = AutoTokenizer.from_pretrained(
         distributed_generation._tokenizer_source(model_name),
         padding_side="left",
@@ -1294,7 +1301,10 @@ def single_grpo_with_judges(
     )
     reward_func.__name__ = "reputation_weighted_peer_judge_reward"
 
-
+    # Local import, not top-level: distributed_generation imports peft at module level, which
+    # probes CUDA at import time; a top-level import would initialize CUDA in this spawn worker
+    # before _set_visible_devices() restricts CUDA_VISIBLE_DEVICES, exposing all GPUs to it.
+    from model_collaboration.method import distributed_generation
     tokenizer = AutoTokenizer.from_pretrained(
         distributed_generation._tokenizer_source(model_name), padding_side="left", use_fast=True, trust_remote_code=True
     )
