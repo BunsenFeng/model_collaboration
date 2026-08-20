@@ -3,6 +3,7 @@ The helper functions for distributed DPO.
 """
 import os
 import atexit
+import inspect
 import torch
 import torch.nn as nn
 import shutil
@@ -169,22 +170,32 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         save_total_limit=1,
         # Suppress label_names warning for PEFT models
         label_names=[],
-        # DPOTrainer tokenizes internally at __init__ and silently DROPS (not truncates) any
-        # example whose tokenized length exceeds these -- without explicit values, TRL's defaults
-        # can drop every example for long-prompt tasks (e.g. scitarc's multi-paragraph/table
-        # excerpts), leaving 0 training examples. Truncate instead of losing the data entirely.
-        max_length=2048,
-        max_prompt_length=1536,
+        # max_length/max_prompt_length are NOT passed here: this TRL build's DPOConfig predates
+        # them as constructor kwargs (TypeError: unexpected keyword argument). Passed to
+        # DPOTrainer directly below instead, where older TRL accepted them before they were
+        # folded into DPOConfig.
     )
 
-    trainer = DPOTrainer(
+    # DPOTrainer tokenizes internally at __init__ and silently DROPS (not truncates) any example
+    # whose tokenized length exceeds max_length/max_prompt_length -- without explicit values,
+    # TRL's defaults can drop every example for long-prompt tasks (e.g. scitarc's multi-paragraph
+    # /table excerpts), leaving 0 training examples. Truncate instead of losing the data entirely.
+    # Only pass these if this TRL's DPOTrainer signature actually supports them as constructor
+    # kwargs (varies by version); if not, the len(trainer.train_dataset) == 0 guard below still
+    # catches the unfiltered-long-prompt case and skips training instead of crashing.
+    dpo_trainer_kwargs = dict(
         model=model,
         args=training_args,
         train_dataset=dataset,
         eval_dataset=dataset,
         processing_class=tokenizer,
-        peft_config=peft_config
+        peft_config=peft_config,
     )
+    _dpo_trainer_params = inspect.signature(DPOTrainer.__init__).parameters
+    for _len_kwarg, _len_val in (("max_length", 2048), ("max_prompt_length", 1536)):
+        if _len_kwarg in _dpo_trainer_params:
+            dpo_trainer_kwargs[_len_kwarg] = _len_val
+    trainer = DPOTrainer(**dpo_trainer_kwargs)
 
     # Belt-and-suspenders alongside max_length/max_prompt_length above: even with explicit
     # limits, a tokenizer quirk on a specific model (e.g. a VLM tokenizer handling text-only
