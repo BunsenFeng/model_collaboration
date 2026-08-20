@@ -168,7 +168,10 @@ def _build_model_for_training(model_name: str, torch_dtype: torch.dtype = torch.
     """Load a base model or merge an incoming PEFT adapter before adding a fresh LoRA adapter."""
     model_kwargs: Dict[str, Any] = {"torch_dtype": torch_dtype, "trust_remote_code": True}
     if torch.cuda.is_available():
-        model_kwargs["device_map"] = {"": 0}
+        # Not a hardcoded 0: _set_visible_devices() no longer remaps via CUDA_VISIBLE_DEVICES
+        # (see its docstring), so device index 0 is not necessarily this worker's assigned GPU.
+        # torch.cuda.current_device() reflects whatever torch.cuda.set_device() was called with.
+        model_kwargs["device_map"] = {"": torch.cuda.current_device()}
 
     if _is_lora_adapter(model_name):
         print(f"[GRPO] Detected adapter at {model_name}; merging before new GRPO LoRA training.")
@@ -198,8 +201,9 @@ def _build_model_and_tokenizer_for_judge(
         model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
     # Local import, not top-level: distributed_generation imports peft at module level, which
     # probes CUDA at import time. GRPO's spawn workers re-import every module from disk before
-    # running -- a top-level import here would initialize CUDA before _set_visible_devices()
-    # restricts CUDA_VISIBLE_DEVICES in this worker, silently exposing all GPUs to every worker.
+    # running -- a top-level import here would initialize CUDA before this worker calls
+    # _set_visible_devices() / torch.cuda.set_device(), leaving the default device at 0
+    # regardless of this worker's assigned GPU.
     from model_collaboration.method import distributed_generation
     tokenizer = AutoTokenizer.from_pretrained(
         distributed_generation._tokenizer_source(model_name), use_fast=True, trust_remote_code=True
@@ -467,17 +471,24 @@ def _make_grpo_config(**kwargs: Any) -> GRPOConfig:
 
 
 def _set_visible_devices(training_gpu_id: int, judge_gpu_ids: Optional[Sequence[int]]) -> str:
-    visible = [int(training_gpu_id)]
-    for gid in judge_gpu_ids or []:
-        gid = int(gid)
-        if gid not in visible:
-            visible.append(gid)
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(x) for x in visible)
+    """Route this worker's default CUDA device to its assigned physical GPU.
+
+    Does NOT use CUDA_VISIBLE_DEVICES: peft and trl are top-level imports in this module, and
+    importing them triggers accelerate/bitsandbytes probing CUDA (torch.cuda.is_available(), i.e.
+    cudaGetDeviceCount) at import time. GRPO's spawn workers re-import every module from disk
+    before this function ever runs, so by the time we get here CUDA's device enumeration is
+    already locked in -- further CUDA_VISIBLE_DEVICES changes are silently ignored, and every
+    worker ends up defaulting to physical GPU 0 regardless of its assigned gpu_id. Instead,
+    address physical GPU indices directly: CUDA already sees every GPU on the node, so
+    torch.cuda.set_device(training_gpu_id) correctly routes this worker without any remapping.
+    """
+    training_gpu_id = int(training_gpu_id)
     if torch.cuda.is_available():
-        torch.cuda.set_device(0)
-    if len(visible) > 1 and torch.cuda.is_available():
-        return "cuda:1"
-    return "cuda:0" if torch.cuda.is_available() else "cpu"
+        torch.cuda.set_device(training_gpu_id)
+    if judge_gpu_ids:
+        judge_gpu_id = int(judge_gpu_ids[0])
+        return f"cuda:{judge_gpu_id}" if torch.cuda.is_available() else "cpu"
+    return f"cuda:{training_gpu_id}" if torch.cuda.is_available() else "cpu"
 
 def _get_trainer_tokenizer(trainer: Any) -> Any:
     tokenizer = getattr(trainer, "processing_class", None)
@@ -1254,7 +1265,8 @@ def single_grpo_with_judges(
     # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
     # Local import, not top-level: distributed_generation imports peft at module level, which
     # probes CUDA at import time; a top-level import would initialize CUDA in this spawn worker
-    # before _set_visible_devices() restricts CUDA_VISIBLE_DEVICES, exposing all GPUs to it.
+    # before it calls _set_visible_devices() / torch.cuda.set_device(), leaving the default
+    # device at 0 regardless of this worker's assigned GPU.
     from model_collaboration.method import distributed_generation
     tokenizer = AutoTokenizer.from_pretrained(
         distributed_generation._tokenizer_source(model_name),
@@ -1303,7 +1315,8 @@ def single_grpo_with_judges(
 
     # Local import, not top-level: distributed_generation imports peft at module level, which
     # probes CUDA at import time; a top-level import would initialize CUDA in this spawn worker
-    # before _set_visible_devices() restricts CUDA_VISIBLE_DEVICES, exposing all GPUs to it.
+    # before it calls _set_visible_devices() / torch.cuda.set_device(), leaving the default
+    # device at 0 regardless of this worker's assigned GPU.
     from model_collaboration.method import distributed_generation
     tokenizer = AutoTokenizer.from_pretrained(
         distributed_generation._tokenizer_source(model_name), padding_side="left", use_fast=True, trust_remote_code=True
@@ -1417,10 +1430,10 @@ def single_grpo_with_judges(
         trainer_kwargs["stable_rollout_log_path"] = rollout_log_path
 
     trainer = trainer_cls(**trainer_kwargs)
-    # _set_visible_devices() above deliberately exposes multiple GPUs here --
-    # the training GPU plus every judge GPU, since judge models need to be
-    # reachable directly in-process for reward computation. But that also
-    # means HF Trainer's n_gpu reads torch.cuda.device_count() > 1 (with
+    # Every GPU on the node is visible in this process (no CUDA_VISIBLE_DEVICES remapping --
+    # see _set_visible_devices()'s docstring), including judge GPUs that need to be reachable
+    # directly in-process for reward computation. That means HF Trainer's n_gpu reads
+    # torch.cuda.device_count() > 1 (with
     # local_rank left at its -1 default) and wraps the TRAINABLE model in
     # nn.DataParallel across all of those visible GPUs -- including the ones
     # meant to hold judge models, not replicas of the training model -- which
