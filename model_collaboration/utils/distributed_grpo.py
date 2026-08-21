@@ -1652,13 +1652,22 @@ def distributed_grpo_with_judges(
         max_parallel = max(1, min(n, max_parallel_jobs, len(gpu_groups)))
         results: List[Optional[str]] = [None] * n
         pending = list(range(n))
-        running: Dict[int, Tuple[subprocess.Popen, str, str]] = {}
+        running: Dict[int, Tuple[subprocess.Popen, str, str, int]] = {}
         tmp_dirs: List[str] = []
+        # A pool of free GROUP SLOTS (indices into gpu_groups), not just a running-job count.
+        # Jobs are NOT statically assigned a group by idx % len(gpu_groups): jobs finish out of
+        # order, and a static assignment can launch a new job onto a group whose *original*
+        # occupant (by index) hasn't actually finished yet, while some other, unrelated group
+        # already sits idle -- two subprocesses then get CUDA_VISIBLE_DEVICES pointed at the same
+        # physical GPU and collide. Only handing out a slot once its previous job's process has
+        # actually exited guarantees no two concurrently-running jobs ever share a training GPU.
+        available_slots = list(range(min(max_parallel, len(gpu_groups))))
         try:
             while pending or running:
-                while pending and len(running) < max_parallel:
+                while pending and available_slots:
                     idx = pending.pop(0)
-                    train_gpu, local_judge_gpu_ids = gpu_groups[idx % len(gpu_groups)]
+                    slot = available_slots.pop(0)
+                    train_gpu, local_judge_gpu_ids = gpu_groups[slot]
                     job_kwargs = dict(
                         model_name=list_of_model_names[idx],
                         train_data_path=list_of_train_data_paths[idx],
@@ -1673,15 +1682,16 @@ def distributed_grpo_with_judges(
                     visible_gpu_ids = [train_gpu] + list(local_judge_gpu_ids)
                     proc, result_path, tmp_dir = _launch_grpo_subprocess_job(job_kwargs, visible_gpu_ids, workdir)
                     tmp_dirs.append(tmp_dir)
-                    running[idx] = (proc, result_path, tmp_dir)
+                    running[idx] = (proc, result_path, tmp_dir, slot)
 
-                finished = [idx for idx, (proc, _, _) in running.items() if proc.poll() is not None]
+                finished = [idx for idx, (proc, _, _, _) in running.items() if proc.poll() is not None]
                 if not finished:
                     time.sleep(2)
                     continue
 
                 for idx in finished:
-                    proc, result_path, tmp_dir = running.pop(idx)
+                    proc, result_path, tmp_dir, slot = running.pop(idx)
+                    available_slots.append(slot)
                     if not os.path.exists(result_path):
                         raise RuntimeError(
                             f"[GRPO] subprocess worker for job {idx} "
@@ -1700,7 +1710,7 @@ def distributed_grpo_with_judges(
             # Mirror the old ctx.Pool(...) context manager's terminate-on-exit: if we're
             # unwinding because one job raised, don't leave sibling jobs orphaned and still
             # holding GPU memory.
-            for proc, _, _ in running.values():
+            for proc, _, _, _ in running.values():
                 if proc.poll() is None:
                     proc.terminate()
             for tmp_dir in tmp_dirs:
