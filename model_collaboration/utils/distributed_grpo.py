@@ -473,6 +473,12 @@ def _make_grpo_config(**kwargs: Any) -> GRPOConfig:
     dropped = sorted(set(kwargs) - set(filtered))
     if dropped:
         print(f"[GRPO] Dropping unsupported GRPOConfig kwargs for this TRL version: {dropped}")
+    # transformers v5 tightened TrainingArguments' type check to reject a float (e.g. 0.0) where
+    # it previously accepted one -- ValueError: "warmup_steps must be of type int and must be 0
+    # or a positive integer." Callers may pass warmup_steps as a float (e.g. computed via a
+    # ratio), so normalize it here rather than push that burden onto every caller.
+    if "warmup_steps" in filtered:
+        filtered["warmup_steps"] = int(filtered["warmup_steps"])
     return GRPOConfig(**filtered)
 
 
