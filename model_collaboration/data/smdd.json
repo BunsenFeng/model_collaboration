@@ -1,4 +1,6 @@
 {
+  "dataset": "smdd",
+  "task_type": "smdd",
   "dev": [
     {
       "id": "smdd_004_DHFR_8",

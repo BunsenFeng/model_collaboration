@@ -1,4 +1,6 @@
 {
+  "dataset": "bixbench",
+  "task_type": "multiple_choice",
   "dev": [
     {
       "id": "bix-31-q1",

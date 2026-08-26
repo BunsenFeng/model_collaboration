@@ -108,7 +108,7 @@ Used for questions with discrete answer options (A, B, C, D, etc.).
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "multiple_choice",
   "dev": [
     {
@@ -135,7 +135,7 @@ Used when the expected output must match the ground truth exactly (after normali
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "exact_match",
   "dev": [
     {
@@ -158,7 +158,7 @@ Used when partial credit is appropriate based on token overlap.
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "f1_match",
   "dev": [
     {
@@ -181,7 +181,7 @@ Uses an LLM to assess semantic equivalence between the model output and ground t
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "general_verifier",
   "dev": [
     {
@@ -204,7 +204,7 @@ Used for evaluating whether models appropriately refuse or seek clarification fo
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "noncompliance",
   "dev": [
     {
@@ -241,7 +241,7 @@ Used for open-ended instruction following where quality is scored by a reward mo
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "reward_model",
   "dev": [
     {
@@ -267,7 +267,7 @@ Used for code generation problems with executable test cases.
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "coding",
   "dev": [
     {
@@ -293,7 +293,7 @@ Used when you want to generate outputs and evaluate them externally.
 
 ```json
 {
-  "name": "your_dataset",
+  "dataset": "your_dataset",
   "task_type": "text_generation",
   "dev": [
     {
