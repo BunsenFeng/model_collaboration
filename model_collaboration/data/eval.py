@@ -793,7 +793,13 @@ def reward_model_scores(list_of_input, list_of_output, gpu_id=0):
     scores = []
     for i in range(len(list_of_input)):
         conv = [{"role": "user", "content": list_of_input[i]}, {"role": "assistant", "content": list_of_output[i]}]
-        conv_tokenized = rm_tokenizer.apply_chat_template(conv, tokenize=True, return_tensors="pt").to("cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu")
+        # transformers v5's apply_chat_template(tokenize=True, return_tensors="pt") returns a raw
+        # Tensor of input_ids instead of a BatchEncoding dict -- **conv_tokenized below then fails
+        # (TypeError: argument after ** must be a mapping, not Tensor). return_dict=True restores
+        # the dict-like return so **conv_tokenized still works.
+        conv_tokenized = rm_tokenizer.apply_chat_template(
+            conv, tokenize=True, return_tensors="pt", return_dict=True
+        ).to("cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu")
         with torch.no_grad():
             score = rm(**conv_tokenized).logits[0][0].item()
         scores.append(score)
