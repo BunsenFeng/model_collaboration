@@ -158,7 +158,12 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         bf16=False,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
-        warmup_steps = 0.1,
+        # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be an
+        # int, where a float (0.1) previously passed -- ValueError: "warmup_steps must be of type
+        # int and must be 0 or a positive integer." Same fix as _make_grpo_config in
+        # distributed_grpo.py for the identical issue. (int(0.1) == 0, so this is the literal
+        # value that was already in effect, just now the correct type.)
+        warmup_steps = 0,
         gradient_checkpointing=True,
         eval_strategy="epoch",
         num_train_epochs=epoch,

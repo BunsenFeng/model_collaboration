@@ -419,7 +419,11 @@ class ModelTrainer:
             gradient_accumulation_steps=gradient_accumulation_steps,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
-            warmup_steps=warmup_ratio,
+            # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be
+            # an int, where a float (warmup_ratio defaults to 0.03/0.04 here) previously passed
+            # -- ValueError: "warmup_steps must be of type int and must be 0 or a positive
+            # integer." int(0.03)/int(0.04) == 0, the value already in effect.
+            warmup_steps=int(warmup_ratio),
             lr_scheduler_type=lr_scheduler_type,
             logging_steps=logging_steps,
             save_steps=save_steps,

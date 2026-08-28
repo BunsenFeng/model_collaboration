@@ -265,7 +265,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             bf16=True,
             learning_rate=1e-5,
             lr_scheduler_type="cosine",
-            warmup_steps = 0.1,
+            # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be
+            # an int, where a float (0.1) previously passed -- ValueError: "warmup_steps must be
+            # of type int and must be 0 or a positive integer." (int(0.1) == 0, already in effect.)
+            warmup_steps = 0,
             gradient_checkpointing=True,
             eval_strategy="epoch",
             num_train_epochs=5,

@@ -57,7 +57,10 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
         bf16=True,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
-        warmup_steps = 0.1,
+        # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be an
+        # int, where a float (0.1) previously passed -- ValueError: "warmup_steps must be of type
+        # int and must be 0 or a positive integer." (int(0.1) == 0, the value already in effect.)
+        warmup_steps = 0,
         gradient_checkpointing=True,
         eval_strategy="epoch",
         num_train_epochs=epoch,
