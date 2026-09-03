@@ -72,7 +72,7 @@ dependencies = [
     "wandb==0.27.2"
 ]
 
-license = "LGPL-3.0-only"
+license = "MIT"
 license-files = ["LICEN[CS]E*"]
 
 [project.scripts]
