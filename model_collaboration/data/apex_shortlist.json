@@ -1,0 +1,290 @@
+{
+  "dataset": "apex_shortlist",
+  "task_type": "general_verifier",
+  "dev": [
+    {
+      "id": 30,
+      "domain": "American TSTST 2025 P3",
+      "input": "Let $a_1$, $a_2$, $r$, and $s$ be positive integers with $r$ and $s$ odd. The sequence $a_1, a_2, a_3, \\dots$ is defined by\\[ a_{n+2} = ra_{n+1} + sa_n\\]for all $n \\ge 1$. Determine the maximum possible number of integers $1 \\le \\ell \\le 2025$ such that $a_\\ell$ divides $a_{\\ell+1}$, over all possible choices of $a_1$, $a_2$, $r$, and $s$.",
+      "output": "1350"
+    },
+    {
+      "id": 24,
+      "domain": "Taiwan TST 2025 #3 Quiz P5",
+      "input": "Let \\(a\\) be a positive integer. We say that \\(a\\) is bao-good if there exist integers \\((s,l)\\) such that:\n1. There does not exist a positive integer \\(b\\) for which\n\\[\n    a \\mid s^b - l.\n\\]\n2. For every proper divisor \\(a'\\) of \\(a\\) (that is, \\(a' \\mid a\\) and \\(1 \\le a' < a\\)), there exists a positive integer \\(b\\) such that\n\\[\n    a' \\mid s^b - l.\n\\]\nDetermine the sum of the smallest 20 bao-good positive integers \\(a\\).",
+      "output": "281"
+    },
+    {
+      "id": 25,
+      "domain": "AIME 2025 P14",
+      "input": "Let $ABCDE$ be a convex pentagon with $AB=14$, $BC=7$, $CD=24$, $DE=13$, $EA=26$, and $\\angle B=\\angle E=60^{\\circ}$. For each point $X$ in the plane, define $f(X)=AX+BX+CX+DX+EX$. The least possible value of $f(X)$ can be expressed as $m+n\\sqrt{p}$, where $m$ and $n$ are positive integers and $p$ is not divisible by the square of any prime. Find $m+n+p$.",
+      "output": "60"
+    },
+    {
+      "id": 11,
+      "domain": "Germany TST 2025 P3",
+      "input": "Let $N$ be a positive integer. Geoff and Ceri play a game in which they start by writing the numbers $1, 2, \\dots, N$ on a board. They then take turns to make a move, starting with Geoff. Each move consists of choosing a pair of integers $(k, n)$, where $k \\geq 0$ and $n$ is one of the integers on the board, and then erasing every integer $s$ on the board such that $2^k \\mid n - s$. The game continues until the board is empty. The player who erases the last integer on the board loses.\n\nDetermine all sum of the smallest 20 values of $N$ for which Geoff can ensure that he wins, no matter how Ceri plays.",
+      "output": "325"
+    },
+    {
+      "id": 22,
+      "domain": "Korea Winter Program Practice Test 2025 P3",
+      "input": "$n$ assistants start simultaneously from one vertex of a cube-shaped planet with edge length $1$. Each assistant moves along the edges of the cube at a constant speed of $2, 4, 8, \\cdots, 2^n$, and can only change their direction at the vertices of the cube. The assistants can pass through each other at the vertices, but if they collide at any point that is not a vertex, they will explode. Determine the maximum possible value of $n$ such that the assistants can move infinitely without any collisions.",
+      "output": "12"
+    },
+    {
+      "id": 10,
+      "domain": "imosl-2024-n7",
+      "input": "Let $\\mathbb{Z}_{>0}$ denote the set of positive integers. Let $f : \\mathbb{Z}_{>0} \\rightarrow \\mathbb{Z}_{>0}$ be a function satisfying the following property: for $m,n \\in \\mathbb{Z}_{>0}$, the equation\n\\[\nf(mn)^2 = f(m^2)f(f(n))f(mf(n))\n\\]holds if and only if $m$ and $n$ are coprime.\n\nLet $S_n$ denote the set of all possible values of $f(n)$ that are strictly smaller than $n$. Determine $\\sum_{n=1}^20 \\sum{k \\in S_n} k$.",
+      "output": "59"
+    },
+    {
+      "id": 31,
+      "domain": "BMO 2025 P4",
+      "input": "There are $n$ cities in a country, where $n \\geq 10$ is an integer. Some pairs of cities are connected by direct (two-way) flights. For two cities $A$ and $B$ we define:\n\n$(i)$ A $\\emph{path}$ between $A$ and $B$ as a sequence of distinct cities $A = C_0, C_1, \\dots, C_k, C_{k+1} = B$, $k \\geq 0$, such that there are direct flights between $C_i$ and $C_{i+1}$ for every $0 \\leq i \\leq k$;\n$(ii)$ A $\\emph{long path}$ between $A$ and $B$ as a path between $A$ and $B$ such that no other path between $A$ and $B$ has more cities;\n$(iii)$ A $\\emph{short path}$ between $A$ and $B$ as a path between $A$ and $B$ such that no other path between $A$ and $B$ has fewer cities.\nAssume that for any pair of cities $A$ and $B$ in the country, there exist a long path and a short path between them that have no cities in common (except $A$ and $B$). Let $F$ be the total number of pairs of cities in the country that are connected by direct flights. Let $F(n)$ be the set of all possible values of $F$ for a given $n$. Determine $\\sum _{n=10}^{15} \\sum_{x \\in F(n)} x$.",
+      "output": "625"
+    }
+  ],
+  "test": [
+    {
+      "id": 39,
+      "domain": "All Russian 2025 11.4",
+      "input": "A natural number \\(N\\) is given. A cube with side length \\(2N + 1\\) is made up of \\((2N + 1)^3\\) unit cubes, each of which is either black or white. It turns out that among any $8$ cubes that share a common vertex and form a \\(2 \\times 2 \\times 2\\) cube, there are at most $4$ black cubes. What is the maximum number of black cubes that could have been used?",
+      "output": "4N^3+9N^2+6N+1"
+    },
+    {
+      "id": 13,
+      "domain": "Germany TST 2025 P7",
+      "input": "Let $n$ be a positive integer. The integers $1,\\,2,\\,3,\\,\\ldots,\\,n^2$ are to be written in the cells of an $n\\times n$ board such that each integer is written in exactly one cell and each cell contains exactly one integer. For every integer $d$ with $d\\mid n$, the $d$-division of the board is the division of the board into $(n/d)^2$ nonoverlapping sub-boards, each of size $d\\times d$, such that each cell is contained in exactly one $d\\times d$ sub-board.\n\nWe say that $n$ is a cool number if the integers can be written on the $n\\times n$ board such that, for each integer $d$ with $d\\mid n$ and $1<d<n$, in the $d$-division of the board, the sum of the integers written in each $d\\times d$ sub-board is not a multiple of $d$.\n\nDetermine the sum of the smallest 20 even cool numbers.",
+      "output": "2^{21} - 2"
+    },
+    {
+      "id": 4,
+      "domain": "hmmt-2025-team-p10",
+      "input": "Determine the sum of the smallest 50 possible values of $\\text{gcd}(a^2+b^2+c^2, abc)$ across all triples of positive integers $(a,b,c)$.",
+      "output": "2618"
+    },
+    {
+      "id": 36,
+      "domain": "China TST 2025 P18",
+      "input": "Find the smallest real number $M$ such that there exist four complex numbers $a,b,c,d$ with $|a|=|b|=|c|=|d|=1$, and for any complex number $z$, if $|z| = 1$, then\\[|az^3+bz^2+cz+d|\\le M.\\]",
+      "output": "2 \\cdot (\\sqrt{5}-1)"
+    },
+    {
+      "id": 5,
+      "domain": "hmmt-2025-team-p4",
+      "input": "Jerry places at most one rook in each cell of a $2025 \\times 2025$ grid of cells. A rook attacks another rook if the two rooks are in the same row or column and there are no other rooks between them. Determine the maximum number of rooks Jerry can place on the grid such that no rook attacks 4 other rooks.",
+      "output": "8096"
+    },
+    {
+      "id": 43,
+      "domain": "ELMO Shortlist 2025 C7",
+      "input": "Let $\\mathcal P$ be a simple polygon and let $j$ and $k$ be positive integers with $j > k$. Suppose that it is possible to partition $\\mathcal P$ into $j$ rectangles and shade $k$ of them gray such that no two shaded rectangles share a positive amount of perimeter. (It is permissible for any two of them to share a vertex.) Let $S(j,k)$ denote the fewest number of sides that $\\mathcal P$ could have. Compute \n\\[\n\\sum_{k=5}^{10}\\sum_{j=11}^{15} S(j,k).\n\\]",
+      "output": "372"
+    },
+    {
+      "id": 27,
+      "domain": "HMMT Feb 2025 C9",
+      "input": "Two points are selected independently and uniformly at random inside a regular hexagon. Compute the probability that a line passing through both of the points intersects a pair of opposite edges of the hexagon.",
+      "output": "\\frac{4}{9}"
+    },
+    {
+      "id": 12,
+      "domain": "Germany TST 2025 P4",
+      "input": "Let $n$ be a positive integer. A class of $n$ students run $n$ races, in each of which they are ranked with no draws. A student is eligible for a rating $(a,\\,b)$ for positive integers $a$ and $b$ if they come in the top $b$ places in at least $a$ of the races. Their final score is the maximum possible value of $a-b$ across all ratings for which they are eligible.\n\nFind the maximum possible sum of all the scores of the $n$ students.",
+      "output": "n(n-1)/2"
+    },
+    {
+      "id": 34,
+      "domain": "EGMO 2025 P5",
+      "input": "Let $n > 1$ be an integer. In a configuration of an $n \\times n$ board, each of the $n^2$ cells contains an arrow, either pointing up, down, left, or right. Given a starting configuration, Turbo the snail starts in one of the cells of the board and travels from cell to cell. In each move, Turbo moves one square unit in the direction indicated by the arrow in her cell (possibly leaving the board). After each move, the arrows in all of the cells rotate $90^{\\circ}$ counterclockwise. We call a cell good if, starting from that cell, Turbo visits each cell of the board exactly once, without leaving the board, and returns to her initial cell at the end. Let $S(n)$ denote the maximum number of good cells over all possible starting configurations.\n\nCompute $\\sum_{n=10}^{20} S(n)$.",
+      "output": "355"
+    },
+    {
+      "id": 29,
+      "domain": "Brumo 2025 P30",
+      "input": "Let $\\triangle A B C$ be an isosceles triangle with $A B=A C$. Let $D$ be a point on the circumcircle of $\\triangle A B C$ on minor arc $A B$. Let $\\overline{A D}$ intersect the extension of $\\overline{B C}$ at $E$. Let $F$ be the midpoint of segment $A C$, and let $G$ be the intersection of $\\overline{E F}$ and $\\overline{A B}$. Let the extension of $\\overline{D G}$ intersect $\\overline{A C}$ and the circumcircle of $\\triangle A B C$ at $H$ and $I$, respectively. Given that $D G=3, G H=5$, and $H I=1$, compute the length of $A E$.",
+      "output": "\\frac{9\\sqrt{30}}{4}"
+    },
+    {
+      "id": 47,
+      "domain": "LMAO 2025 Day 2 P1",
+      "input": "Bugs Bunny wants to choose a number $k$ such that every collection of $k$ consecutive positive integers contains an integer whose sum of digits is divisible by $2025$.\n\nFind the smallest positive integer $k$ for which he can do this, or prove that none exist.",
+      "output": "10^{225}-1"
+    },
+    {
+      "id": 19,
+      "domain": "Taiwan TST 2025 #3 Quiz 1C",
+      "input": "The sequence $a_1, a_2, \\dots , a_n$ is a permutation of $1, 2,\\dots, n$. Each time, Alice swaps two neighbouring numbers in the sequence. Her goal is to make any three consecutive numbers in the sequence non-monotone. Find the smallest positive integer $k$ such that Alice can always achieve her goal in at most $k$ swaps. Let $N(n)$ be this smallest positive integer $k$. Then, compute $\\sum_{n=10}^20 N(n)$.\n\nRemark. A monotonic sequence is either an increasing or decreasing sequence.",
+      "output": "74"
+    },
+    {
+      "id": 32,
+      "domain": "IzHO 2025 P2",
+      "input": "Rose and Brunno play the game on a board shaped like a regular 1001-gon. Initially, all vertices of the board are white, and there is a chip at one of them. On each turn, Rose chooses an arbitrary positive integer \\( k \\), then Brunno chooses a direction: clockwise or counterclockwise, and moves the chip in the chosen direction by \\( k \\) vertices. If at the end of the turn the chip stands at a white vertex, this vertex is painted red.\n\nFind the greatest number of vertices that Rose can make red regardless of Brunno's actions, if the number of turns is not limited.",
+      "output": "858"
+    },
+    {
+      "id": 46,
+      "domain": "LMAO 2025 Day 1 P2",
+      "input": "Having won the elections in Linetown, Turbo the Snail has become mayor, and one of the most pressing issues he needs to work on is the road network. Linetown can be represented as a configuration of $2025$ lines\nin the plane, of which no two are parallel and no three are concurrent.\n\nThere is one house in Linetown for each pairwise intersection of two lines. The $2025$ lines are used as roads by the townsfolk. In the past, the roads in Linetown used to be two-way, but this often led to residents accidentally cycling back to where they started.\n\nTurbo wants to make each of the $2025$ roads one-way such that it is impossible for any resident to start at a house, follow the roads in the correct directions, and end up back at the original house. In how many ways can Turbo achieve this?",
+      "output": "4050"
+    },
+    {
+      "id": 33,
+      "domain": "IzHO 2025 P4",
+      "input": "Vaysha has a board with $999$ consecutive numbers written and $999$ labels of the form \"This number is not divisible by $i$\", for $i \\in \\{ 2,3, \\dots ,1000 \\} $. She places each label next to a number on the board, so that each number has exactly one label. For each true statement on the stickers, Vaysha gets a piece of candy. How many pieces of candy can Vaysha guarantee to win, regardless of the numbers written on the board, if she plays optimally?",
+      "output": "998"
+    },
+    {
+      "id": 37,
+      "domain": "China TST 2025 P22",
+      "input": "Let \\( A \\) be a set of 2025 positive real numbers. For a subset \\( T \\subseteq A \\), define \\( M_T \\) as the median of \\( T \\) when all elements of \\( T \\) are arranged in increasing order, with the convention that \\( M_\\emptyset = 0 \\). Define\n\\[\nP(A) = \\sum_{\\substack{T \\subseteq A \\\\ |T| \\text{ odd}}} M_T, \\quad Q(A) = \\sum_{\\substack{T \\subseteq A \\\\ |T| \\text{ even}}} M_T.\n\\]Find the smallest real number \\( C \\) such that for any set \\( A \\) of 2025 positive real numbers, the following inequality holds:\n\\[\nP(A) - Q(A) \\leq C \\cdot \\max(A),\n\\]where \\(\\max(A)\\) denotes the largest element in \\( A \\).",
+      "output": "\\frac{1}{46}\\binom{2024}{990}+\\frac{1}{2}"
+    },
+    {
+      "id": 26,
+      "domain": "AIME 2025 P15",
+      "input": "Let $N$ denote the numbers of ordered triples of positive integers $(a, b, c)$ such that $a, b, c \\le 3^6$ and $a^3 + b^3 + c^3$ is a multiple of $3^7$. Find the remainder when $N$ is divided by $1000$.",
+      "output": "735"
+    },
+    {
+      "id": 21,
+      "domain": "Japan MO 2025 P3",
+      "input": "Let $n$ be a positive integer. There exist $n$ ordered triples$$(x_1, y_1, z_1), (x_2, y_2, z_2), \\dots, (x_n, y_n, z_n)$$where each coordinate is an integer between $1$ and $100$ (inclusive), satisfying the following condition:\n\nFor every infinite sequence $(a_1, a_2, a_3, \\dots)$ of integers between $1$ and $100$, there exist a positive integer $i$ and an index $j$ (with $1 \\leqslant j \\leqslant n$) such that $(a_i, a_{i+1}, a_{i+2}) = (x_j, y_j, z_j)$.\n\nDetermine the minimum possible value of $n$.",
+      "output": "333400"
+    },
+    {
+      "id": 23,
+      "domain": "Taiwan TST 2025 #1 P5",
+      "input": "A country has 2025 cites, with some pairs of cities having bidirectional flight routes between them. For any pair of the cities, the flight route between them must be operated by one of the companies $X, Y$ or $Z$. To avoid unfairly favoring specific company, the regulation ensures that if there have three cities $A, B$ and $C$, with flight routes $A \\leftrightarrow B$ and $A \\leftrightarrow C$ operated by two different companies, then there must exist flight route $B \\leftrightarrow C$ operated by the third company different from $A \\leftrightarrow B$ and $A \\leftrightarrow C$ .\n\nLet $n_X$, $n_Y$ and $n_Z$ denote the number of flight routes operated by companies $X, Y$ and $Z$, respectively. It is known that, starting from a city, we can arrive any other city through a series of flight routes (not necessary operated by the same company). Find the minimum possible value of $\\max(n_X, n_Y , n_Z)$.",
+      "output": "2023"
+    },
+    {
+      "id": 40,
+      "domain": "Bulgarian MO 2025 P2",
+      "input": "Exactly \\( n \\) cells of an \\( n \\times n \\) square grid are colored black, and the remaining cells are white. The cost of such a coloring is the minimum number of white cells that need to be recolored black so that from any black cell \\( c_0 \\), one can reach any other black cell \\( c_k \\) through a sequence \\( c_0, c_1, \\ldots, c_k \\) of black cells where each consecutive pair \\( c_i, c_{i+1} \\) are adjacent (sharing a common side) for every \\( i = 0, 1, \\ldots, k-1 \\). Let \\( f(n) \\) denote the maximum possible cost over all initial colorings with exactly \\( n \\) black cells. Determine a constant $\\alpha$ such that\n\\[\n\\frac{1}{3}n^{\\alpha} \\leq f(n) \\leq 3n^{\\alpha}\n\\]for any $n\\geq 100$.",
+      "output": "3/2"
+    },
+    {
+      "id": 44,
+      "domain": "ELMO Shortlist 2025 C8",
+      "input": "The country of ELMOpia has $n \\ge 4$ cities, where some pairs of cities are connected by a road. An astute traveler notices that for any $2$ cities $A$ and $B$, there exist (distinct) cities $C$ and $D$ such that $A-C$, $C-B$, $B-D$, $D-A$ are all connected by roads. Let $S(n)$ be the minimum number of roads in ELMOpia, in terms of $n$. Determine \\(\\sum_{n=10}^{20} S(n)\\).",
+      "output": "371"
+    },
+    {
+      "id": 1,
+      "domain": "usa-tst-2025-p1",
+      "input": "Let $n$ be a positive integer. Ana and Banana play a game. Banana thinks of a function $f\\colon\\mathbb{Z}\\to\\mathbb{Z}$ and a prime number $p$. He tells Ana that $f$ is nonconstant, $p<100$, and $f(x+p)=f(x)$ for all integers $x$. Ana's goal is to determine the value of $p$. She writes down $n$ integers $x_1,\\dots,x_n$. After seeing this list, Banana writes down $f(x_1),\\dots,f(x_n)$ in order. Ana wins if she can determine the value of $p$ from this information. Find the smallest value of $n$ for which Ana has a winning strategy.",
+      "output": "171"
+    },
+    {
+      "id": 20,
+      "domain": "China Girls MO 2025 P7",
+      "input": "Let $N$ be a positive integer. There are $N$ pebbles on a table. Alice and Bob play a game by taking turns to pick pebbles from the table, with Alice starting first. On each turn, a player can perform one of the following two operations:\nOperation A: Pick 1, 2, or 3 pebbles;\nOperation B: Pick 4 pebbles.\nEach player is allowed to perform Operation B at most 5 times. The player who picks the last pebbles wins.\n\nDetermine the number of $N$ in $1,2,\\ldots,2025$ such that Alice has a winning strategy.",
+      "output": "1520"
+    },
+    {
+      "id": 17,
+      "domain": "Korea Winter Program Practice Test 2025 P6",
+      "input": "There are $n$ parallel lines on a plane, and there is a set $S$ of distinct points. Each point in $S$ lies on one of the $n$ lines and is colored either red or blue. Determine the minimum value of $n$ such that if $S$ satisfies the following condition, it is guaranteed that there are infinitely many red points and infinitely many blue points.\nEach line contains at least one red point and at least one blue point from $S$.\nConsider a triangle formed by three elements of $S$ located on three distinct lines. If two of the vertices of the triangle are red, there must exist a blue point, not one of the vertices, either inside or on the boundary of the triangle. Similarly, if two of the vertices are blue, there must exist a red point, not one of the vertices, either inside or on the boundary of the triangle.",
+      "output": "4"
+    },
+    {
+      "id": 42,
+      "domain": "Swiss TST 2025 P5",
+      "input": "Let $\\alpha$ be a real number satisfying $0 < \\alpha < 180$. For Leo's birthday, Frieder has placed 2025 gnomes at arbitrary points inside his garden. No three gnomes are collinear and no two gnomes coincide. Each gnome has a field of view spanning $\\alpha$ degrees (including the boundary). After Frieder places the gnomes down, Leo wants to rotate the gnomes such that, for each gnome, the number of other gnomes it sees is different. \nLet $S$ be the set of all possible values of $\\alpha$ for which Leo can achieve this, regardless of how the gnomes are placed. Determine $\\inf S + \\sup S$.",
+      "output": "180 + 2023 \\cdot \\frac{180}{2025}"
+    },
+    {
+      "id": 14,
+      "domain": "India STEMS A 2025 P4",
+      "input": "Alice and Bob play a game on a connected graph with $2n$ vertices, where $n\\in \\mathbb{N}$ and $n>1$.. Alice and Bob have tokens named A and B respectively. They alternate their turns with Alice going first. Alice gets to decide the starting positions of A and B. Every move, the player with the turn moves their token to an adjacent vertex. Bob's goal is to catch Alice, and Alice's goal is to prevent this. Note that positions of A, B are visible to both Alice and Bob at every moment.\n\nProvided they both play optimally, what is the maximum possible number of edges in the graph if Alice is able to evade Bob indefinitely?",
+      "output": "2n(n-1)"
+    },
+    {
+      "id": 38,
+      "domain": "Korea Final Round 2025 P5",
+      "input": "$S={1,2,...,1000}$ and $T'=\\left\\{ 1001-t|t \\in T\\right\\}$.\nA set $P$ satisfies the following three conditions:\n$1.$ All elements of $P$ are a subset of $S$.\n$2. A,B \\in P \\Rightarrow A \\cap B \\neq \\O$\n$3. A \\in P \\Rightarrow A' \\in P$\nFind the maximum of $|P|$.",
+      "output": "2^{999}-2^{499}"
+    },
+    {
+      "id": 45,
+      "domain": "India IMOTC 2025 Day 2 P1",
+      "input": "Consider a $2025\\times 2025$ board where we identify the squares with pairs $(i,j)$ where $i$ and $j$ denote the row and column number of that square, respectively.\n\nCalvin picks two positive integers $a,b<2025$ and places a pawn at the bottom left corner (i.e. on $(1,1)$) and makes the following moves. In his $k$-th move, he moves the pawn from $(i,j)$ to either $(i+a,j)$ or $(i,j+a)$ if $k$ is odd and to either $(i+b,j)$ and $(i,j+b)$ if $k$ is even. Here all the numbers are taken modulo $2025$. Find the number of pairs $(a,b)$ that Calvin could have picked such that he can make moves so that the pawn covers all the squares on the board without being on any square twice.",
+      "output": "1080"
+    },
+    {
+      "id": 3,
+      "domain": "bmmt-2025-team-p19",
+      "input": "Consider a bee (denoted by X ) in a rectangular honeycomb as seen below:\n\n|  | $1$ | $2$ | $3$ | $4$ | $5$ | $6$ | $7$ |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n| $A$ |  |  |  | X |  |  |  |\n| $B$ |  |  |  |  |  |  |  |\n| $C$ |  |  |  |  |  |  |  |\n| $D$ |  |  |  |  |  |  |  |\n\nIn one move, the bee may move to an adjacent square via an up, down, left, or right move, and it can no longer move once it reaches row $D$. The bee cannot move outside the honeycomb. It cannot revisit a square it has already been to, and it cannot move more than six times. Find the number of different paths the bee can take from its starting point to row $D$.",
+      "output": "63"
+    },
+    {
+      "id": 28,
+      "domain": "HMMT Feb 2025 C10",
+      "input": "The circumference of a circle is divided into $45$ arcs, each of length $1$. Initially, there are $15$ snakes, each of length $1$, occupying every third arc. Every second, each snake independently moves either one arc left or one arc right, each with probability $\\frac{1}{2}$. If two snakes ever touch, they merge to form a single snake occupying the arcs of both of the previous snakes, and the merged snake moves as one snake. Compute the expected number of seconds until there is only one snake left.",
+      "output": "\\frac{448}{3}"
+    },
+    {
+      "id": 6,
+      "domain": "indian-imotc-day2-p3",
+      "input": "At time $t=0$, Hobbes writes down positive real numbers at the vertices of a regular polygon $P_1P_2\\dots P_n$. Suppose that after an even number of seconds, the numbers $x$ and $y$ are written on $P_i$ and $P_{i+1}$ respectively. Then one second later, Hobbes updates the number at $P_i$ to $x+\\frac{1}{y}$. Here $i$ is taken modulo $n$.\n\nLet $N(n)$ denote the number of pairs $(i,j)$ (in terms of $n$) for which can we guarantee (without knowing what Hobbes wrote down) that at some point in time the number at $P_i$ is at least as large as the number at $P_j$. Compute \n\\[\n\\sum_{n=1}^{2025} N(n).\n\\]\n\nNote. The numbers are all updated only whenever an odd number of seconds have passed. If all the numbers were initially $1$ then after $1$ second they would all be updated to $2$ then at $T=3s$, they will all be updated to $2.5$ and so on.",
+      "output": "2077992225"
+    },
+    {
+      "id": 35,
+      "domain": "China TST 2025 P10",
+      "input": "Given an odd integer $n \\geq 3$. Let $V$ be the set of vertices of a regular $n$-gon, and $P$ be the set of all regular polygons formed by points in $V$. For instance, when $n=15$, $P$ consists of $1$ regular $15$-gon, $3$ regular pentagons, and $5$ regular triangles.\n\nInitially, all points in $V$ are uncolored. Two players, $A$ and $B$, play a game where they take turns coloring an uncolored point, with player $A$ starting and coloring points red, and player $B$ coloring points blue. The game ends when all points are colored. A regular polygon in $P$ is called $\\textit{good}$ if it has more red points than blue points.\n\nLet $K(n)$ be the largest positive integer $k$ such that no matter how player $B$ plays, player $A$ can ensure that there are at least $k$ $\\textit{good}$ polygons.\n\nFind $\\sum_{n=10, n odd}^{30} K(n)$.",
+      "output": "31"
+    },
+    {
+      "id": 7,
+      "domain": "serbian-bmotst-2025-p5",
+      "input": "In Mexico, there live $n$ Mexicans, some pairs of which know each other. They decided to play a game. On day $1$, each Mexican wrote a non-negative integer on their forehead. On each following day, they changed their number according to the following rule: On day $i+1$, each Mexican writes on their forehead the smallest non-negative integer that did not appear on the forehead of any of their acquaintances on day $i$. \nIt is known that on some day every Mexican wrote the same number as on the previous day, at which point they decided to stop the game. Determine the maximum number of days this game could have lasted. For example, if the game had to stop on day $k$ or earlier, we say that the answer is $D(n) = k$.\nReport a single integer: a sum of $D(n)$ for all $n$ from $1$ to $2025$.",
+      "output": "1030219"
+    },
+    {
+      "id": 9,
+      "domain": "imosl-2024-c8",
+      "input": "Let $n$ be a positive integer. Given an $n\\times n$ board, the unit cell in the top left corner is initially coloured black, and the other cells are coloured white. We then apply a series of colouring operations to the board. In each operation, we choose a $2\\times 2$ square with exactly one cell coloured black and we colour the remaining three cells of that $2\\times 2$ square black.\n\nDetermine the sum of the smallest $20$ $n$ such that it is possible to colour the entire $n\\times n$ board black.",
+      "output": "2^{20} - 1"
+    },
+    {
+      "id": 15,
+      "domain": "India STEMS C 2025 P6",
+      "input": "Let $G$ be a finite abelian group. There is a magic box $T$. At any point, an element of $G$ may be added to the box and all elements belonging to the subgroup (of $G$) generated by the elements currently inside $T$ are moved from outside $T$ to inside (unless they are already inside). Initially $\nT$ contains only the group identity, $1_G$. Alice and Bob take turns moving an element from outside $T$ to inside it. Alice moves first. Whoever cannot make a move loses. Find all $G$ for which Bob has a winning strategy. Then, determine the sum of the 10 smallest possible values of $|G|>1$ such that Bob has a winning strategy.",
+      "output": "505"
+    },
+    {
+      "id": 16,
+      "domain": "Korea Winter Program Practice Test 2025 P2",
+      "input": "Let $P$ and $Q$ be non-constant integer-coefficient monic polynomials, and let $a$ and $b$ be integers satisfying $| a | \\geq 3$ and $ | b | \\geq 3$. These satisfy the following conditions for all positive integers $n$:\n$$\nP(n) \\mid Q(n)^2 + aQ(n) + 1, \\quad Q(n) \\mid P(n)^2 + bP(n) + 1.\n$$\nCall the sum of the 10 smallest possible values of $|a + b|$, $S_1$, and the sum of the 10 smallest possible values of $|\\deg P|$, $S_2$. Determine $S_1 + S_2$.",
+      "output": "495"
+    },
+    {
+      "id": 18,
+      "domain": "Korea Winter Program Practice Test 2025 P8",
+      "input": "Determine all triplets of positive integers $(p,m,n)$ such that $p$ is a prime, $m \\neq n < 2p$ and $2 \\nmid n$. Also, the following polynomial is reducible in $\\mathbb{Z}[x]$\n$$x^{2p} - 2px^m - p^2x^n - 1$$\nThen, compute $\\sum_{(p,m,n) \\text{admissible}} p + m + n$",
+      "output": "24"
+    },
+    {
+      "id": 2,
+      "domain": "emcc-2025-guts-18",
+      "input": "A list of positive integers satisfies the following properties:\n(A) The mean of the list is $8$.\n(2) The median of the list is $13$.\n(D) The mode of the list is $15$.\n\nMoreover, the range of the list is $27$. What is the fewest possible number of elements that could be in the list?",
+      "output": "89"
+    },
+    {
+      "id": 8,
+      "domain": "rmm-2025-p3",
+      "input": "Fix an integer $n \\geq 3$. Determine the smallest positive integer $k$ satisfying the following condition:\n\nFor any tree $T$ with vertices $v_1, v_2, \\dots, v_n$ and any pairwise distinct complex numbers $z_1, z_2, \\dots, z_n$, there is a polynomial $P(X, Y)$ with complex coefficients of total degree at most $k$ such that for all $i \\neq j$ satisfying $1 \\leq i, j \\leq n$, we have $P(z_i, z_j) = 0$ if and only if there is an edge in $T$ joining $v_i$ to $v_j$.\n\nNote, for example, that the total degree of the polynomial\n$$\n9X^3Y^4 + XY^5 + X^6 - 2\n$$\nis 7 because $7 = 3 + 4$.",
+      "output": "n-1"
+    },
+    {
+      "id": 41,
+      "domain": "Bulgarian MO 2025 P6",
+      "input": "Let \\( X_0, X_1, \\dots, X_{n-1} \\) be \\( n \\geq 2 \\) given points in the plane, and let \\( r > 0 \\) be a real number. Alice and Bob play the following game. Firstly, Alice constructs a connected graph with vertices at the points \\( X_0, X_1, \\dots, X_{n-1} \\), i.e., she connects some of the points with edges so that from any point you can reach any other point by moving along the edges.Then, Alice assigns to each vertex \\( X_i \\) a non-negative real number \\( r_i \\), for \\( i = 0, 1, \\dots, n-1 \\), such that $\\sum_{i=0}^{n-1} r_i = 1$. Bob then selects a sequence of distinct vertices \\( X_{i_0} = X_0, X_{i_1}, \\dots, X_{i_k} \\) such that \\( X_{i_j} \\) and \\( X_{i_{j+1}} \\) are connected by an edge for every \\( j = 0, 1, \\dots, k-1 \\). (Note that the length $k \\geq 0$ is not fixed and the first selected vertex always has to be $X_0$.) Bob wins if\n\\[\n\\frac{1}{k+1} \\sum_{j=0}^{k} r_{i_j} \\geq r;\n\\]\n\notherwise, Alice wins. Let $R(n)$ denote \\( n \\) the largest possible value of \\( r \\) for which Bob has a winning strategy. Find \\( \\sum_{n=11}^{14} R(n) \\).",
+      "output": "317/3528"
+    }
+  ]
+}
