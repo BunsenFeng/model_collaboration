@@ -3,6 +3,7 @@ The helper functions for distributed DPO.
 """
 import os
 import atexit
+import inspect
 import torch
 import torch.nn as nn
 import shutil
@@ -13,7 +14,7 @@ from multiprocessing import Pool
 from datasets import load_dataset
 from model_collaboration.method import distributed_generation
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from trl import DPOConfig, DPOTrainer, DataCollatorForCompletionOnlyLM
+from trl import DPOConfig, DPOTrainer
 from model_collaboration.utils import lora_check
 
 
@@ -102,7 +103,13 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
     # Rename here so existing preference_pairs.json can be used directly.
     if "instruction" in dataset.column_names and "prompt" not in dataset.column_names:
         dataset = dataset.rename_column("instruction", "prompt")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+    # A LoRA adapter's own cached snapshot only has adapter files (adapter_config.json,
+    # adapter_model.safetensors, tokenizer files) -- no config.json -- so
+    # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig lookup
+    # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), padding_side="left"
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -151,7 +158,12 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         bf16=False,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
-        warmup_ratio = 0.1,
+        # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be an
+        # int, where a float (0.1) previously passed -- ValueError: "warmup_steps must be of type
+        # int and must be 0 or a positive integer." Same fix as _make_grpo_config in
+        # distributed_grpo.py for the identical issue. (int(0.1) == 0, so this is the literal
+        # value that was already in effect, just now the correct type.)
+        warmup_steps = 0,
         gradient_checkpointing=True,
         eval_strategy="epoch",
         num_train_epochs=epoch,
@@ -163,16 +175,50 @@ def single_dpo(model_name, dpo_data_path, gpu_id, output_model_path, batch_size=
         save_total_limit=1,
         # Suppress label_names warning for PEFT models
         label_names=[],
+        # max_length/max_prompt_length are NOT passed here: this TRL build's DPOConfig predates
+        # them as constructor kwargs (TypeError: unexpected keyword argument). Passed to
+        # DPOTrainer directly below instead, where older TRL accepted them before they were
+        # folded into DPOConfig.
     )
 
-    trainer = DPOTrainer(
+    # DPOTrainer tokenizes internally at __init__ and silently DROPS (not truncates) any example
+    # whose tokenized length exceeds max_length/max_prompt_length -- without explicit values,
+    # TRL's defaults can drop every example for long-prompt tasks (e.g. scitarc's multi-paragraph
+    # /table excerpts), leaving 0 training examples. Truncate instead of losing the data entirely.
+    # Only pass these if this TRL's DPOTrainer signature actually supports them as constructor
+    # kwargs (varies by version); if not, the len(trainer.train_dataset) == 0 guard below still
+    # catches the unfiltered-long-prompt case and skips training instead of crashing.
+    dpo_trainer_kwargs = dict(
         model=model,
         args=training_args,
         train_dataset=dataset,
         eval_dataset=dataset,
         processing_class=tokenizer,
-        peft_config=peft_config
+        peft_config=peft_config,
     )
+    _dpo_trainer_params = inspect.signature(DPOTrainer.__init__).parameters
+    for _len_kwarg, _len_val in (("max_length", 2048), ("max_prompt_length", 1536)):
+        if _len_kwarg in _dpo_trainer_params:
+            dpo_trainer_kwargs[_len_kwarg] = _len_val
+    trainer = DPOTrainer(**dpo_trainer_kwargs)
+
+    # Belt-and-suspenders alongside max_length/max_prompt_length above: even with explicit
+    # limits, a tokenizer quirk on a specific model (e.g. a VLM tokenizer handling text-only
+    # pairs differently) could still filter every example to 0. RandomSampler then raises
+    # ValueError("num_samples should be a positive integer value, but got num_samples=0").
+    # Skip training but still save trainer.model (the peft_config-wrapped model with a freshly
+    # -- untrained, effectively identity -- LoRA adapter) to output_model_path: callers like
+    # text_sparta_stackelberg.py unconditionally point this iteration's model path at
+    # output_model_path afterward, so leaving it missing would break the *next* round instead
+    # of just skipping this one.
+    if len(trainer.train_dataset) == 0:
+        print(f"[DPO] Skipping training for {model_name}: 0 examples after tokenization/filtering. "
+              f"Carrying the model forward unchanged.")
+        trainer.save_model(output_model_path)
+        tokenizer.save_pretrained(output_model_path)
+        del model, tokenizer, trainer
+        torch.cuda.empty_cache()
+        return
 
     trainer.train()
     trainer.save_model(output_model_path)

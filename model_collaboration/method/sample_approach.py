@@ -4,9 +4,9 @@ A blank template for implementing your approach.
 import json
 from model_collaboration.data import eval
 from model_collaboration.method import distributed_generation
-# optionally, `from utils import distributed_sft` if your approach finetunes multiple models
-# optionally, `from utils import logit_arithmetic` if your approach is composing the logits of multiple models
-# optionally, `from utils.numeric_swarm import NumericSwarm` if your approach optimizes continuous vectors of hyperparameters/weights
+# optionally, `from model_collaboration.utils import distributed_sft` if your approach finetunes multiple models
+# optionally, `from model_collaboration.utils import logit_arithmetic` if your approach is composing the logits of multiple models
+# optionally, `from model_collaboration.utils.numeric_swarm import NumericSwarm` if your approach optimizes continuous vectors of hyperparameters/weights
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     """

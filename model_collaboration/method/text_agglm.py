@@ -6,6 +6,7 @@ import shutil
 from collections import Counter
 from peft import LoraConfig
 from trl import GRPOTrainer, GRPOConfig
+from model_collaboration.utils.distributed_grpo import _make_grpo_config
 from transformers import AutoModelForCausalLM
 import torch.distributed as dist
 
@@ -131,7 +132,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         # after training for the multi-model test-set generation below.
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_ids[0])
 
-        training_args = GRPOConfig(
+        # _make_grpo_config drops kwargs unsupported by the installed TRL's
+        # GRPOConfig (e.g. trl 1.10.0 removed max_prompt_length with no
+        # direct replacement) instead of crashing with a TypeError.
+        training_args = _make_grpo_config(
             num_generations=batch_size,
             gradient_accumulation_steps=1,
             per_device_train_batch_size=batch_size,
@@ -148,7 +152,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             lr_scheduler_type=lr_scheduler,
             weight_decay=weight_decay,
             num_train_epochs=max_epochs,
-            warmup_ratio=0.1,
+            warmup_steps=0.1,
             dataloader_pin_memory=False,
             remove_unused_columns=False,
             dataloader_num_workers=0,

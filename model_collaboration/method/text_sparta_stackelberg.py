@@ -1031,8 +1031,7 @@ class RatingSystemDynamicWeighted(RatingSystem):
             if self.current_iteration >= 8:
                 weights_path = os.path.join(self.base_dir, "iteration_7", "weights.json")
                 if os.path.exists(weights_path):
-                    with open(weights_path, "r") as f:
-                        return json.load(f)
+                    return eval._retry_read_json(weights_path)
                 return weights
 
             if self.current_iteration >= 2:
@@ -1042,8 +1041,7 @@ class RatingSystemDynamicWeighted(RatingSystem):
                 )
                 if not os.path.exists(prev_path):
                     return weights
-                with open(prev_path, "r") as f:
-                    prev_info = json.load(f)
+                prev_info = eval._retry_read_json(prev_path)
                 sorted_models = sorted(
                     prev_info.keys(),
                     key=lambda x: prev_info[x]["score"],
@@ -1224,8 +1222,7 @@ class RatingSystemStaticWeighted(RatingSystem):
             if self.current_iteration >= 8:
                 weights_path = os.path.join(self.base_dir, "iteration_7", "weights.json")
                 if os.path.exists(weights_path):
-                    with open(weights_path, "r") as f:
-                        return json.load(f)
+                    return eval._retry_read_json(weights_path)
                 return weights
 
             weighted_models: List[str] = []
@@ -1236,8 +1233,7 @@ class RatingSystemStaticWeighted(RatingSystem):
                 )
                 if not os.path.exists(prev_path):
                     continue
-                with open(prev_path, "r") as f:
-                    prev_info = json.load(f)
+                prev_info = eval._retry_read_json(prev_path)
                 remaining_models = [
                     model
                     for model in prev_info.keys()

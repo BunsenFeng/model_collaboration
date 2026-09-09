@@ -8,8 +8,14 @@ import os
 import random
 import re
 import shutil
+import subprocess
+import sys
+import tempfile
 import threading
+import time
+import traceback
 from multiprocessing import Pool, get_context
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import torch
@@ -168,7 +174,10 @@ def _build_model_for_training(model_name: str, torch_dtype: torch.dtype = torch.
     """Load a base model or merge an incoming PEFT adapter before adding a fresh LoRA adapter."""
     model_kwargs: Dict[str, Any] = {"torch_dtype": torch_dtype, "trust_remote_code": True}
     if torch.cuda.is_available():
-        model_kwargs["device_map"] = {"": 0}
+        # Not a hardcoded 0: _set_visible_devices() no longer remaps via CUDA_VISIBLE_DEVICES
+        # (see its docstring), so device index 0 is not necessarily this worker's assigned GPU.
+        # torch.cuda.current_device() reflects whatever torch.cuda.set_device() was called with.
+        model_kwargs["device_map"] = {"": torch.cuda.current_device()}
 
     if _is_lora_adapter(model_name):
         print(f"[GRPO] Detected adapter at {model_name}; merging before new GRPO LoRA training.")
@@ -196,7 +205,15 @@ def _build_model_and_tokenizer_for_judge(
         model = AutoPeftModelForCausalLM.from_pretrained(model_name, **kwargs)
     else:
         model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
-    tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, trust_remote_code=True)
+    # Local import, not top-level: distributed_generation imports peft at module level, which
+    # probes CUDA at import time. GRPO's spawn workers re-import every module from disk before
+    # running -- a top-level import here would initialize CUDA before this worker calls
+    # _set_visible_devices() / torch.cuda.set_device(), leaving the default device at 0
+    # regardless of this worker's assigned GPU.
+    from model_collaboration.method import distributed_generation
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), use_fast=True, trust_remote_code=True
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -456,21 +473,34 @@ def _make_grpo_config(**kwargs: Any) -> GRPOConfig:
     dropped = sorted(set(kwargs) - set(filtered))
     if dropped:
         print(f"[GRPO] Dropping unsupported GRPOConfig kwargs for this TRL version: {dropped}")
+    # transformers v5 tightened TrainingArguments' type check to reject a float (e.g. 0.0) where
+    # it previously accepted one -- ValueError: "warmup_steps must be of type int and must be 0
+    # or a positive integer." Callers may pass warmup_steps as a float (e.g. computed via a
+    # ratio), so normalize it here rather than push that burden onto every caller.
+    if "warmup_steps" in filtered:
+        filtered["warmup_steps"] = int(filtered["warmup_steps"])
     return GRPOConfig(**filtered)
 
 
 def _set_visible_devices(training_gpu_id: int, judge_gpu_ids: Optional[Sequence[int]]) -> str:
-    visible = [int(training_gpu_id)]
-    for gid in judge_gpu_ids or []:
-        gid = int(gid)
-        if gid not in visible:
-            visible.append(gid)
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(x) for x in visible)
+    """Route this worker's default CUDA device to its assigned physical GPU.
+
+    Does NOT use CUDA_VISIBLE_DEVICES: peft and trl are top-level imports in this module, and
+    importing them triggers accelerate/bitsandbytes probing CUDA (torch.cuda.is_available(), i.e.
+    cudaGetDeviceCount) at import time. GRPO's spawn workers re-import every module from disk
+    before this function ever runs, so by the time we get here CUDA's device enumeration is
+    already locked in -- further CUDA_VISIBLE_DEVICES changes are silently ignored, and every
+    worker ends up defaulting to physical GPU 0 regardless of its assigned gpu_id. Instead,
+    address physical GPU indices directly: CUDA already sees every GPU on the node, so
+    torch.cuda.set_device(training_gpu_id) correctly routes this worker without any remapping.
+    """
+    training_gpu_id = int(training_gpu_id)
     if torch.cuda.is_available():
-        torch.cuda.set_device(0)
-    if len(visible) > 1 and torch.cuda.is_available():
-        return "cuda:1"
-    return "cuda:0" if torch.cuda.is_available() else "cpu"
+        torch.cuda.set_device(training_gpu_id)
+    if judge_gpu_ids:
+        judge_gpu_id = int(judge_gpu_ids[0])
+        return f"cuda:{judge_gpu_id}" if torch.cuda.is_available() else "cpu"
+    return f"cuda:{training_gpu_id}" if torch.cuda.is_available() else "cpu"
 
 def _get_trainer_tokenizer(trainer: Any) -> Any:
     tokenizer = getattr(trainer, "processing_class", None)
@@ -1180,7 +1210,16 @@ def single_grpo_with_judges(
     save_steps: int = 1000,
     logging_steps: int = 10,
     seed: int = 42,
-    use_custom_rollout: bool = True,
+    # Default False under trl>=1.0: MoCo's custom stable_rollout_func (trl's
+    # experimental rollout_func hook) has an internal count mismatch in trl
+    # 1.10.0 -- the reward function receives completions correctly expanded
+    # by num_generations but prompts/dataset-extra-columns un-expanded,
+    # which trl's own reward-count validation then rejects. trl's built-in
+    # (non-custom) rollout path does not hit this. If custom_rollout was
+    # originally added to work around a different trl<1.0 issue, that issue
+    # is untested here -- flip this back to True if problems resurface on
+    # an older trl.
+    use_custom_rollout: bool = False,
     rollout_do_sample: bool = True,
     rollout_temperature: float = 0.7,
     rollout_top_p: float = 0.8,
@@ -1233,8 +1272,16 @@ def single_grpo_with_judges(
     if "instruction" in dataset.column_names and "prompt" not in dataset.column_names:
         dataset = dataset.rename_column("instruction", "prompt")
 
+    # A LoRA adapter's own cached snapshot only has adapter files -- no config.json -- so
+    # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig lookup
+    # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
+    # Local import, not top-level: distributed_generation imports peft at module level, which
+    # probes CUDA at import time; a top-level import would initialize CUDA in this spawn worker
+    # before it calls _set_visible_devices() / torch.cuda.set_device(), leaving the default
+    # device at 0 regardless of this worker's assigned GPU.
+    from model_collaboration.method import distributed_generation
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
+        distributed_generation._tokenizer_source(model_name),
         padding_side="left",
         use_fast=True,
         trust_remote_code=True,
@@ -1278,8 +1325,14 @@ def single_grpo_with_judges(
     )
     reward_func.__name__ = "reputation_weighted_peer_judge_reward"
 
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left", use_fast=True, trust_remote_code=True)
+    # Local import, not top-level: distributed_generation imports peft at module level, which
+    # probes CUDA at import time; a top-level import would initialize CUDA in this spawn worker
+    # before it calls _set_visible_devices() / torch.cuda.set_device(), leaving the default
+    # device at 0 regardless of this worker's assigned GPU.
+    from model_collaboration.method import distributed_generation
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), padding_side="left", use_fast=True, trust_remote_code=True
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -1322,7 +1375,7 @@ def single_grpo_with_judges(
         generation_kwargs=generation_kwargs,
         top_p=float(top_p),
         lr_scheduler_type="cosine",
-        warmup_ratio=0.1,
+        warmup_steps=0.1,
         bf16=True,
         gradient_checkpointing=True,
         num_train_epochs=float(epoch),
@@ -1389,6 +1442,17 @@ def single_grpo_with_judges(
         trainer_kwargs["stable_rollout_log_path"] = rollout_log_path
 
     trainer = trainer_cls(**trainer_kwargs)
+    # Every GPU on the node is visible in this process (no CUDA_VISIBLE_DEVICES remapping --
+    # see _set_visible_devices()'s docstring), including judge GPUs that need to be reachable
+    # directly in-process for reward computation. That means HF Trainer's n_gpu reads
+    # torch.cuda.device_count() > 1 (with
+    # local_rank left at its -1 default) and wraps the TRAINABLE model in
+    # nn.DataParallel across all of those visible GPUs -- including the ones
+    # meant to hold judge models, not replicas of the training model -- which
+    # OOMs on backward. Overriding _n_gpu=1 disables that wrap (same fix as
+    # text_agglm.py's separate GRPO training path, api_trained_router.py's
+    # and api_switch_generation.py's SFT).
+    trainer.args._n_gpu = 1
     trainer.model = _disable_cache_for_training(trainer.model)
     trainer.train()
     trainer.save_model(output_model_path)
@@ -1475,6 +1539,62 @@ def _make_gpu_groups(
 
     return groups
 
+def _grpo_subprocess_worker_main(args_path: str, result_path: str) -> None:
+    """Entry point for `python -m model_collaboration.utils.distributed_grpo --grpo-worker
+    <args_path> <result_path>`.
+
+    Runs as its own OS process (not a multiprocessing.get_context("spawn") worker) so that
+    CUDA_VISIBLE_DEVICES set in the launching subprocess.Popen's env -- BEFORE this process's
+    Python interpreter even starts -- is honored for the whole process lifetime. Why that
+    matters: TRL's GRPOTrainer constructs an accelerate.Accelerator() internally, which reads
+    LOCAL_RANK (unset in this single-process context, so it defaults to 0) and calls
+    torch.cuda.set_device(0), silently overriding any earlier in-process
+    torch.cuda.set_device(gpu_id) call from _set_visible_devices(). With a multiprocessing spawn
+    worker, every worker's Accelerator ends up calling set_device(0), and since CUDA_VISIBLE_DEVICES
+    can't be changed after CUDA initializes (peft/trl's top-level imports already probe CUDA), "0"
+    means the SAME physical GPU for every worker -> OOM. Restricting CUDA_VISIBLE_DEVICES at
+    process-launch time sidesteps this entirely: with only this worker's GPUs visible, local
+    device 0 genuinely IS its assigned physical training GPU, so Accelerator's set_device(0) is
+    correct instead of a collision.
+    """
+    with open(args_path) as f:
+        job_kwargs = json.load(f)
+    try:
+        output_model_path = single_grpo_with_judges(**job_kwargs)
+        result = {"output_model_path": output_model_path, "error": None}
+    except Exception:
+        result = {"output_model_path": None, "error": traceback.format_exc()}
+        with open(result_path, "w") as f:
+            json.dump(result, f)
+        raise
+    with open(result_path, "w") as f:
+        json.dump(result, f)
+
+
+def _launch_grpo_subprocess_job(job_kwargs: Dict[str, Any], visible_gpu_ids: Sequence[int], workdir: str):
+    """Launch one GRPO training job as its own OS process (see _grpo_subprocess_worker_main's
+    docstring for why not multiprocessing spawn), with CUDA_VISIBLE_DEVICES restricted to exactly
+    this job's training GPU plus its judge GPUs, remapped so the worker sees them as local
+    indices 0, 1, 2, ... in the same order -- job_kwargs["gpu_id"] and
+    job_kwargs["judge_gpu_ids"] must already be those local indices, not physical ones."""
+    tmp_dir = tempfile.mkdtemp(prefix="grpo_worker_")
+    args_path = os.path.join(tmp_dir, "args.json")
+    result_path = os.path.join(tmp_dir, "result.json")
+    with open(args_path, "w") as f:
+        json.dump(job_kwargs, f)
+
+    env = dict(os.environ)
+    env["CUDA_VISIBLE_DEVICES"] = ",".join(str(int(g)) for g in visible_gpu_ids)
+
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "model_collaboration.utils.distributed_grpo",
+         "--grpo-worker", args_path, result_path],
+        cwd=workdir,
+        env=env,
+    )
+    return proc, result_path, tmp_dir
+
+
 def distributed_grpo_with_judges(
     list_of_model_names: List[str],
     list_of_train_data_paths: List[str],
@@ -1530,8 +1650,89 @@ def distributed_grpo_with_judges(
     max_parallel_jobs = int(grpo_kwargs.pop("max_parallel_grpo_jobs", len(gpu_groups)))
 
     if parallel_training:
-        ctx = get_context("spawn")
-        with ctx.Pool(min(n, max_parallel_jobs, len(gpu_groups))) as pool:
-            return pool.map(_single_grpo_with_judges_star, args)
+        # multiprocessing.get_context("spawn") + torch.cuda.set_device() cannot isolate GPUs
+        # across concurrent workers here -- see _grpo_subprocess_worker_main's docstring. Launch
+        # each job as its own OS subprocess instead, with CUDA_VISIBLE_DEVICES scoped per-job
+        # before the interpreter starts.
+        workdir = str(Path(__file__).resolve().parent.parent.parent)
+        max_parallel = max(1, min(n, max_parallel_jobs, len(gpu_groups)))
+        results: List[Optional[str]] = [None] * n
+        pending = list(range(n))
+        running: Dict[int, Tuple[subprocess.Popen, str, str, int]] = {}
+        tmp_dirs: List[str] = []
+        # A pool of free GROUP SLOTS (indices into gpu_groups), not just a running-job count.
+        # Jobs are NOT statically assigned a group by idx % len(gpu_groups): jobs finish out of
+        # order, and a static assignment can launch a new job onto a group whose *original*
+        # occupant (by index) hasn't actually finished yet, while some other, unrelated group
+        # already sits idle -- two subprocesses then get CUDA_VISIBLE_DEVICES pointed at the same
+        # physical GPU and collide. Only handing out a slot once its previous job's process has
+        # actually exited guarantees no two concurrently-running jobs ever share a training GPU.
+        available_slots = list(range(min(max_parallel, len(gpu_groups))))
+        try:
+            while pending or running:
+                while pending and available_slots:
+                    idx = pending.pop(0)
+                    slot = available_slots.pop(0)
+                    train_gpu, local_judge_gpu_ids = gpu_groups[slot]
+                    job_kwargs = dict(
+                        model_name=list_of_model_names[idx],
+                        train_data_path=list_of_train_data_paths[idx],
+                        gpu_id=0,
+                        output_model_path=list_of_output_model_paths[idx],
+                        original_model_name=list_of_original_model_names[idx],
+                        judge_model_paths_by_name=judge_model_paths_by_name,
+                        judge_weights_by_name=judge_weights_by_name,
+                        judge_gpu_ids=list(range(1, 1 + len(local_judge_gpu_ids))),
+                        **grpo_kwargs,
+                    )
+                    visible_gpu_ids = [train_gpu] + list(local_judge_gpu_ids)
+                    proc, result_path, tmp_dir = _launch_grpo_subprocess_job(job_kwargs, visible_gpu_ids, workdir)
+                    tmp_dirs.append(tmp_dir)
+                    running[idx] = (proc, result_path, tmp_dir, slot)
+
+                finished = [idx for idx, (proc, _, _, _) in running.items() if proc.poll() is not None]
+                if not finished:
+                    time.sleep(2)
+                    continue
+
+                for idx in finished:
+                    proc, result_path, tmp_dir, slot = running.pop(idx)
+                    available_slots.append(slot)
+                    if not os.path.exists(result_path):
+                        raise RuntimeError(
+                            f"[GRPO] subprocess worker for job {idx} "
+                            f"(model={list_of_model_names[idx]}) exited with code "
+                            f"{proc.returncode} and wrote no result file."
+                        )
+                    with open(result_path) as f:
+                        result = json.load(f)
+                    if result.get("error") or proc.returncode != 0:
+                        raise RuntimeError(
+                            f"[GRPO] job {idx} (model={list_of_model_names[idx]}) failed "
+                            f"(exit code {proc.returncode}):\n{result.get('error')}"
+                        )
+                    results[idx] = result["output_model_path"]
+        finally:
+            # Mirror the old ctx.Pool(...) context manager's terminate-on-exit: if we're
+            # unwinding because one job raised, don't leave sibling jobs orphaned and still
+            # holding GPU memory.
+            for proc, _, _, _ in running.values():
+                if proc.poll() is None:
+                    proc.terminate()
+            for tmp_dir in tmp_dirs:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+        return results
 
     return [_run_one_grpo_job_spawned(arg) for arg in args]
+
+
+if __name__ == "__main__":
+    # Dispatch for _launch_grpo_subprocess_job's `python -m model_collaboration.utils.distributed_grpo
+    # --grpo-worker <args_path> <result_path>` invocation -- see _grpo_subprocess_worker_main's
+    # docstring for why this runs as a plain subprocess rather than a multiprocessing worker.
+    if len(sys.argv) == 4 and sys.argv[1] == "--grpo-worker":
+        _grpo_subprocess_worker_main(sys.argv[2], sys.argv[3])
+    else:
+        raise SystemExit(
+            "Usage: python -m model_collaboration.utils.distributed_grpo --grpo-worker <args_path> <result_path>"
+        )

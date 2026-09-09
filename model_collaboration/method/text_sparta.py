@@ -26,6 +26,7 @@ def _pairwise_competition(
     temperature: float = 0.7,
     top_p: float = 0.9,
     batch_size: int = 1,
+    max_parallel_models: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """
     Build pairwise competitions between models on a list of instructions.
@@ -132,6 +133,7 @@ def _pairwise_competition(
         active_model_names,
         list_of_input_list,
         gpu_ids,
+        max_parallel_models=max_parallel_models,
     )
 
     # Build an index: {model_name: {instruction: response}}
@@ -797,8 +799,7 @@ class RatingSystemDynamicWeighted(RatingSystem):
             if self.current_iteration >= 8:
                 weights_path = os.path.join(self.base_dir, "iteration_7", "weights.json")
                 if os.path.exists(weights_path):
-                    with open(weights_path, "r") as f:
-                        return json.load(f)
+                    return eval._retry_read_json(weights_path)
                 return weights
 
             if self.current_iteration >= 2:
@@ -808,8 +809,7 @@ class RatingSystemDynamicWeighted(RatingSystem):
                 )
                 if not os.path.exists(prev_path):
                     return weights
-                with open(prev_path, "r") as f:
-                    prev_info = json.load(f)
+                prev_info = eval._retry_read_json(prev_path)
                 sorted_models = sorted(
                     prev_info.keys(),
                     key=lambda x: prev_info[x]["score"],
@@ -990,8 +990,7 @@ class RatingSystemStaticWeighted(RatingSystem):
             if self.current_iteration >= 8:
                 weights_path = os.path.join(self.base_dir, "iteration_7", "weights.json")
                 if os.path.exists(weights_path):
-                    with open(weights_path, "r") as f:
-                        return json.load(f)
+                    return eval._retry_read_json(weights_path)
                 return weights
 
             weighted_models: List[str] = []
@@ -1002,8 +1001,7 @@ class RatingSystemStaticWeighted(RatingSystem):
                 )
                 if not os.path.exists(prev_path):
                     continue
-                with open(prev_path, "r") as f:
-                    prev_info = json.load(f)
+                prev_info = eval._retry_read_json(prev_path)
                 remaining_models = [
                     model
                     for model in prev_info.keys()
@@ -1225,7 +1223,8 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     temperature = float(hyperparameters.get("temperature", 0.7))
     top_p = float(hyperparameters.get("top_p", 0.9))
     batch_size = int(hyperparameters.get("batch_size", 1))
-    
+    max_parallel_generation_models = hyperparameters.get("max_parallel_generation_models", None)
+
     # Judge operational parameters (judges are dynamically selected from model_names pool for each pair)
     judge_batch_size = int(hyperparameters.get("judge_batch_size", 8))
     judge_rounds = int(hyperparameters.get("judge_rounds", 1))
@@ -1260,8 +1259,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         iter_dir_prev = os.path.join(base_dir, f"iteration_{iteration-1}")
         model_info_path_prev = os.path.join(iter_dir_prev, "model_info.json")
         if iteration > 0 and os.path.exists(model_info_path_prev):
-            with open(model_info_path_prev, "r", encoding="utf-8") as f:
-                prev_info = json.load(f)
+            prev_info = eval._retry_read_json(model_info_path_prev)
             model_ratings: Dict[str, Dict[str, float]] = {
                 m: {
                     "score": float(prev_info[m].get("score", 100.0)),
@@ -1279,8 +1277,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         update_count = 0
         if os.path.exists(delta_history_path):
             try:
-                with open(delta_history_path, "r", encoding="utf-8") as f:
-                    payload = json.load(f)
+                payload = eval._retry_read_json(delta_history_path)
                 raw_hist = payload.get("delta_history", {})
                 for m in model_ratings:
                     delta_history[m] = raw_hist.get(m, [])
@@ -1309,6 +1306,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             temperature=temperature,
             top_p=top_p,
             batch_size=batch_size,
+            max_parallel_models=max_parallel_generation_models,
         )
         print(f"[Sparta] Iter {iteration}: Generated {len(raw_pairs)} raw pairs.")
         if not raw_pairs:
@@ -1619,6 +1617,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             final_model_paths,
             list_of_input_list,
             gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )
 
         list_of_dev_scores = []
@@ -1651,6 +1650,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             adapter_paths,
             list_of_input_list,
             gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )
 
         adapter_dev_scores: List[float] = []

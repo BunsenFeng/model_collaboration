@@ -31,7 +31,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     mentor = model_names[1]
     generator_devices = f"cuda:{gpu_ids[0]}"
     mentor_devices = f"cuda:{gpu_ids[1]}"
-    decision_proportion = hyperparameters.get("decision_proportion", 0.25)
+    decision_proportion = hyperparameters.get("decision_proportion", 25)
     patch_size = hyperparameters.get("patch_size", 16)
     max_new_tokens = hyperparameters.get("max_response_length")
     mlp_task = hyperparameters.get("task", "General")  # Task type for MLP model (Math or General)

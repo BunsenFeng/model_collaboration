@@ -625,7 +625,18 @@ class MultiAgentSystem:
 
     def _extract_conclusions(self) -> List[str]:
         """Extract final conclusions from last iteration"""
-        final_entries = [entry for entry in self.blackboard.entries if entry.iteration == self.current_iteration]
+        if not self.blackboard.entries:
+            return ["No conclusion."]
+        # self.current_iteration is incremented at the TOP of each loop pass,
+        # before the safety-cutoff/empty-agenda checks -- when the loop
+        # terminates via either of those (as opposed to the stop-vote path),
+        # current_iteration has already advanced past the last iteration that
+        # actually added any entries, so filtering directly on it here would
+        # match nothing. Use the actual last iteration present on the
+        # blackboard instead, which is correct regardless of how the loop
+        # terminated.
+        last_iteration = max(entry.iteration for entry in self.blackboard.entries)
+        final_entries = [entry for entry in self.blackboard.entries if entry.iteration == last_iteration]
         text_list = [entry.text.strip() for entry in final_entries if "FINAL:" in entry.text.strip()]
         
         if len(text_list) == 0:

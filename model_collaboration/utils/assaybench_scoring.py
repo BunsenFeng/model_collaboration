@@ -42,7 +42,12 @@ def extract_genes_from_output(output: str) -> List[str]:
 
 def _compute_dcg(relevances: List[Optional[float]], k: int) -> float:
     padded = list(relevances) + [0.0] * max(0, k - len(relevances))
-    condensed = [r for r in padded[:k] if r is not None][:k]
+    # A predicted gene that doesn't match any ground-truth gene (relevance=None) is a wrong/
+    # hallucinated prediction, not a no-op -- it must count as relevance=0 AT ITS RANK, not be
+    # dropped. Dropping it let later, genuinely-relevant genes shift into earlier (higher-scoring)
+    # positions than they'd occupy if the model hadn't hallucinated, so hallucinating extra gene
+    # names was effectively free instead of penalized.
+    condensed = [(0.0 if r is None else r) for r in padded[:k]]
     if not condensed:
         return 0.0
     return sum(r / np.log2(i + 2) for i, r in enumerate(condensed))

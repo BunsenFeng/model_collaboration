@@ -1,11 +1,13 @@
 import os
 import json
 import random
+import shutil
 from model_collaboration.data import eval
 import torch.nn.functional as F
 from model_collaboration.utils import lora_check
 from model_collaboration.method import distributed_generation
 from model_collaboration.utils.numeric_swarm import NumericSwarm
+from model_collaboration.utils.swarm import dare_ties_merge
 
 def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
@@ -21,8 +23,16 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     print("Make sure they share the same model architecture, or expect errors.")
 
     # check if the models are lora adapters
-    model_names = lora_check.lora_to_full(model_names)
+    model_names, _lora_converted_dirs = lora_check.lora_to_full(model_names)
 
+    try:
+        return _run_method_impl(task, task_type, gpu_ids, model_names, hyperparameters)
+    finally:
+        for d in _lora_converted_dirs:
+            shutil.rmtree(d, ignore_errors=True)
+
+
+def _run_method_impl(task, task_type, gpu_ids, model_names, hyperparameters):
     # method-specific hyperparameters
 
     base_model_name = hyperparameters.get("base_model_name")
@@ -81,22 +91,18 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             # turn it into list of lists
             list_of_weights = [weights.tolist() for weights in list_of_normalized_weights]
 
-            # mergekit the models
+            # merge the models (native linear-algebra dare_ties, no mergekit)
             gpu_id = gpu_ids[0]
             for i in range(len(list_of_weights)):
                 weight = list_of_weights[i]
                 merged_model_path = dare_ties_base_path + "dare_ties_{}".format(i)
-                with open(dare_ties_base_path + "dare_ties.yml", "w") as f:
-                    f.write("models:\n")
-                    for j in range(len(model_names)):
-                        f.write("  - model: " + model_names[j] + "\n")
-                        f.write("    parameters:\n")
-                        f.write("      weight: " + str(weight[j]) + "\n")
-                    f.write("merge_method: dare_ties\n")
-                    f.write("base_model: " + base_model_name + "\n")
-                    f.write("dtype: float16\n")
-                
-                os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_id))
+                dare_ties_merge(
+                    weights=weight,
+                    model_path_list=model_names,
+                    base_model_path=base_model_name,
+                    output_path=merged_model_path,
+                    density=hyperparameters.get("density", 1.0),
+                )
 
             # evaluate the merged models on the dev set
             list_of_input_list = [dev_input_list for _ in range(len(list_of_weights))]
@@ -131,21 +137,16 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         normalized_best_weights = [1.0 / len(model_names)] * len(model_names)
         print("Using uniform weights for dare-ties: {}".format(normalized_best_weights))
 
-    # merge the final model
+    # merge the final model (native linear-algebra dare_ties, no mergekit)
     merged_model_path = dare_ties_base_path + "final_model"
-    with open(dare_ties_base_path + "dare_ties.yml", "w") as f:
-        f.write("models:\n")
-        for j in range(len(model_names)):
-            f.write("  - model: " + model_names[j] + "\n")
-            f.write("    parameters:\n")
-            f.write("      weight: " + str(normalized_best_weights[j]) + "\n")
-        f.write("merge_method: dare_ties\n")
-        f.write("base_model: " + base_model_name + "\n")
-        f.write("dtype: float16\n")
+    dare_ties_merge(
+        weights=normalized_best_weights,
+        model_path_list=model_names,
+        base_model_path=base_model_name,
+        output_path=merged_model_path,
+        density=hyperparameters.get("density", 1.0),
+    )
 
-    os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path)
-    # os.system("mergekit-yaml " + dare_ties_base_path + "dare_ties.yml " + merged_model_path + " --cuda --device cuda:" + str(gpu_ids[0]))
-    
     # evaluate it on the test set
     test_input_list = eval.prepare_inputs(task, task_type, "test", ratio=ratio)
     list_of_input_list = [test_input_list]

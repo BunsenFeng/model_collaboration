@@ -41,81 +41,15 @@ def lora_merge(weights, lora_name_list, output_path, gpu_id, directly_load_safet
 
     output_name = output_path
 
-    # the slow merge
+    # the slow merge: native linear merge (was mergekit merge_method: linear;
+    # see full_model_linear_merge for the no-mergekit implementation).
     if not directly_load_safetensors:
-        # mergekit implementation
-        with open("model_collaboration/logs/mergekit_args.yml", "w") as f:
-            f.write("models:\n")
-            for i in range(len(lora_name_list)):
-                f.write("  - model: " + lora_name_list[i] + "\n")
-                f.write("    parameters:\n")
-                f.write("      weight: " + str(weights[i]) + "\n")
-            f.write("merge_method: linear\n")
-            f.write("dtype: float16\n")
-        
-        # executing it
-        os.system("mergekit-yaml model_collaboration/logs/mergekit_args.yml " + output_name + " --cuda --device cuda:" + str(gpu_id))
-
-        # lora_state_dict_list = []
-        # for lora_name in lora_name_list:
-        #     model = AutoModelForCausalLM.from_pretrained(lora_name)
-        #     # lora_state_dict_list.append(get_peft_model_state_dict(model))
-        #     lora_state_dict_list.append(model.state_dict())
-        #     if not lora_name == lora_name_list[-1]:
-        #         del model
-        #     # torch.cuda.empty_cache()
-        
-        # final_state_dict = {}
-
-        # # for key in lora_state_dict_list[0].keys():
-        # #     for i in range(len(lora_state_dict_list)):
-        # #         assert key in lora_state_dict_list[i].keys()
-        # #     final_state_dict[key] = uneven_fuse(weights, [lora_state_dict_list[i][key] for i in range(len(lora_state_dict_list))])
-
-        # # multiprocessing of uneven_fuse over keys
-        # uneven_fuse_args = []
-        # for key in lora_state_dict_list[0].keys():
-        #     for i in range(len(lora_state_dict_list)):
-        #         assert key in lora_state_dict_list[i].keys()
-        #     uneven_fuse_args.append((weights, [lora_state_dict_list[i][key] for i in range(len(lora_state_dict_list))]))
-        
-        # # with Pool(processes=8) as p:
-        # #     uneven_fuse_results = p.starmap(uneven_fuse, uneven_fuse_args)
-        
-        # # non-multiprocessing version
-        # uneven_fuse_results = []
-        # for args in uneven_fuse_args:
-        #     uneven_fuse_results.append(uneven_fuse(*args))
-        
-        # for i, key in enumerate(lora_state_dict_list[0].keys()):
-        #     final_state_dict[key] = uneven_fuse_results[i]
-
-        # # for i in range(len(lora_state_dict_list)):
-        # #     if i == 0:
-        # #         for key in lora_state_dict_list[i].keys():
-        # #             final_state_dict[key] = weights[i] * lora_state_dict_list[i][key]
-        # #     else:
-        # #         for key in lora_state_dict_list[i].keys():
-        # #             assert key in final_state_dict.keys()
-        # #             final_state_dict[key] += weights[i] * lora_state_dict_list[i][key]
-        
-        # # model = AutoModelForCausalLM.from_pretrained(lora_name_list[0]).to(f"cuda:{gpu_id}")
-        # # set_peft_model_state_dict(model, final_state_dict)
-        # # set model state dict directly
-        # try:
-        #     model = AutoModelForCausalLM.from_pretrained(base_model)
-        #     model.load_state_dict(final_state_dict, strict=False)
-        # except:
-        #     for i in range(len(lora_name_list)):
-        #         try:
-        #             model = AutoModelForCausalLM.from_pretrained(lora_name_list[i])
-        #             model.load_state_dict(final_state_dict, strict=False)
-        #             break
-        #         except:
-        #             continue
-        # if os.path.exists(output_name):
-        #     shutil.rmtree(output_name)
-        # model.save_pretrained(output_name)
+        full_model_linear_merge(
+            weights=weights,
+            model_path_list=lora_name_list,
+            output_path=output_name,
+            dtype=torch.float16,
+        )
     else:
         # the fast merge: load only state_dicts, merge them, save only state_dicts, gpu_id not used here
         # apply to the setting that models share the same architecture, sharding, and adapter format
@@ -142,6 +76,180 @@ def lora_merge(weights, lora_name_list, output_path, gpu_id, directly_load_safet
 
 # sanity check example
 # lora_merge([0.3, 0.6, 0.8], ["./initial_experts/lima", "./initial_experts/cot", "./initial_experts/oasst1"], "./new", 0, directly_load_safetensors=1)
+
+def full_model_linear_merge(weights, model_path_list, output_path, dtype=torch.bfloat16):
+    """
+    Weighted-average (linear) merge of full models sharing the same architecture.
+    Native transformers/torch implementation -- no mergekit dependency. Only
+    covers merge_method: linear (uniform or weighted state_dict averaging);
+    use mergekit directly for other merge methods (e.g. dare_ties).
+
+    Loads models one at a time (not all simultaneously) to keep memory bounded,
+    on CPU by default to avoid contending with concurrent GPU generation.
+    """
+    assert len(weights) == len(model_path_list), "weights and model_path_list must be the same length"
+
+    # Accumulate in-place into the first model's own state_dict tensors, then reuse that same
+    # model as the one we save -- this keeps peak host memory to ~1 full model (the accumulator)
+    # plus ~1 more transiently while a subsequent model is loaded, instead of ~3 (accumulator +
+    # last loaded model's state_dict lingering past `del model` + a freshly-loaded final model).
+    final_model = None
+    merged_state_dict = None
+    for path, weight in zip(model_path_list, weights):
+        model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
+        state_dict = model.state_dict()
+        if merged_state_dict is None:
+            final_model = model
+            merged_state_dict = state_dict
+            for k in merged_state_dict:
+                merged_state_dict[k] *= weight
+        else:
+            assert set(merged_state_dict.keys()) == set(state_dict.keys()), (
+                f"State dict keys mismatch between {model_path_list[0]} and {path}; "
+                "models must share the same architecture."
+            )
+            for k in merged_state_dict:
+                merged_state_dict[k] += weight * state_dict[k]
+            del model, state_dict
+
+    final_model.load_state_dict(merged_state_dict)
+
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    final_model.save_pretrained(output_path)
+
+    tokenizer = AutoTokenizer.from_pretrained(model_path_list[0])
+    tokenizer.save_pretrained(output_path)
+
+    del final_model, merged_state_dict
+
+
+def _dare_sparsify(delta, density, generator=None):
+    """
+    DARE sparsification of a single delta tensor: randomly zero out a
+    (1 - density) fraction of entries (Bernoulli mask, keep-probability =
+    density), then rescale survivors to preserve the tensor's L1 norm.
+    Matches mergekit's sparsify.bernoulli() + rescaled_masked_tensor(l1).
+    """
+    if density >= 1.0:
+        return delta
+    mask = torch.bernoulli(
+        torch.full_like(delta, density), generator=generator
+    )
+    masked = delta * mask
+    before = delta.abs().sum()
+    after = masked.abs().sum()
+    if before < 1e-7 or after < 1e-7:
+        return masked
+    return masked * (before / after)
+
+
+def _ties_sign_consensus_merge(weighted_deltas):
+    """
+    TIES sign-election + disjoint merge (mergekit's consensus_method="sum",
+    normalize=False): elect the majority sign per-position by summing the
+    weighted deltas, keep only the deltas that agree with that sign, and
+    sum (not average) the survivors.
+
+    weighted_deltas: list of tensors (one per model), same shape, already
+    multiplied by each model's weight (and already DARE-sparsified).
+    """
+    stacked = torch.stack(weighted_deltas, dim=0)
+    sign_sum = stacked.sum(dim=0)
+    majority_sign = torch.where(sign_sum >= 0, 1.0, -1.0).to(stacked.dtype)
+    mask = stacked.sign() == majority_sign.unsqueeze(0)
+    return (stacked * mask).sum(dim=0)
+
+
+def dare_ties_merge(weights, model_path_list, base_model_path, output_path, density=1.0, seed=None, dtype=torch.bfloat16):
+    """
+    Native transformers/torch implementation of mergekit's dare_ties merge
+    method (consensus_method=sum, sparsification_method=random/Bernoulli,
+    normalize=False, rescale=True/l1) -- no mergekit dependency.
+
+    Per parameter tensor:
+      delta_i        = model_i - base
+      delta_i        = DARE(delta_i, density)          # random dropout + L1 rescale
+      weighted_i     = delta_i * weight_i
+      majority_sign  = sign(sum_i(weighted_i))
+      mixed_delta    = sum_i(weighted_i where sign(weighted_i) == majority_sign)
+      merged         = base + mixed_delta
+
+    density=1.0 (the default, matching MoCo's existing dare_ties config which
+    never sets it) disables DARE's random dropout entirely -- this reduces to
+    plain TIES merging, which is deterministic.
+    """
+    assert len(weights) == len(model_path_list), "weights and model_path_list must be the same length"
+
+    # Derive one fixed, reproducible seed per model (rather than sharing a single generator's
+    # advancing stream across two passes over all models) so that each model's DARE dropout mask
+    # is identical in pass 1 and pass 2, while still differing between models.
+    model_seeds = [None] * len(model_path_list)
+    if seed is not None:
+        model_seeds = [seed + i for i in range(len(model_path_list))]
+
+    def _generator_for(model_seed):
+        if model_seed is None:
+            return None
+        g = torch.Generator()
+        g.manual_seed(model_seed)
+        return g
+
+    # Two passes over per-tensor keys instead of materializing a complete weighted-delta dict
+    # per input model: pass 1 computes the (small) majority-sign consensus per key by streaming
+    # each model's delta one at a time; pass 2 re-streams the deltas to accumulate only the
+    # entries agreeing with that consensus. This keeps peak host memory to ~2 full models (base +
+    # whichever model is currently loaded) instead of accumulating a full weighted-delta state
+    # dict per input model simultaneously.
+    base_model = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=dtype)
+    base_state_dict = base_model.state_dict()
+    del base_model
+
+    keys = list(base_state_dict.keys())
+    sign_sum = {k: torch.zeros_like(base_state_dict[k]) for k in keys}
+
+    for path, weight, model_seed in zip(model_path_list, weights, model_seeds):
+        model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
+        state_dict = model.state_dict()
+        assert set(state_dict.keys()) == set(base_state_dict.keys()), (
+            f"State dict keys mismatch between base ({base_model_path}) and {path}; "
+            "models must share the same architecture."
+        )
+        model_generator = _generator_for(model_seed)
+        for k in keys:
+            delta = state_dict[k] - base_state_dict[k]
+            delta = _dare_sparsify(delta, density, generator=model_generator)
+            sign_sum[k] += delta * weight
+        del model, state_dict
+
+    majority_sign = {k: torch.where(sign_sum[k] >= 0, 1.0, -1.0).to(sign_sum[k].dtype) for k in keys}
+    del sign_sum
+
+    merged_state_dict = {k: base_state_dict[k].clone() for k in keys}
+    for path, weight, model_seed in zip(model_path_list, weights, model_seeds):
+        model = AutoModelForCausalLM.from_pretrained(path, torch_dtype=dtype)
+        state_dict = model.state_dict()
+        model_generator = _generator_for(model_seed)
+        for k in keys:
+            delta = state_dict[k] - base_state_dict[k]
+            delta = _dare_sparsify(delta, density, generator=model_generator)
+            weighted_delta = delta * weight
+            mask = weighted_delta.sign() == majority_sign[k]
+            merged_state_dict[k] += weighted_delta * mask
+        del model, state_dict
+
+    final_model = AutoModelForCausalLM.from_pretrained(base_model_path, torch_dtype=dtype)
+    final_model.load_state_dict(merged_state_dict)
+
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    final_model.save_pretrained(output_path)
+
+    tokenizer = AutoTokenizer.from_pretrained(base_model_path)
+    tokenizer.save_pretrained(output_path)
+
+    del final_model, merged_state_dict, base_state_dict, majority_sign
+
 
 # define the swarm class
 # managing initialization and update of the swarm

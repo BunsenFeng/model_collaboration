@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import os
 from multiprocessing import get_context, Pool
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
@@ -143,16 +144,50 @@ def build_model_and_tokenizer_for_generation(
     torch_dtype: torch.dtype = torch.bfloat16,
     trust_remote_code: bool = True,
 ) -> Tuple[Any, Any]:
-    visible_devices, _ = _normalize_visible_devices(gpu_id)
-    if visible_devices is not None:
-        os.environ["CUDA_VISIBLE_DEVICES"] = visible_devices
+    # Load directly onto the physical GPU index instead of restricting
+    # CUDA_VISIBLE_DEVICES + device_map={"": 0}: CUDA caches the visible
+    # device list at first initialization in a process, and if anything
+    # (e.g. a peft/bitsandbytes import side effect, triggered simply by
+    # importing this module in a freshly-spawned worker, before this
+    # function's os.environ assignment ever runs) touches CUDA first, the
+    # CUDA_VISIBLE_DEVICES restriction is silently a no-op -- every
+    # worker's device_map={"": 0} then resolves to the SAME literal
+    # physical GPU 0 regardless of the intended per-worker gpu_id.
+    # Targeting the real physical index directly sidesteps this ordering
+    # fragility entirely (confirmed via instrumentation: device_count()
+    # reported 4, not 1, and all workers shared one physical GPU UUID).
+    target_device_index: Union[int, str] = 0
+    max_memory: Optional[Dict[Any, Any]] = None
+    if isinstance(gpu_id, int):
+        target_device_index = gpu_id
+    elif isinstance(gpu_id, (list, tuple)) and gpu_id and torch.cuda.is_available():
+        # Same CUDA-already-initialized trap as the scalar case above, but a post-hoc
+        # CUDA_VISIBLE_DEVICES assignment can't be worked around here the way it is for the
+        # scalar case (there's no single physical index to target directly -- big_model_mode's
+        # device_map="auto" needs to shard across exactly this subset of GPUs). Instead,
+        # constrain accelerate's auto placement via max_memory: give every physical GPU not in
+        # the requested subset a 0 budget so it can't be selected, regardless of whether
+        # CUDA_VISIBLE_DEVICES actually took effect in this process.
+        allowed = {int(g) for g in gpu_id}
+        max_memory = {}
+        for idx in range(torch.cuda.device_count()):
+            if idx in allowed:
+                max_memory[idx] = int(torch.cuda.get_device_properties(idx).total_memory * 0.9)
+            else:
+                max_memory[idx] = 0
+    else:
+        visible_devices, _ = _normalize_visible_devices(gpu_id)
+        if visible_devices is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = visible_devices
 
     model_kwargs: Dict[str, Any] = {
         "torch_dtype": torch_dtype,
         "trust_remote_code": trust_remote_code,
     }
     if torch.cuda.is_available():
-        model_kwargs["device_map"] = "auto" if BIG_MODEL_MODE else {"": 0}
+        model_kwargs["device_map"] = "auto" if BIG_MODEL_MODE else {"": target_device_index}
+        if max_memory is not None:
+            model_kwargs["max_memory"] = max_memory
 
     if _is_lora_adapter(model_name_or_path):
         model = AutoPeftModelForCausalLM.from_pretrained(model_name_or_path, **model_kwargs)
@@ -258,6 +293,7 @@ def batch_generate_text_adapter_aware(
     finally:
         del model
         del tokenizer
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         _dynamo.reset_code_caches()
@@ -431,6 +467,7 @@ def batch_generate_text_with_score(
     finally:
         del model
         del tokenizer
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         _dynamo.reset_code_caches()

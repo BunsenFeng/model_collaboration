@@ -10,28 +10,41 @@ Technical report: [paper](https://arxiv.org/abs/2601.21257)
 
 ## Quick Start
 
-We use [uv](https://github.com/astral-sh/uv) for package management. Install it first if you haven't already.
+### Environment Setup
+
+We use [uv](https://github.com/astral-sh/uv) for package management.
 
 ```
-uv venv --python 3.11 moco
+uv venv --python 3.10 moco
 source moco/bin/activate
 uv pip install -r requirements.txt
-uv pip install mergekit
 ```
 
-Run your first model collaboration experiment (if you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`):
+The `nvidia-*-cu12` entries in `requirements.txt` are bundled CUDA wheels; skip them if your system already has CUDA drivers installed, or install `torch` via the PyTorch index instead (`uv pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu126`).
+
+<details>
+<summary><b>Optional: NemotronH / Mamba model support</b> (click to expand)</summary>
+
+If you plan to use NemotronH models, also install `causal-conv1d` and `mamba-ssm`:
+
+```
+uv pip install --no-build-isolation --no-deps git+https://github.com/Dao-AILab/causal-conv1d.git
+uv pip install --no-build-isolation --no-deps git+https://github.com/state-spaces/mamba.git
+```
+
+If this crashes at runtime with `no kernel image is available for execution on the device` on GPUs like RTX 3090/A40/A10 or L40/L40S/RTX 4090, see `docs/user_readme.md` for why and how to fix it.
+
+</details>
+
+### Running Your First Collaboration
+
+If you don't have 3 GPUs, go to `model_collaboration/test_config.json` and set `"gpu_ids": [0]`, `[0,1]`, or whatever you have; if your GPU is nice, increase `batch_size`.
 
 ```
 python -m model_collaboration.main -c model_collaboration/test_config.json
 ```
 
 You will see the outputs and evaluation results in the `model_collaboration/logs/` folder.
-
-You can also directly use the PyPI package version:
-
-```
-moco -c model_collaboration/test_config.json --log_dir model_collaboration/logs/
-```
 
 ## Supported Methods
 `MoCo` currently supports the following model collaboration algorithms, across [API-level, text-level, logit-level, and weight-level collaboration](https://arxiv.org/abs/2502.04506). We provide a sample config for each method in `examples/` and please check out `docs/user_readme.md` for more details about writing configs and the different collaboration methods implemented.
@@ -57,7 +70,7 @@ moco -c model_collaboration/test_config.json --log_dir model_collaboration/logs/
 | Text: Multiagent Finetuning | multiple LLMs critique, debate, and refine via finetuning | [link](model_collaboration/method/text_multiagent_finetuning.py) | [link](examples/text_multiagent_finetuning.json) | [link](docs/user_readme.md#text-level-multiagent-finetuning) |
 | Text: BBMAS | blackboard-based collaboration among LLMs | [link](model_collaboration/method/text_bbmas.py) | [link](examples/text_bbmas.json) | [link](docs/user_readme.md#text-level-blackboard-multi-agent-system-bbmas) |
 | Text: Sparta Alignment | models compete and combat for collective alignment | [link](model_collaboration/method/text_sparta.py) | [link](examples/text_sparta.json) | [link](docs/user_readme.md#text-level-sparta) |
-| Text: Stackelberg Alignment | extension of Sparta with adversarial instruction selection | [link](model_collaboration/method/text_sparta_stackelberg.py) | [link](examples/text_sparta_stackelberg.json) | [link](docs/user_readme.md#text-level-sparta-stackelberg) |
+| Text: Stackelberg Alignment | extension of Sparta with adversarial instruction selection | [link](model_collaboration/method/text_sparta_stackelberg.py) | [link](examples/text_sparta_stackelberg.json) | [link](docs/user_readme.md#text-level-stackelberg) |
 | Text: SLM-Mux  | Orchestraing small models | [link](model_collaboration/method/text_slm_mux.py) | [link](examples/text_slm_mux.json) | [link](docs/user_readme.md#text-level-slm-mux) |
 | Text: AggLM | RL to train a solution aggregation model | [link](model_collaboration/method/text_agglm.py) | [link](examples/text_agglm.json) | [link](docs/user_readme.md#text-level-agglm) |
 | Logit: Logit Fusion | merge the next-token logits from multiple models | [link](model_collaboration/method/logit_logit_fusion.py) | [link](examples/logit_logit_fusion.json) | [link](docs/user_readme.md#logit-level-logit-fusion) |
@@ -83,6 +96,8 @@ If you are interested in contributing new datasets, check out [link](docs/eval_r
 If you have any suggestions, please open an issue.
 
 ## MoCo-supported projects
+
+Scaling participation in modular AI systems: diverse participants contribute small specialized models that collaborate together, outperforming monolithic LLMs. [link](https://arxiv.org/abs/2606.07812)
 
 Safety of model collaboration systems: what if one of the models is malicious? [link](https://arxiv.org/abs/2602.05176)
 

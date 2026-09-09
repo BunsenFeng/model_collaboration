@@ -419,7 +419,11 @@ class ModelTrainer:
             gradient_accumulation_steps=gradient_accumulation_steps,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
-            warmup_ratio=warmup_ratio,
+            # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be
+            # an int, where a float (warmup_ratio defaults to 0.03/0.04 here) previously passed
+            # -- ValueError: "warmup_steps must be of type int and must be 0 or a positive
+            # integer." int(0.03)/int(0.04) == 0, the value already in effect.
+            warmup_steps=int(warmup_ratio),
             lr_scheduler_type=lr_scheduler_type,
             logging_steps=logging_steps,
             save_steps=save_steps,
@@ -997,6 +1001,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             num_train_epochs=2,
             per_device_train_batch_size=1,
             gradient_accumulation_steps=32,
+            gradient_checkpointing=True,  # phase 2 already sets this; phase 1 was missing it
             learning_rate=2e-5,
             lr_scheduler_type="linear",
             warmup_ratio=0.04,
@@ -1019,9 +1024,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         # ========== Phase 2: Main Deferral Training with Marginal Likelihood Loss ==========
         logger.info("=" * 80)
         logger.info("Phase 2: Main deferral training with marginal likelihood loss...")
-        logger.info("Using DeepSpeed ZeRO Stage 2 for memory optimization")
         logger.info("=" * 80)
 
+        # This process trains on a single GPU (see the _n_gpu=1 override in
+        # collm_training.py's ModelTrainer.__init__, needed to prevent an unrelated
+        # nn.DataParallel OOM), so it doesn't pass a deepspeed= config here: ZeRO's
+        # benefit is sharding optimizer state/gradients ACROSS ranks, and with only
+        # one rank there's nothing to shard. Memory is managed instead via
+        # gradient_checkpointing (below) and bf16.
         phase2_trainer = ModelTrainer(
             model_name_or_path=generator,
             tokenizer_name=generator,
@@ -1056,7 +1066,6 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             report_to="wandb",
             logging_first_step=True,
             tf32=True,
-            overwrite_output_dir=True,
         )
         phase2_trainer.run()
 

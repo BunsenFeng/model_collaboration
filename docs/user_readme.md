@@ -50,6 +50,26 @@ Qwen3 models (`Qwen/Qwen3-*`) are supported and will automatically run in non-th
 
 DeepSeek-R1 distill models (e.g. `deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`) are supported: `<think>...</think>` blocks are automatically stripped from outputs before evaluation.
 
+NemotronH models (e.g. `nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16`) currently need a manual one-line patch to their `trust_remote_code` modeling file, confirmed still required as of `transformers==5.15.0` (not fixed upstream). Without it, generation crashes with `TypeError: 'NoneType' object is not subscriptable` in `prepare_inputs_for_generation`, because `transformers`' `_prefill()` passes `cache_position=None` but NemotronH's code indexes it unconditionally. To fix: after the model has been downloaded once (so the file exists), find `modeling_nemotron_h.py` under `$HF_HOME/modules/transformers_modules/nvidia/<model>/<revision>/modeling_nemotron_h.py` and guard the two `cache_position` accesses in `prepare_inputs_for_generation` with `cache_position is not None and ...` (and similarly for the `elif` branch). This must be reapplied any time the cached file is redownloaded (e.g. after clearing `HF_HOME`).
+
+If NemotronH (or anything else calling into `mamba_ssm`/`causal-conv1d`'s CUDA kernels) crashes with `no kernel image is available for execution on the device` on some GPUs but not others, it's a build-time architecture mismatch, not an environment or code bug: `causal-conv1d`'s and `mamba-ssm`'s `setup.py` hardcode their own `nvcc` `-gencode` list (confirmed against their current `main` branch) and completely ignore `TORCH_CUDA_ARCH_LIST` — the compiled kernel only runs on GPUs with an exact SASS match for one of `sm_75`, `sm_80`, `sm_87`, or `sm_90`/`100`/`120` (CUDA-version-gated), with no PTX fallback for anything else. Notably **`sm_86` (RTX 3090, A40, A10, RTX A6000) and `sm_89` (L40, L40S, RTX 4090) are never covered, on any CUDA version** — these are common GPUs, so this will affect real clusters, not just edge cases. `sm_80` (A100) and `sm_90` (H100/H200) both happen to be covered, which is why this doesn't show up if that's the only hardware you've tested against.
+
+To fix, clone and patch each package locally before installing (`pip`/`uv`'s `git+https://...` install clones into an ephemeral temp dir you can't patch in place, so patch a local clone first and install from that path instead):
+
+```
+git clone https://github.com/Dao-AILab/causal-conv1d.git
+git clone https://github.com/state-spaces/mamba.git
+# in each setup.py, add the missing architectures to the cc_flag/-gencode list, e.g.:
+#   -gencode arch=compute_86,code=sm_86
+#   -gencode arch=compute_89,code=sm_89
+# plus a PTX entry one architecture ahead of the newest SASS target for forward-compat
+# with future GPUs, e.g. -gencode arch=compute_90,code=compute_90
+uv pip install --no-build-isolation --no-deps ./causal-conv1d
+uv pip install --no-build-isolation --no-deps ./mamba
+```
+
+`causal-conv1d` and `mamba-ssm` don't necessarily have identical `setup.py` structure — check each independently rather than assuming the same patch applies verbatim to both. Since this tracks `git main` (not a pinned release), make the patch step fail loudly if its match pattern isn't found, rather than silently producing an unpatched build.
+
 These are vibe implementations (and your future implementations can be): they are not meant to reproduce every single niche detail in any paper, just taking the core ideas and making them work in a reasonable way.
 
 Without further ado, a complete list of all supported methods and configurations.
@@ -122,6 +142,7 @@ Without further ado, a complete list of all supported methods and configurations
     - `model_descriptions`, default None: a list of strings describing each candidate model, in the same order as `model_names`. Optional. If provided, the router model input will include model descriptions.
     - `reward_model_gpu_id`, default `gpu_ids[0]`: the GPU ID to load the reward model.
     - `reward_model_name`, default `Skywork/Skywork-Reward-Llama-3.1-8B-v0.2`: the reward model to evaluate generations when there is a tie on the task.
+    - `num_train_epochs`, default 5: number of epochs for training the router.
 
 #### API-level: Graph Routing
 - file: `api_graph_routing.py`
@@ -129,12 +150,17 @@ Without further ado, a complete list of all supported methods and configurations
 - related paper(s):
     - [GraphRouter: A Graph-based Router for LLM Selections](https://arxiv.org/pdf/2410.03834)
 - method-specific hyperparameters:
-    - `embedding_model`, default `sentence-transformers/all-MiniLM-L6-v2`: the model for extracting embedding.
+    - `embedding_model_name`, default `sentence-transformers/all-MiniLM-L6-v2`: the model for extracting embedding.
     - `model_descriptions`, default None: a list of strings describing each candidate model, in the same order as `model_names`. 
     - `task_description`, default task name: a string describing task. 
     - `hidden_features`, default 8: the hidden dimension for graph router.
     - `in_edges`, default 3: the input features number for graph router.
+    - `learning_rate`, default 1e-4: learning rate for training the graph router.
+    - `weight_decay`, default 1e-4: weight decay for training the graph router.
+    - `train_epochs`, default 500: number of epochs for training the graph router.
+    - `batch_size`, default 32: batch size for training the graph router (distinct from the general generation `batch_size`).
     - `train_mask_rate`, default 0.5: the rate to mask train data.
+    - `split_ratio`, default `[0.7, 0.15, 0.15]`: train/val/test split ratio for the graph router's own training data.
     - `scenario`, default `Performance First`: the balance between performance and cost.
 
 #### API-level: Cascade
@@ -176,7 +202,7 @@ Without further ado, a complete list of all supported methods and configurations
             - `example["solution"]`: the corresponding ground-truth solution
         - `training_split`, default `"train"`: dataset split to use for training data
         - `training_num`, default `10000`: number of training examples to use from the dataset
-        - `max_seq_length`, default `512`: sequence length that to be trained during deferral training
+        - `max_sequence_length`, default `2048`: sequence length that to be trained during deferral training
     - **Deferral parameters**:
         - `deferral_threshold`, default `0.5`: probability threshold for deferring to the mentor model. When the deferral token probability exceeds this threshold, the mentor model is consulted. Lower values (e.g., 0.3) increase mentor usage and performance but cost more; higher values (e.g., 0.7) rely more on the generator
         - `deferral_strategy`, default `"defer"`: how to use the mentor model when deferring. Options:
@@ -188,7 +214,7 @@ Without further ado, a complete list of all supported methods and configurations
             - `"cosine"`: use cosine schedule from 1.0 to target threshold
         - `threshold_warmup_steps`, default `15`: number of generation steps over which to apply threshold warmup (only used if warmup_schedule is not `"none"`)
     - **Generation parameters**:
-        - `max_response_length`, default `2048`: maximum number of tokens to generate during inference
+        - `max_response_length`, default `512`: maximum number of tokens to generate during inference
 - workflow:
     1. **Initialize training data**: load dataset (default: MATH) and create training samples
     2. **Score with generator**: compute log probabilities using the small (generator) model
@@ -428,6 +454,8 @@ Without further ado, a complete list of all supported methods and configurations
 - notes:
     - Requires at least 3 models: in each duel, two models generate responses and at least one remaining model acts as judge.
     - `instruction_selection` is a legacy alias: `exp3` maps to `leader_type=probabilistic, leader_scope=global`; `exp3_per_model` maps to `leader_type=probabilistic, leader_scope=per_model`; `uniform` maps to `leader_type=uniform`. Prefer setting `leader_type` and `leader_scope` directly.
+- `training_algorithm: grpo` under `trl>=1.0`: previously crashed with `ValueError: reward function returned N rewards, but N/2 were expected`, caused by an internal count mismatch in trl 1.10.0's experimental `rollout_func` hook (completions correctly expanded by `num_generations`, but prompts/dataset-extra-columns left unexpanded, which trl's own reward-count validation then rejects). Fixed by defaulting `use_custom_rollout=False` in `utils/distributed_grpo.py`, which switches to trl's standard (non-experimental) rollout path. If MoCo's custom rollout was originally added for a different trl<1.0 issue, that's untested — flip `use_custom_rollout` back to `True` if problems resurface on an older trl.
+- `parallel_grpo_training: true` is memory-tight: `gpus_per_grpo_job` GPUs per parallel job (1 for the training model, the rest for judge models) with no headroom reproducibly OOMs under trl's built-in rollout path. `distributed_grpo_with_judges` defaults to sequential training for this reason; keep it sequential unless you have GPUs to spare.
 
 #### Text-level: AggLM
 - file: `text_agglm.py`
@@ -485,12 +513,16 @@ Without further ado, a complete list of all supported methods and configurations
     - [Tuning Language Models by Proxy](https://arxiv.org/abs/2401.08565)
 - method-specific hyperparameters:
     - `k`, default 1: the number of top and bottom LLMs to use for contrastive decoding.
+    - `lambda_`, default 0.2: scaler applied to the summed bottom-k logits before subtracting from the summed top-k logits.
 - warning: you might need very small batch sizes. len(gpu_ids) has to == len(model_names).
 
 ### Weight-level collaboration
+
+No weight-level method depends on mergekit anymore. `weight_greedy_soup` and `weight_dare_ties` use native `transformers`/`torch` merge implementations in `utils/swarm.py` (`full_model_linear_merge` and `dare_ties_merge` respectively); `weight_model_swarms` (`fast_merge_flag: false`) and `weight_expo`'s `topk_bottomk` mode go through the same `full_model_linear_merge` via `lora_merge`'s "slow" branch, which used to shell out to `mergekit-yaml` with `merge_method: linear`. These were added to work around mergekit's own unresolved `transformers` v5 incompatibility (`pydantic.errors.PydanticUserError: ConfiguredModuleArchitecture is not fully defined` under mergekit's still-WIP v5 support). `dare_ties_merge` was verified against mergekit's actual documented formula (`consensus_method=sum`, `sparsification_method=random`/Bernoulli, `normalize=False`, `rescale=True`/L1) via unit tests plus an end-to-end run; the `lora_merge` routing was verified via identity and cancellation checks through its real public interface.
+
 #### Weight-level: Greedy Soup
 - file: `weight_greedy_soup.py`
-- description: average the weights of multiple LLMs in a greedy manner. **All LLMs must share the same architecture.** First, evaluate all LLMs on the dev set and sort them by performance. Then, starting from the best model, iteratively add one model at a time to the soup if it improves performance on the dev set. We provide a bridge to the MergeKit implementation.
+- description: average the weights of multiple LLMs in a greedy manner. **All LLMs must share the same architecture.** First, evaluate all LLMs on the dev set and sort them by performance. Then, starting from the best model, iteratively add one model at a time to the soup if it improves performance on the dev set. Uses a native linear (weighted-average) state_dict merge — no mergekit dependency.
 - related paper(s):
     - [Model soups: averaging weights of multiple fine-tuned models improves accuracy without increasing inference time](https://arxiv.org/abs/2203.05482)
 - method-specific hyperparameters:
@@ -498,13 +530,14 @@ Without further ado, a complete list of all supported methods and configurations
 
 #### Weight-level: Dare Ties
 - file: `weight_dare_ties.py`
-- description: average the weights of multiple LLMs with DARE-TIES. **All LLMs must share the same architecture.** Two modes: the average mode, where models have equal weight, the optimized mode, where weights are optimized on the dev set by particle swarm optimization. We provide a bridge to the MergeKit implementation.
+- description: average the weights of multiple LLMs with DARE-TIES. **All LLMs must share the same architecture.** Two modes: the average mode, where models have equal weight, the optimized mode, where weights are optimized on the dev set by particle swarm optimization. Uses a native DARE-TIES implementation (`utils/swarm.py`'s `dare_ties_merge`) — no mergekit dependency.
 - related paper(s):
     - [Language Models are Super Mario: Absorbing Abilities from Homologous Models as a Free Lunch](https://arxiv.org/abs/2311.03099)
     - [TIES-Merging: Resolving Interference When Merging Models](https://arxiv.org/abs/2306.01708)
 - method-specific hyperparameters:
     - `base_model_name`: the common base that these finetuned models share. For example, `Qwen/Qwen2.5-7B-Instruct` for ["bunsenfeng/yuru_qw_wizardlm", "bunsenfeng/yuru_qw_sharegpt", "bunsenfeng/yuru_qw_oasst1"].
     - `mode`, default `average`: `average` or `optimized`.
+    - `density`, default `1.0`: fraction of each model's delta-from-base kept by DARE's random pruning before rescaling survivors (L1-norm preserving). `1.0` disables DARE pruning entirely, reducing to plain TIES merging (the long-standing default behavior, since earlier configs never set this).
     - `population`, default 5: the population size for particle swarm optimization (only used in `optimized` mode).
     - `max_iterations`, default 5: the maximum number of iterations for particle swarm optimization (only used in `optimized` mode).
     - There are more hyperparameters in `optimized` mode for particle swarm optimization, please refer to `weight_dare_ties.py`. Only change them if you know what you are doing.

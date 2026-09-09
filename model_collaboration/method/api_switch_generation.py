@@ -8,7 +8,7 @@ from peft import LoraConfig
 from collections import Counter
 from datasets import load_dataset
 from model_collaboration.method import distributed_generation
-from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
+from trl import SFTConfig, SFTTrainer
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModelForCausalLM
 
 def selector_model_prompt(generation_log, model_list):
@@ -116,9 +116,15 @@ def reward_model_scores(gpu_id, list_of_input, list_of_output):
     scores = []
     for i in range(len(list_of_input)):
         conv = [{"role": "user", "content": list_of_input[i]}, {"role": "assistant", "content": list_of_output[i]}]
-        conv_tokenized = rm_tokenizer.apply_chat_template(conv, tokenize=True, return_tensors="pt").to("cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu")
+        # transformers v5's apply_chat_template(tokenize=True, return_tensors="pt") returns a raw
+        # Tensor of input_ids instead of a BatchEncoding dict -- **conv_tokenized below then fails
+        # (TypeError: argument after ** must be a mapping, not Tensor). return_dict=True restores
+        # the dict-like return so **conv_tokenized still works.
+        conv_tokenized = rm_tokenizer.apply_chat_template(
+            conv, tokenize=True, return_tensors="pt", return_dict=True
+        ).to("cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu")
         with torch.no_grad():
-            score = rm(conv_tokenized).logits[0][0].item()
+            score = rm(**conv_tokenized).logits[0][0].item()
         scores.append(score)
     return scores
 
@@ -128,8 +134,7 @@ def get_all_inputs(task=None, ratio=1.0):
     for file in files:
         try:
             if file == task + ".json":
-                with open(os.path.join("model_collaboration/data/", file), "r") as f:
-                    task_type = json.load(f)["task_type"]
+                task_type = eval._load_task_json(file[:-5])["task_type"]
                 inputs = eval.prepare_inputs(file[:-5], task_type, "dev", ratio=ratio)
                 list_of_all_inputs.extend(inputs)
         except:
@@ -260,7 +265,10 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             bf16=True,
             learning_rate=1e-5,
             lr_scheduler_type="cosine",
-            warmup_ratio = 0.1,
+            # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be
+            # an int, where a float (0.1) previously passed -- ValueError: "warmup_steps must be
+            # of type int and must be 0 or a positive integer." (int(0.1) == 0, already in effect.)
+            warmup_steps = 0,
             gradient_checkpointing=True,
             eval_strategy="epoch",
             num_train_epochs=5,
@@ -270,7 +278,11 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             save_strategy="steps",
             save_steps=1000,
             save_total_limit=1,
-            max_seq_length=4096,
+            max_length=4096,
+            # trl's default loss_type resolves to "chunked_nll", which patches
+            # the model's forward via inspect.signature(original_forward.__func__)
+            # -- crashes with AttributeError on PEFT models. "nll" avoids it.
+            loss_type="nll",
             run_name="selector_sft_{}".format(task),
         )
 
@@ -281,6 +293,14 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
             eval_dataset=dataset,
             peft_config=peft_config,
         )
+        # model is explicitly pinned to a single GPU above (device_map), but
+        # all of gpu_ids stays visible via CUDA_VISIBLE_DEVICES for the
+        # process's other (generation) work, so HF Trainer's n_gpu still
+        # reads torch.cuda.device_count() > 1 and wraps the model in
+        # nn.DataParallel, OOMing on backward regardless of the manual
+        # placement. Overriding _n_gpu=1 disables that wrap (same fix as
+        # text_agglm.py's GRPO training and api_trained_router.py's SFT).
+        trainer.args._n_gpu = 1
 
         trainer.train()
         trainer.save_model("model_collaboration/logs/selector_sft_{}".format(task))

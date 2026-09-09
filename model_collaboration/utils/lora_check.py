@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 from peft import PeftConfig, AutoPeftModelForCausalLM
 from peft.utils import PeftType
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -28,15 +29,34 @@ def is_lora_adapter_peft(model_id: str) -> bool:
         return False
 
 def lora_to_full(model_names):
+    """
+    Converts any LoRA-adapter entries in model_names to full merged models on disk.
+
+    Returns:
+        tuple: (model_names, converted_dirs) where converted_dirs is the list of newly
+               created full-model directories. Callers are responsible for removing these
+               once they're done using them (e.g. after the final merge is saved) --
+               otherwise each run permanently leaks a full merged checkpoint per LoRA input.
+    """
+    converted_dirs = []
     for i in range(len(model_names)):
         if is_lora_adapter_peft(model_names[i]):
             model = AutoPeftModelForCausalLM.from_pretrained(model_names[i], torch_dtype="bfloat16")
             model = model.merge_and_unload()
-            tokenizer = AutoTokenizer.from_pretrained(model_names[i])
-            full_model_name = "model_collaboration/logs/" + model_names[i].split("/")[-1] + "_full"
-            if os.path.exists(full_model_name):
-                shutil.rmtree(full_model_name)
+            # A LoRA adapter's own cached snapshot only has adapter files (adapter_config.json,
+            # adapter_model.safetensors, tokenizer files) -- no config.json -- so
+            # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig
+            # lookup fails first). Redirect to the adapter's base model instead.
+            base_model_name = PeftConfig.from_pretrained(model_names[i]).base_model_name_or_path
+            tokenizer = AutoTokenizer.from_pretrained(base_model_name)
+            # Unique per call (not just per model name): two concurrent MoCo
+            # runs that both reference this same LoRA model would otherwise
+            # race on an identical shared path -- one run's rmtree/makedirs
+            # can wipe another's in-progress save_pretrained() out from under it.
+            full_model_name = "model_collaboration/logs/" + model_names[i].split("/")[-1] + "_full_" + uuid.uuid4().hex[:8]
+            os.makedirs(full_model_name, exist_ok=True)
             model.save_pretrained(full_model_name)
             tokenizer.save_pretrained(full_model_name)
             model_names[i] = full_model_name
-    return model_names
+            converted_dirs.append(full_model_name)
+    return model_names, converted_dirs

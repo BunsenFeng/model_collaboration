@@ -1,4 +1,5 @@
 import os
+import gc
 import json
 import torch
 import shutil
@@ -27,9 +28,15 @@ def reward_model_scores(gpu_id, list_of_input, list_of_output):
     scores = []
     for i in range(len(list_of_input)):
         conv = [{"role": "user", "content": list_of_input[i]}, {"role": "assistant", "content": list_of_output[i]}]
-        conv_tokenized = rm_tokenizer.apply_chat_template(conv, tokenize=True, return_tensors="pt").to("cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu")
+        # transformers v5's apply_chat_template(tokenize=True, return_tensors="pt") returns a raw
+        # Tensor of input_ids instead of a BatchEncoding dict -- **conv_tokenized below then fails
+        # (TypeError: argument after ** must be a mapping, not Tensor). return_dict=True restores
+        # the dict-like return so **conv_tokenized still works.
+        conv_tokenized = rm_tokenizer.apply_chat_template(
+            conv, tokenize=True, return_tensors="pt", return_dict=True
+        ).to("cuda:{}".format(gpu_id) if gpu_id >= 0 else "cpu")
         with torch.no_grad():
-            score = rm(conv_tokenized).logits[0][0].item()
+            score = rm(**conv_tokenized).logits[0][0].item()
         scores.append(score)
     return scores
 
@@ -47,6 +54,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
     reward_model_gpu_id = hyperparameters.get("reward_model_gpu_id", gpu_ids[0])
     reward_model_name = hyperparameters.get("reward_model_name", "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2")
     ratio = hyperparameters.get("ratio", 1.0)
+    num_train_epochs = hyperparameters.get("num_train_epochs", 5)
 
     # preparing router SFT data
     dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
@@ -71,7 +79,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         dev_outputs = list_of_output_list[i]
         dev_reward_score = reward_model_scores(reward_model_gpu_id, dev_input_list, dev_outputs)
         list_of_dev_reward_scores.append(dev_reward_score)
-    
+
+    # rm/rm_tokenizer are only needed for the tie-break above; free them now so
+    # they don't sit on gpu_ids[0] through router SFT training and the final
+    # Pool-based generation phase (both reuse that GPU).
+    global rm, rm_tokenizer
+    del rm, rm_tokenizer
+    gc.collect()
+    torch.cuda.empty_cache()
+
     best_model_index = [] # len(dev_input_list)
     for j in range(len(dev_input_list)):
         best_score = -float("inf")
@@ -141,17 +157,24 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         bf16=True,
         learning_rate=1e-5,
         lr_scheduler_type="cosine",
-        warmup_ratio = 0.1,
+        # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be an
+        # int, where a float (0.1) previously passed -- ValueError: "warmup_steps must be of type
+        # int and must be 0 or a positive integer." (int(0.1) == 0, the value already in effect.)
+        warmup_steps = 0,
         gradient_checkpointing=True,
         eval_strategy="epoch",
-        num_train_epochs=5,
+        num_train_epochs=num_train_epochs,
         # logging strategies 
         logging_strategy="steps",
         logging_steps=100,
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=1,
-        max_seq_length=4096,
+        max_length=4096,
+        # trl's default loss_type resolves to "chunked_nll", which patches
+        # the model's forward via inspect.signature(original_forward.__func__)
+        # -- crashes with AttributeError on PEFT models. "nll" avoids it.
+        loss_type="nll",
         run_name="router_sft_{}".format(task),
     )
 
@@ -162,6 +185,15 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         eval_dataset=dataset,
         peft_config=peft_config,
     )
+    # router_model is explicitly pinned to a single GPU above (device_map),
+    # but all of gpu_ids stays visible via CUDA_VISIBLE_DEVICES for the
+    # process's other (generation) work, so HF Trainer's n_gpu still reads
+    # torch.cuda.device_count() > 1 and wraps the model in nn.DataParallel --
+    # which replicates it onto the other visible GPU and OOMs gathering
+    # gradients back onto GPU 0 on backward, regardless of the manual
+    # placement. Overriding _n_gpu=1 disables that wrap (same fix as
+    # text_agglm.py's GRPO training).
+    trainer.args._n_gpu = 1
 
     trainer.train()
     trainer.save_model("model_collaboration/logs/router_sft_{}".format(task))
@@ -170,6 +202,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
 
     del router_model
     del tokenizer
+    gc.collect()
     torch.cuda.empty_cache()
 
     router_model_name = "model_collaboration/logs/router_sft_{}".format(task)

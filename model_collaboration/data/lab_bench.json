@@ -1,4 +1,6 @@
 {
+  "dataset": "lab_bench",
+  "task_type": "multiple_choice",
   "dev": [
     {
       "id": "97e6e1a0-f207-46d0-9201-f0081f40e19a",

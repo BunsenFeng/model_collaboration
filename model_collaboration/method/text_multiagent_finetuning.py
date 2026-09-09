@@ -55,14 +55,6 @@ from collections import Counter
 from typing import List, Dict, Tuple, Any
 
 from model_collaboration.data import eval
-
-# Directory where the evaluation data JSON files reside.  This mirrors the
-# convention used in text_majority_vote.py.  We rely on this constant
-# when loading the raw data for answer extraction during the debate and
-# evaluation phases.  Without access to the original questions and
-# multiple‑choice options it is not possible to accurately extract the
-# model's chosen answer.
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 from model_collaboration.method import distributed_generation
 from model_collaboration.utils import distributed_sft
 
@@ -206,6 +198,7 @@ def run_method(task: str,
     sft_learning_rate = float(hyperparameters.get("sft_learning_rate", 1e-5))
     sft_batch_size = int(hyperparameters.get("sft_batch_size", 1))
     sft_grad_accum = int(hyperparameters.get("sft_grad_accum", 16))
+    max_parallel_generation_models = hyperparameters.get("max_parallel_generation_models", None)
 
     # ------------------------------------------------------------------
     # Prepare the development inputs and corresponding raw data items.
@@ -218,8 +211,7 @@ def run_method(task: str,
     # and take a matching subset when training_ratio < 1.0.
     # ------------------------------------------------------------------
     # Load the full dev split data
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f_data:
-        full_data = json.load(f_data)
+    full_data = eval._load_task_json(task)
     dev_data_full = full_data.get("dev", [])
     dev_data_full = dev_data_full[:int(len(dev_data_full) * ratio)]
     # Format questions using helper
@@ -271,7 +263,8 @@ def run_method(task: str,
         gen_outputs = distributed_generation.distributed_generation(
             current_generation_models,
             list_of_input_list,
-            gpu_ids
+            gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )  # shape: N x len(dev_inputs)
         # Extract answers for round 0
         extracted_round = []  # will be list of length N, each a list of len(dev_inputs)
@@ -332,7 +325,8 @@ def run_method(task: str,
             critic_outputs = distributed_generation.distributed_generation(
                 current_critic_models,
                 list_of_input_list_round,
-                gpu_ids
+                gpu_ids,
+                max_parallel_models=max_parallel_generation_models,
             )  # N x len(dev_inputs)
             answers.append(critic_outputs)
             # Extract answers for this critic round
@@ -532,7 +526,8 @@ def run_method(task: str,
     test_gen_outputs = distributed_generation.distributed_generation(
         current_generation_models,
         list_of_input_list,
-        gpu_ids
+        gpu_ids,
+        max_parallel_models=max_parallel_generation_models,
     )
     # Round m >= 1: critics refine answers
     answers_test = []
@@ -553,15 +548,15 @@ def run_method(task: str,
         critic_outputs_test = distributed_generation.distributed_generation(
             current_critic_models,
             list_of_input_list_round,
-            gpu_ids
+            gpu_ids,
+            max_parallel_models=max_parallel_generation_models,
         )
         answers_test.append(critic_outputs_test)
     final_round_test = answers_test[-1]
     # majority vote per question using extracted answers
     # Load the test data for answer extraction
     test_inputs_list = test_inputs  # alias
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f_data:
-        full_data = json.load(f_data)
+    full_data = eval._load_task_json(task)
     test_data = full_data.get("test", [])
     test_data = test_data[:int(len(test_data) * ratio)]
     assert len(test_inputs_list) == len(test_data), "Mismatch between test inputs and data length"

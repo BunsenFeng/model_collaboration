@@ -73,6 +73,7 @@ class LogitArithmetic:
         self,
         arithmetic_func = average_logits,
         input_ids = None,
+        attention_mask = None,
         max_new_tokens = 100,
         do_sample = True,
         temprature = 1.0,
@@ -86,7 +87,15 @@ class LogitArithmetic:
 
         for step in tqdm(range(max_new_tokens)):
             inputs = {'input_ids': input_ids, **kwargs}
-            list_of_outputs = self.forward(inputs, return_dict=True) 
+            # There's no KV-cache reuse here (no past_key_values passed between steps), so every
+            # step is a fresh forward pass over the FULL current sequence -- attention_mask must
+            # be grown to match input_ids' length each step, not just passed once at the start.
+            # Without it, left-padded batches (batch_size > 1) get the model attending to pad
+            # tokens as if they were real context, corrupting the actual prompt and producing
+            # degenerate outputs with no extractable answer.
+            if attention_mask is not None:
+                inputs['attention_mask'] = attention_mask
+            list_of_outputs = self.forward(inputs, return_dict=True)
             logits_list = [output.logits[..., -1, :] for output in list_of_outputs]
             # Move all logits to the same device as input_ids
             for i in range(len(logits_list)):
@@ -107,6 +116,10 @@ class LogitArithmetic:
             )
 
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
+            if attention_mask is not None:
+                attention_mask = torch.cat(
+                    [attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))], dim=-1
+                )
 
             if stopping_criteria and stopping_criteria(input_ids, None):
                 break
@@ -140,18 +153,22 @@ class LogitArithmetic:
             chat = [{"role": "user", "content": prompt}]
             chat_prompts.append(tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True))
         
-        input_ids = tokenizer(
+        encoded = tokenizer(
             chat_prompts,
             return_tensors="pt",
             padding=True,
             truncation=True,
-        ).input_ids
+        )
+        input_ids = encoded.input_ids
+        attention_mask = encoded.attention_mask
 
         outputs = []
         for i in tqdm(range(0, input_ids.shape[0], batch_size)):
             batch_input_ids = input_ids[i:i+batch_size]
+            batch_attention_mask = attention_mask[i:i+batch_size]
             generated_ids = self.generate(
                 input_ids=batch_input_ids,
+                attention_mask=batch_attention_mask,
                 max_new_tokens=max_new_tokens,
                 do_sample=do_sample,
                 temprature=temprature,

@@ -26,7 +26,12 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
     torch.cuda.set_device(0)
 
     dataset = load_dataset("json", data_files=sft_data_path, split="train")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+    # A LoRA adapter's own cached snapshot only has adapter files -- no config.json -- so
+    # AutoTokenizer.from_pretrained on it directly fails in offline mode (AutoConfig lookup
+    # fails first). Redirect to the adapter's base model, same as distributed_generation.py.
+    tokenizer = AutoTokenizer.from_pretrained(
+        distributed_generation._tokenizer_source(model_name), padding_side="left"
+    )
     tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16, device_map="auto")
 
@@ -52,7 +57,10 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
         bf16=True,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
-        warmup_ratio = 0.1,
+        # transformers v5 tightened TrainingArguments' validation: warmup_steps must now be an
+        # int, where a float (0.1) previously passed -- ValueError: "warmup_steps must be of type
+        # int and must be 0 or a positive integer." (int(0.1) == 0, the value already in effect.)
+        warmup_steps = 0,
         gradient_checkpointing=True,
         eval_strategy="epoch",
         num_train_epochs=epoch,
@@ -62,7 +70,13 @@ def single_sft(model_name, sft_data_path, gpu_id, output_model_path, batch_size=
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=1,
-        max_seq_length=4096
+        max_length=4096,
+        # trl's default loss_type resolves to "chunked_nll", which patches
+        # the model's forward via inspect.signature(original_forward.__func__)
+        # -- crashes with AttributeError on PEFT models where the base
+        # model's forward isn't a plain bound method. "nll" is the classic,
+        # stable loss and avoids that patching path entirely.
+        loss_type="nll",
     )
 
     trainer = SFTTrainer(

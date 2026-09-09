@@ -5,13 +5,10 @@ from collections import defaultdict
 from model_collaboration.data import eval
 from model_collaboration.method import distributed_generation
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-
 def get_extracted_answers(task, task_type, split, outputs, ratio=1.0):
 
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-        data = json.load(f)[split]
-        data = data[:int(len(data)*ratio)]
+    data = eval._load_task_json(task)[split]
+    data = data[:int(len(data)*ratio)]
 
     extracted_answers = []
 
@@ -36,9 +33,8 @@ def get_extracted_answers(task, task_type, split, outputs, ratio=1.0):
 
 def get_scores_from_extracted_answers(task, task_type, split, extracted_answers, ratio=1.0):
 
-    with open(os.path.join(DATA_DIR, f"{task}.json"), "r") as f:
-        data = json.load(f)[split]
-        data = data[:int(len(data)*ratio)]
+    data = eval._load_task_json(task)[split]
+    data = data[:int(len(data)*ratio)]
 
     scores = []
 

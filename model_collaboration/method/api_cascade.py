@@ -53,7 +53,7 @@ def run_method(task, task_type, gpu_ids, model_names, hyperparameters):
         dev_input_list = eval.prepare_inputs(task, task_type, "dev", ratio=ratio)
         for i in range(len(model_names)-1): # find threshld for every model except last model
             output_list, list_logit_scores_list = distributed_generation.batch_generate_text_with_score(
-                        model_name=model_names[0],
+                        model_name=model_names[i],
                         gpu_id=gpu_ids[0],
                         input_list=dev_input_list,
                         max_response_length=max_response_length,
