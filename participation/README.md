@@ -30,6 +30,8 @@ Results are written to `model_collaboration/logs/`. Each config sets `gpu_ids` t
 - **Weight-level methods** use the contributed models distilled into Qwen-2.5-7B: `bunsenfeng/parti_{i}_lora` is contributed model `i+1`.
 - A pool of size `k` is always the first `k` models in table order.
 
+**Note on compatibility.** Some contributed models may no longer load with newer `transformers` or vLLM versions. In that case, replace contributed model `i+1` with its distilled Qwen-2.5-7B copy: `bunsenfeng/parti_{i}_full` (full weights) or `bunsenfeng/parti_{i}_lora` (LoRA adapter), for `i` from 0 to 31.
+
 ## Main results: `scaling/`
 
 These configs reproduce Figure 2 and the main results tables.
