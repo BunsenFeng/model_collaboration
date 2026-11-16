@@ -1,0 +1,28 @@
+{
+    "method": "text_multiagent_finetuning",
+    "task": "gpqa_diamond",
+    "task_type": "multiple_choice",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "gaotang/RM-R1-Qwen2.5-Instruct-7B",
+        "allenai/OLMo-3-7B-Instruct",
+        "CohereLabs/tiny-aya-global",
+        "Tower-Babel/Babel-9B-Chat"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "iterations": 2,
+        "sft_epochs": 1,
+        "sft_learning_rate": 1e-05,
+        "sft_batch_size": 1,
+        "sft_grad_accum": 16
+    }
+}

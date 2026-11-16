@@ -1,0 +1,20 @@
+{
+    "method": "single_model",
+    "task": "kaleidoscope",
+    "task_type": "multiple_choice",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "fcyin/llama2_7B_base_lofit_truthfulqa"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32
+    }
+}

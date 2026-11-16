@@ -1,0 +1,24 @@
+{
+    "method": "text_sparta",
+    "task": "ifeval",
+    "task_type": "ifeval",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "chtmp223/Qwen2.5-7B-CLIPPER",
+        "chengq9/ToolRL-Qwen2.5-3B"
+    ],
+    "hyperparameters": {
+        "max_response_length": 1024,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "num_iterations": 3,
+        "num_instructions": 500,
+        "num_opponents": 3
+    }
+}

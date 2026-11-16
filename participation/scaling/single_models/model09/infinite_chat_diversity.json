@@ -1,0 +1,20 @@
+{
+    "method": "single_model",
+    "task": "infinite_chat_diversity",
+    "task_type": "generation_diversity",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "GritLM/GritLM-7B"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32
+    }
+}

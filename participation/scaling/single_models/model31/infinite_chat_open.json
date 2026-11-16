@@ -1,0 +1,20 @@
+{
+    "method": "single_model",
+    "task": "infinite_chat_open",
+    "task_type": "reward_model",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "allegrolab/hubble-8b-500b_toks-standard-hf"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32
+    }
+}
