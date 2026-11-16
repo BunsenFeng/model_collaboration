@@ -44,14 +44,12 @@ These configs reproduce Figure 2 and the main results tables.
 
 ## Analyses: `analysis/`
 
-| Folder | Paper |
+| Folder | Experiment |
 |---|---|
-| `analysis/human_diversity/` | Figure 3: CulturalBench, Kaleidoscope, InfinityChat (open and diversity) with 4 methods, k = 2–32, plus baselines |
-| `analysis/model_diversity/` | Figure 4: 8-slot pools of the top 1×8, 2×4, 4×2, 8×1 models on AGIEval, BBH, Blend with 4 methods |
-| `analysis/compositional_strength/` | Figure 6: 6 methods on AGIEval and BBH with the top-16 pool and each of its 16 leave-one-out pools |
-| `analysis/additional_coordination/` | Appendix table on SLM-Mux and Cascade, k = 2–32, on ARC, MATH, TruthfulQA |
-| `analysis/ifeval_mixeval/` | Appendix: three strongest methods on IFEval and MixEval, k = 2–32, plus Llama-3.1-405B |
-| `analysis/more_diversity/` | Appendix: three strongest methods on MMLU-ProX and CommunityBench, k = 8–32, plus Llama-3.1-405B |
-| `analysis/diverse_contributors/` | Appendix: LLM Blender, Sparta alignment, and multiagent finetuning with four models from underrepresented contributor types, on six tasks |
-
-Figure 5 (collaborative emergence) needs no extra configs. It is computed from the per-instance logs of the `scaling/` runs, together with the matching `scaling/single_models/` runs on AGIEval, MMLU-redux, Blend, and TruthfulQA.
+| `analysis/human_diversity/` | Representing human diversity |
+| `analysis/model_diversity/` | Scaling model diversity |
+| `analysis/compositional_strength/` | Individual vs. compositional strength |
+| `analysis/additional_coordination/` | Additional coordination methods |
+| `analysis/ifeval_mixeval/` | Other instruction-following benchmarks |
+| `analysis/more_diversity/` | Other diversity benchmarks |
+| `analysis/diverse_contributors/` | Diverse contributor types |
