@@ -26,7 +26,7 @@ Results are written to `model_collaboration/logs/`. Each config sets `gpu_ids` t
 
 ## Models
 
-- **API- and text-level methods** use the contributed models directly (IDs 1–32 in the model tables of the paper's appendix). Model #4 uses a custom architecture that vLLM does not load, so it is replaced by its distilled copy `bunsenfeng/parti_3_full`.
+- **API- and text-level methods** use the contributed models directly (IDs 1–32 in the model tables of the paper's appendix).
 - **Weight-level methods** use the contributed models distilled into Qwen-2.5-7B: `bunsenfeng/parti_{i}_lora` is contributed model `i+1`.
 - A pool of size `k` is always the first `k` models in table order.
 
@@ -47,7 +47,7 @@ These configs reproduce Figure 2 and the main results tables.
 | Folder | Paper |
 |---|---|
 | `analysis/human_diversity/` | Figure 3: CulturalBench, Kaleidoscope, InfinityChat (open and diversity) with 4 methods, k = 2–32, plus baselines |
-| `analysis/model_diversity/` | Figure 4, setting 1: 8-slot pools of the top 1×8, 2×4, 4×2, 8×1 models on AGIEval, BBH, Blend with 4 methods |
+| `analysis/model_diversity/` | Figure 4: 8-slot pools of the top 1×8, 2×4, 4×2, 8×1 models on AGIEval, BBH, Blend with 4 methods |
 | `analysis/compositional_strength/` | Figure 6: 6 methods on AGIEval and BBH with the top-16 pool and each of its 16 leave-one-out pools |
 | `analysis/additional_coordination/` | Appendix table on SLM-Mux and Cascade, k = 2–32, on ARC, MATH, TruthfulQA |
 | `analysis/ifeval_mixeval/` | Appendix: three strongest methods on IFEval and MixEval, k = 2–32, plus Llama-3.1-405B |
