@@ -4,6 +4,7 @@ model_collaboration/logs/*
 model_collaboration/*.sh
 *.json
 !examples/*.json
+!participation/**/*.json
 model_collaboration/*.json
 !model_collaboration/data/*.json
 model_collaboration/data/assaybench.json

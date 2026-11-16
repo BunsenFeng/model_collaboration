@@ -1,0 +1,41 @@
+{
+    "method": "api_graph_routing",
+    "task": "blend",
+    "task_type": "multiple_choice",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "chtmp223/Qwen2.5-7B-CLIPPER",
+        "chengq9/ToolRL-Qwen2.5-3B",
+        "AgentFlow/agentflow-planner-7b",
+        "bunsenfeng/parti_3_full",
+        "viswavi/qwen2.5_rlcf",
+        "milli19/promptmii-llama-3.1-8b-instruct",
+        "Zhengping/conditional-probability-regression",
+        "yale-nlp/MDCure-Qwen2-7B-Instruct"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "model_descriptions": [
+            "We fine-tuned models for the task of narrative claim verification, where the model has to verify whether a claim about a book is True or False given the full book text.",
+            "The model is trained through RL especially for tool use task, focusing on tool learning, parameter filling, etc.",
+            "The framework directly optimizes planner agent within the system in an online fashion using Flow-based Group Refined Policy Optimization (Flow-GRPO)",
+            "Finetuned from llama3.1 to test an efficient language model architecture design. Finetuning enables us to test the architecture on a relatively large model while avoiding expensive train-from-scratch; this is very helpful for architecture research that doesn't deviate too much from the standard Transformer.",
+            "This model improves the instruction following capabilities of Qwen-2.5-7B-Instruct using preference tuning on the WildChecklists dataset. This model is described in detail in \"Checklists Are Better Than Reward Models For Aligning Language Models\".",
+            "RL trained for ability to induce instructions",
+            "Estimating conditional probability in everyday scenario",
+            "Model post-trained for various multi-document tasks (e.g., QA, summarization, coreference resolution) that achieves notable improvements in multi-document performance over prior pre-trained baselines. Gains generalize robustly across task/content domains, and existing capabilities of the base model are preserved."
+        ],
+        "task_description": "a knowledge-intensive question answering task",
+        "hidden_features": 8,
+        "learning_rate": 0.0001,
+        "train_epochs": 10
+    }
+}

@@ -1,0 +1,26 @@
+{
+    "method": "text_llm_blender",
+    "task": "gpqa_diamond",
+    "task_type": "multiple_choice",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "gaotang/RM-R1-Qwen2.5-Instruct-7B",
+        "allenai/OLMo-3-7B-Instruct",
+        "CohereLabs/tiny-aya-global",
+        "Tower-Babel/Babel-9B-Chat"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "top_k": 3,
+        "ranker_model_name": "Qwen/Qwen2.5-7B-Instruct",
+        "fuser_model_name": "Qwen/Qwen2.5-7B-Instruct"
+    }
+}

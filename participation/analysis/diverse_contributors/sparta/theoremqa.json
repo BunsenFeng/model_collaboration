@@ -1,0 +1,26 @@
+{
+    "method": "text_sparta",
+    "task": "theoremqa",
+    "task_type": "exact_match",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "gaotang/RM-R1-Qwen2.5-Instruct-7B",
+        "allenai/OLMo-3-7B-Instruct",
+        "CohereLabs/tiny-aya-global",
+        "Tower-Babel/Babel-9B-Chat"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "num_iterations": 3,
+        "num_instructions": 500,
+        "num_opponents": 3
+    }
+}

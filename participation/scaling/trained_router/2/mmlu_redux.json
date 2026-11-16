@@ -1,0 +1,28 @@
+{
+    "method": "api_trained_router",
+    "task": "mmlu_redux",
+    "task_type": "multiple_choice",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "chtmp223/Qwen2.5-7B-CLIPPER",
+        "chengq9/ToolRL-Qwen2.5-3B"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "model_descriptions": [
+            "We fine-tuned models for the task of narrative claim verification, where the model has to verify whether a claim about a book is True or False given the full book text.",
+            "The model is trained through RL especially for tool use task, focusing on tool learning, parameter filling, etc."
+        ],
+        "router_base_model": "Qwen/Qwen2.5-7B-Instruct",
+        "reward_model_name": "Skywork/Skywork-Reward-Llama-3.1-8B-v0.2",
+        "num_train_epochs": 5
+    }
+}

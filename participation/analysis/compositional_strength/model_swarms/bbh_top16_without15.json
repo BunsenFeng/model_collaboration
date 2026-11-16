@@ -1,0 +1,42 @@
+{
+    "method": "weight_model_swarms",
+    "task": "bbh",
+    "task_type": "exact_match",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "bunsenfeng/parti_0_lora",
+        "bunsenfeng/parti_1_lora",
+        "bunsenfeng/parti_2_lora",
+        "bunsenfeng/parti_3_lora",
+        "bunsenfeng/parti_4_lora",
+        "bunsenfeng/parti_5_lora",
+        "bunsenfeng/parti_6_lora",
+        "bunsenfeng/parti_7_lora",
+        "bunsenfeng/parti_8_lora",
+        "bunsenfeng/parti_9_lora",
+        "bunsenfeng/parti_10_lora",
+        "bunsenfeng/parti_11_lora",
+        "bunsenfeng/parti_12_lora",
+        "bunsenfeng/parti_13_lora",
+        "bunsenfeng/parti_15_lora"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32,
+        "max_iterations": 10,
+        "fast_merge_flag": 1,
+        "inertia": 0.2,
+        "cognitive_coefficient": 0.3,
+        "social_coefficient": 0.4,
+        "repel_coefficient": 0.05,
+        "step_length": 0.5,
+        "patience": 5
+    }
+}

@@ -1,0 +1,27 @@
+{
+    "method": "api_cascade",
+    "task": "math",
+    "task_type": "exact_match",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "chtmp223/Qwen2.5-7B-CLIPPER",
+        "chengq9/ToolRL-Qwen2.5-3B",
+        "AgentFlow/agentflow-planner-7b",
+        "bunsenfeng/parti_3_full",
+        "viswavi/qwen2.5_rlcf",
+        "milli19/promptmii-llama-3.1-8b-instruct",
+        "Zhengping/conditional-probability-regression",
+        "yale-nlp/MDCure-Qwen2-7B-Instruct"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32
+    }
+}

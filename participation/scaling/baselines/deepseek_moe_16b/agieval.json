@@ -1,0 +1,20 @@
+{
+    "method": "single_model",
+    "task": "agieval",
+    "task_type": "multiple_choice",
+    "gpu_ids": [
+        0,
+        1,
+        2,
+        3
+    ],
+    "model_names": [
+        "deepseek-ai/deepseek-moe-16b-chat"
+    ],
+    "hyperparameters": {
+        "max_response_length": 512,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "batch_size": 32
+    }
+}
